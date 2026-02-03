@@ -71,7 +71,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
   const loadTasks = async () => {
     const res = await getTasksAction();
     if (res.success) {
-      setTasks((res.data || []) as Task[]);
+      setTasks((res.data || []) as unknown as Task[]);
     }
     setIsLoadingTasks(false);
   };
@@ -93,13 +93,13 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     await loadTasks();
 
     const taskRes = await getTasksAction();
-    const taskObj = (taskRes.data as Task[])?.find((t) => t.id === taskId);
+    const taskObj = ((taskRes.data || []) as unknown as Task[])?.find((t) => t.id === taskId);
     const startIndex = taskObj?.current_keyword_index || 0;
 
     for (let i = startIndex; i < keywords.length; i++) {
         // Double check status before each step
         const checkRes = await getTasksAction();
-        const currentTask = (checkRes.data as Task[])?.find((t) => t.id === taskId);
+        const currentTask = ((checkRes.data || []) as unknown as Task[])?.find((t) => t.id === taskId);
         if (!currentTask || currentTask.status === 'paused') {
             isRunningTask.current = false;
             return;
