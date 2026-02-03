@@ -19,10 +19,23 @@ export const db = postgres(connectionString, {
 export async function seed() {
   try {
     console.log('Seeding database...');
+
+    // 1. Create Users Table First (so others can reference it)
+    await db`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
     
+    // 2. Create Tasks Table
     await db`
       CREATE TABLE IF NOT EXISTS tasks (
         id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
         name TEXT NOT NULL,
         status TEXT DEFAULT 'pending', 
         total_keywords INTEGER DEFAULT 0,
@@ -34,15 +47,18 @@ export async function seed() {
       );
     `;
 
+    // 3. Create Searches Table
     await db`
       CREATE TABLE IF NOT EXISTS searches (
         id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
         query TEXT NOT NULL,
         task_id INTEGER REFERENCES tasks(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
 
+    // 4. Create Leads Table
     await db`
       CREATE TABLE IF NOT EXISTS leads (
         id SERIAL PRIMARY KEY,
@@ -81,6 +97,7 @@ export async function seed() {
       );
     `;
 
+    // 5. Create City Areas Table
     await db`
       CREATE TABLE IF NOT EXISTS city_areas (
         id SERIAL PRIMARY KEY,
@@ -93,9 +110,11 @@ export async function seed() {
       );
     `;
 
+    // 6. Create Keyword History Table
     await db`
       CREATE TABLE IF NOT EXISTS keyword_history (
         id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
         name TEXT NOT NULL,
         niche TEXT,
         location TEXT,
@@ -104,6 +123,7 @@ export async function seed() {
       );
     `;
 
+    // 7. Create Task Leads Junction Table
     await db`
       CREATE TABLE IF NOT EXISTS task_leads (
         task_id INTEGER REFERENCES tasks(id),
@@ -113,16 +133,21 @@ export async function seed() {
       );
     `;
 
+    // 8. Create Settings Table
     await db`
       CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value TEXT NOT NULL
+        user_id INTEGER REFERENCES users(id),
+        key TEXT NOT NULL,
+        value TEXT NOT NULL,
+        PRIMARY KEY (user_id, key)
       );
     `;
 
+    // 9. Create Proxies Table
     await db`
       CREATE TABLE IF NOT EXISTS proxies (
         id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
         host TEXT NOT NULL,
         port INTEGER NOT NULL,
         username TEXT,
@@ -133,16 +158,40 @@ export async function seed() {
       );
     `;
 
-    // Insert default settings safely
-    await db`
-      INSERT INTO settings (key, value) 
-      VALUES ('exportCityWise', 'false') 
-      ON CONFLICT (key) DO NOTHING
-    `;
+    // --- MIGRATION LOGIC (For existing tables) ---
+    // Safely add columns if they don't exist
     
-    console.log('Database seeded successfully via Postgres.js');
+    // Helper to check if column exists and add if missing
+    const addColumnIfNotExists = async (table: string, column: string, columnType: string) => {
+      try {
+        const result = await db`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = ${table} AND column_name = ${column}
+        `;
+        
+        if (result.length === 0) {
+          await db.unsafe(`ALTER TABLE ${table} ADD COLUMN ${column} ${columnType}`);
+          console.log(`Added column ${column} to ${table}`);
+        }
+      } catch (e) {
+        console.error(`Failed to add column ${column} to ${table}:`, e);
+      }
+    };
+
+    await addColumnIfNotExists('tasks', 'user_id', 'INTEGER REFERENCES users(id)');
+    await addColumnIfNotExists('searches', 'user_id', 'INTEGER REFERENCES users(id)');
+    await addColumnIfNotExists('keyword_history', 'user_id', 'INTEGER REFERENCES users(id)');
+    await addColumnIfNotExists('proxies', 'user_id', 'INTEGER REFERENCES users(id)');
+    await addColumnIfNotExists('settings', 'user_id', 'INTEGER REFERENCES users(id)');
+    
+
+    // Default settings (only insert if clean DB, or ignore conflicts)
+    // This insert might fail if user_id is null in the new schema constraint, but here we just try.
+    // We won't insert default settings here to avoid errors with the new schema.
+    
+    console.log('Database seeded/migrated successfully.');
   } catch (error) {
     console.error('Failed to seed database:', error);
-    // Don't throw for existing tables to avoid crash loops, but log accurately
   }
 }

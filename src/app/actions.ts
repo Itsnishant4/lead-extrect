@@ -4,8 +4,92 @@ import { db, seed } from '@/lib/db/index';
 import { fetchLeads } from '@/lib/extractor';
 import { Lead } from '@/lib/parser';
 import { enrichLead } from '@/lib/enricher';
+import { hashPassword, verifyPassword, signToken, getSession } from '@/lib/auth';
+import { cookies } from 'next/headers';
+
+// --- Auth Actions ---
+
+export async function signupAction(name: string, email: string, password: string) {
+  try {
+    await seed(); // Ensure DB is ready including users table
+
+    // Check if user exists
+    const existing = await db`SELECT id FROM users WHERE email = ${email}`;
+    if (existing.length > 0) {
+      return { success: false, error: 'User with this email already exists' };
+    }
+
+    const hashedPassword = await hashPassword(password);
+    
+    const result = await db`
+      INSERT INTO users (name, email, password)
+      VALUES (${name}, ${email}, ${hashedPassword})
+      RETURNING id
+    `;
+
+    const userId = result[0].id;
+
+    // Auto-login: Sign token and set cookie
+    const token = await signToken({ id: userId, email, name });
+    
+    const cookieStore = await cookies();
+    cookieStore.set('session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    });
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function loginAction(email: string, password: string) {
+  try {
+    const users = await db`SELECT * FROM users WHERE email = ${email}`;
+    const user = users[0];
+
+    if (!user || !(await verifyPassword(password, user.password))) {
+      return { success: false, error: 'Invalid credentials' };
+    }
+
+    const token = await signToken({ id: user.id, email: user.email, name: user.name });
+    
+    // Set cookie
+    const cookieStore = await cookies();
+    cookieStore.set('session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    });
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function logoutAction() {
+  const cookieStore = await cookies();
+  cookieStore.delete('session');
+  return { success: true };
+}
+
+export async function getUserAction() {
+  const session = await getSession();
+  if (!session) return { success: false, data: null };
+  return { success: true, data: session };
+}
+
+// --- Protected Data Actions ---
 
 export async function searchLeadsAction(query: string, taskId?: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
     // Lazy init schema on first search
     await seed();
@@ -15,6 +99,7 @@ export async function searchLeadsAction(query: string, taskId?: number) {
     const existingSearches = await db`
       SELECT id FROM searches 
       WHERE query = ${trimmedQuery} 
+      AND user_id = ${session.id}
       AND created_at > NOW() - INTERVAL '30 days'
       ORDER BY created_at DESC 
       LIMIT 1
@@ -48,7 +133,7 @@ export async function searchLeadsAction(query: string, taskId?: number) {
 
     // 2. CACHE MISS: Create a new search record and fetch from API
     const searchResult = await db`
-        INSERT INTO searches (query, task_id) VALUES (${trimmedQuery}, ${taskId || null}) RETURNING id
+        INSERT INTO searches (user_id, query, task_id) VALUES (${session.id}, ${trimmedQuery}, ${taskId || null}) RETURNING id
     `;
     const searchId = searchResult[0].id;
 
@@ -115,10 +200,16 @@ export async function searchLeadsAction(query: string, taskId?: number) {
 }
 
 export async function createTaskAction(name: string, keywords: string[]) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
+    // Ensure database schema is up to date
+    await seed();
+    
     const result = await db`
-      INSERT INTO tasks (name, keywords, total_keywords, status) 
-      VALUES (${name}, ${JSON.stringify(keywords)}, ${keywords.length}, 'pending')
+      INSERT INTO tasks (user_id, name, keywords, total_keywords, status) 
+      VALUES (${session.id}, ${name}, ${JSON.stringify(keywords)}, ${keywords.length}, 'pending')
       RETURNING id
     `;
     
@@ -129,14 +220,17 @@ export async function createTaskAction(name: string, keywords: string[]) {
 }
 
 export async function updateTaskStatusAction(taskId: number, status: string, currentIndex?: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
     if (currentIndex !== undefined) {
       await db`
-        UPDATE tasks SET status = ${status}, current_keyword_index = ${currentIndex}, updated_at = CURRENT_TIMESTAMP WHERE id = ${taskId}
+        UPDATE tasks SET status = ${status}, current_keyword_index = ${currentIndex}, updated_at = CURRENT_TIMESTAMP WHERE id = ${taskId} AND user_id = ${session.id}
       `;
     } else {
       await db`
-        UPDATE tasks SET status = ${status}, updated_at = CURRENT_TIMESTAMP WHERE id = ${taskId}
+        UPDATE tasks SET status = ${status}, updated_at = CURRENT_TIMESTAMP WHERE id = ${taskId} AND user_id = ${session.id}
       `;
     }
     return { success: true };
@@ -146,8 +240,11 @@ export async function updateTaskStatusAction(taskId: number, status: string, cur
 }
 
 export async function getTasksAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
-    const results = await db`SELECT * FROM tasks ORDER BY created_at DESC`;
+    const results = await db`SELECT * FROM tasks WHERE user_id = ${session.id} ORDER BY created_at DESC`;
     return { success: true, data: results };
   } catch (error) {
     return { success: false, error: (error as Error).message };
@@ -155,8 +252,11 @@ export async function getTasksAction() {
 }
 
 export async function getTaskAction(taskId: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
-    const result = await db`SELECT * FROM tasks WHERE id = ${taskId}`;
+    const result = await db`SELECT * FROM tasks WHERE id = ${taskId} AND user_id = ${session.id}`;
     return { success: true, data: result[0] };
   } catch (error) {
     return { success: false, error: (error as Error).message };
@@ -164,12 +264,17 @@ export async function getTaskAction(taskId: number) {
 }
 
 export async function getTaskLeadsAction(taskId: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
     const results = await db`
         SELECT l.* 
         FROM leads l 
         JOIN task_leads tl ON l.id = tl.lead_id 
+        JOIN tasks t ON tl.task_id = t.id
         WHERE tl.task_id = ${taskId} 
+        AND t.user_id = ${session.id}
         ORDER BY tl.created_at DESC
     `;
     return { success: true, data: results };
@@ -179,6 +284,9 @@ export async function getTaskLeadsAction(taskId: number) {
 }
 
 export async function getLeadsAction(searchId?: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
     let results;
     if (searchId) {
@@ -193,7 +301,14 @@ export async function getLeadsAction(searchId?: number) {
 }
 
 export async function deleteTaskAction(taskId: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
+    // Verify ownership
+    const task = await db`SELECT id FROM tasks WHERE id = ${taskId} AND user_id = ${session.id}`;
+    if (!task[0]) return { success: false, error: 'Task not found or unauthorized' };
+
     // 1. Delete task-lead entries
     await db`DELETE FROM task_leads WHERE task_id = ${taskId}`;
 
@@ -211,8 +326,11 @@ export async function deleteTaskAction(taskId: number) {
 }
 
 export async function pauseAllRunningTasksAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
-    await db`UPDATE tasks SET status = 'paused' WHERE status = 'running'`;
+    await db`UPDATE tasks SET status = 'paused' WHERE status = 'running' AND user_id = ${session.id}`;
     return { success: true };
   } catch (error) {
     return { success: false, error: (error as Error).message };
@@ -220,8 +338,11 @@ export async function pauseAllRunningTasksAction() {
 }
 
 export async function getRecentSearchesAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
-    const results = await db`SELECT * FROM searches ORDER BY created_at DESC LIMIT 10`;
+    const results = await db`SELECT * FROM searches WHERE user_id = ${session.id} ORDER BY created_at DESC LIMIT 10`;
     return { success: true, data: results };
   } catch (error) {
     return { success: false, error: (error as Error).message };
@@ -229,6 +350,9 @@ export async function getRecentSearchesAction() {
 }
 
 export async function getCityAreasAction(country: string, state: string, city: string) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
     const result = await db`SELECT areas FROM city_areas WHERE country = ${country} AND state = ${state} AND city = ${city}`;
     
@@ -242,6 +366,9 @@ export async function getCityAreasAction(country: string, state: string, city: s
 }
 
 export async function saveCityAreasAction(country: string, state: string, city: string, areas: string[]) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
     await db`
       INSERT INTO city_areas (country, state, city, areas, last_updated)
@@ -255,10 +382,13 @@ export async function saveCityAreasAction(country: string, state: string, city: 
 }
 
 export async function saveKeywordHistoryAction(name: string, niche: string, location: string, keywords: string[]) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
     await db`
-      INSERT INTO keyword_history (name, niche, location, keywords)
-      VALUES (${name}, ${niche}, ${location}, ${JSON.stringify(keywords)})
+      INSERT INTO keyword_history (user_id, name, niche, location, keywords)
+      VALUES (${session.id}, ${name}, ${niche}, ${location}, ${JSON.stringify(keywords)})
     `;
     return { success: true };
   } catch (error) {
@@ -267,8 +397,11 @@ export async function saveKeywordHistoryAction(name: string, niche: string, loca
 }
 
 export async function getKeywordHistoryAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
-    const results = await db`SELECT * FROM keyword_history ORDER BY created_at DESC LIMIT 50`;
+    const results = await db`SELECT * FROM keyword_history WHERE user_id = ${session.id} ORDER BY created_at DESC LIMIT 50`;
     return { success: true, data: results };
   } catch (error) {
     return { success: false, error: (error as Error).message };
@@ -276,8 +409,11 @@ export async function getKeywordHistoryAction() {
 }
 
 export async function deleteKeywordHistoryAction(id: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
-    await db`DELETE FROM keyword_history WHERE id = ${id}`;
+    await db`DELETE FROM keyword_history WHERE id = ${id} AND user_id = ${session.id}`;
     return { success: true };
   } catch (error) {
     return { success: false, error: (error as Error).message };
@@ -285,6 +421,9 @@ export async function deleteKeywordHistoryAction(id: number) {
 }
 
 export async function getDatabaseStatsAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
     const totalLeads = await db`SELECT COUNT(*) as count FROM leads`;
     const totalTasks = await db`SELECT COUNT(*) as count FROM tasks`;
@@ -310,6 +449,9 @@ export async function getDatabaseStatsAction() {
 }
 
 export async function purgeCacheAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
       // Delete task-lead entries for tasks that don't exist anymore
       await db`DELETE FROM task_leads WHERE task_id NOT IN (SELECT id FROM tasks)`;
@@ -327,6 +469,9 @@ export async function purgeCacheAction() {
 }
 
 export async function wipeAllLeadsAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
       await db`DELETE FROM task_leads`;
       await db`DELETE FROM leads`;
@@ -339,6 +484,9 @@ export async function wipeAllLeadsAction() {
 }
 
 export async function wipeAllHistoryAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
     await db`DELETE FROM keyword_history`;
     return { success: true };
@@ -348,11 +496,14 @@ export async function wipeAllHistoryAction() {
 }
 
 export async function getSettingsAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
     // Lazy init
     await seed();
 
-    const results = await db`SELECT * FROM settings`;
+    const results = await db`SELECT * FROM settings WHERE user_id = ${session.id}`;
     const settings: Record<string, any> = {};
     results.forEach(row => {
       try {
@@ -368,11 +519,14 @@ export async function getSettingsAction() {
 }
 
 export async function updateSettingAction(key: string, value: any) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
     const serializedValue = JSON.stringify(value);
     await db`
-      INSERT INTO settings (key, value) VALUES (${key}, ${serializedValue})
-      ON CONFLICT (key) DO UPDATE SET value = ${serializedValue}
+      INSERT INTO settings (user_id, key, value) VALUES (${session.id}, ${key}, ${serializedValue})
+      ON CONFLICT (user_id, key) DO UPDATE SET value = ${serializedValue}
     `;
     return { success: true };
   } catch (error) {
@@ -381,8 +535,11 @@ export async function updateSettingAction(key: string, value: any) {
 }
 
 export async function getProxiesAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
-    const results = await db`SELECT * FROM proxies ORDER BY created_at DESC`;
+    const results = await db`SELECT * FROM proxies WHERE user_id = ${session.id} ORDER BY created_at DESC`;
     return { success: true, data: results };
   } catch (error) {
     return { success: false, error: (error as Error).message };
@@ -390,10 +547,13 @@ export async function getProxiesAction() {
 }
 
 export async function addProxyAction(proxy: any) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
     await db`
-      INSERT INTO proxies (host, port, username, password, protocol, is_active)
-      VALUES (${proxy.host}, ${proxy.port}, ${proxy.username || null}, ${proxy.password || null}, ${proxy.protocol || 'http'}, ${proxy.is_active !== undefined ? (proxy.is_active ? 1 : 0) : 1})
+      INSERT INTO proxies (user_id, host, port, username, password, protocol, is_active)
+      VALUES (${session.id}, ${proxy.host}, ${proxy.port}, ${proxy.username || null}, ${proxy.password || null}, ${proxy.protocol || 'http'}, ${proxy.is_active !== undefined ? (proxy.is_active ? 1 : 0) : 1})
     `;
     return { success: true };
   } catch (error) {
@@ -402,8 +562,11 @@ export async function addProxyAction(proxy: any) {
 }
 
 export async function deleteProxyAction(id: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
-    await db`DELETE FROM proxies WHERE id = ${id}`;
+    await db`DELETE FROM proxies WHERE id = ${id} AND user_id = ${session.id}`;
     return { success: true };
   } catch (error) {
     return { success: false, error: (error as Error).message };
@@ -411,8 +574,11 @@ export async function deleteProxyAction(id: number) {
 }
 
 export async function toggleProxyAction(id: number, isActive: boolean) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
   try {
-    await db`UPDATE proxies SET is_active = ${isActive ? 1 : 0} WHERE id = ${id}`;
+    await db`UPDATE proxies SET is_active = ${isActive ? 1 : 0} WHERE id = ${id} AND user_id = ${session.id}`;
     return { success: true };
   } catch (error) {
     return { success: false, error: (error as Error).message };

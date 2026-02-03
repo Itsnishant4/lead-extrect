@@ -10,7 +10,10 @@ import {
   Database,
   History,
   Settings,
+  LogOut,
 } from 'lucide-react';
+import { logoutAction } from '@/app/actions';
+import { toast } from 'sonner';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 import {
@@ -101,6 +104,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton 
+              size="lg"
+              className="mt-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+              onClick={async () => {
+                const res = await logoutAction();
+                if (res.success) {
+                  toast.success('Logged out successfully');
+                  window.location.href = '/login';
+                }
+              }}
+            >
+              <LogOut className="size-4" />
+              <span>Log out</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <ThemeToggle />
           </SidebarMenuItem>
