@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react';
 import { 
   History, 
   MapPin, 
-  Clock, 
-  ArrowRight, 
   Trash2,
   Calendar
 } from 'lucide-react';
@@ -125,9 +123,9 @@ export default function HistoryPage() {
                                   {item.niche}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="text-center overflow-hidden gap-1 flex justify-center items-center">
+                              <TableCell className="text-center overflow-hidden gap-1 flex  justify-center items-center">
                                   <MapPin className="h-3.5 w-3.5" /> 
-                                <span className="text-sm text-muted-foreground w-[150px] truncate">
+                                <span className="text-sm text-muted-foreground w-[150px] text-left truncate">
                                   {item.location}
                                 </span>
                               </TableCell>
