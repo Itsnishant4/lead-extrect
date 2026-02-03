@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Country, State, City } from 'country-state-city';
 import { 
   Loader2, 
@@ -75,6 +76,7 @@ export default function KeywordGenerator({ onSearch, onStartTask }: KeywordGener
   const [isCustomNiche, setIsCustomNiche] = useState(false);
 
   const { loadedSession, clearKeywordSession } = useAutomation();
+  const router = useRouter();
 
   // Handle loading session from context
   useEffect(() => {
@@ -367,13 +369,15 @@ export default function KeywordGenerator({ onSearch, onStartTask }: KeywordGener
                 />
              </div>
              <Button 
-                className="w-full h-14 rounded-2xl font-bold text-base gap-3 shadow-lg hover:shadow-primary/10 transition-all" 
+                className=" rounded-2xl font-bold text-base gap-3 shadow-lg hover:shadow-primary/10 transition-all" 
                 onClick={() => {
                   if (!taskName.trim()) {
                     toast.error("Please enter a campaign name");
                     return;
                   }
                   onStartTask(taskName, keywords);
+                  // Navigate to tasks page to see the automation running
+                  router.push('/tasks');
                 }}
                 disabled={keywords.length === 0}
               >
