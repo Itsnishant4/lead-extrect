@@ -18,6 +18,7 @@ import KeywordGenerator from '@/components/KeywordGenerator';
 import TasksList from '@/components/TasksList';
 import { AppSidebar } from '@/components/AppSidebar';
 import { FilterSettings } from '@/components/ExportFilters';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import {
   SidebarInset,
   SidebarTrigger
@@ -413,6 +414,13 @@ export default function Home() {
                         </TableCell>
                       </TableRow>
                     ))}
+                    {isLoading && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-32">
+                          <LoadingSpinner message="Extracting leads..." />
+                        </TableCell>
+                      </TableRow>
+                    )}
                     {leads.length === 0 && !isLoading && (
                       <TableRow>
                         <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">

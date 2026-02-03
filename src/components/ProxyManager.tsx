@@ -30,6 +30,7 @@ import {
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { 
   Dialog, 
   DialogContent, 
@@ -215,9 +216,7 @@ export default function ProxyManager() {
       </CardHeader>
       <CardContent className="pt-6">
         {isLoading ? (
-          <div className="flex justify-center py-8">
-            <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground opacity-20" />
-          </div>
+          <LoadingSpinner message="Loading proxies..." size="sm" />
         ) : proxies.length === 0 ? (
           <div className="text-center py-8 border-2 border-dashed rounded-xl bg-muted/5">
             <Server className="h-8 w-8 mx-auto text-muted-foreground opacity-20 mb-3" />

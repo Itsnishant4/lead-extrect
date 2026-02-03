@@ -22,6 +22,7 @@ import {
   getSettingsAction,
   updateSettingAction
 } from '@/app/actions';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useAutomation } from '@/context/AutomationContext';
 import ProxyManager from '@/components/ProxyManager';
 import { SidebarInset } from "@/components/ui/sidebar";

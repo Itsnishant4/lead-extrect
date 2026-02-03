@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { getKeywordHistoryAction, deleteKeywordHistoryAction } from '@/app/actions';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useAutomation } from '@/context/AutomationContext';
 import { useRouter } from 'next/navigation';
 import { SidebarInset } from "@/components/ui/sidebar";
@@ -178,9 +179,7 @@ export default function HistoryPage() {
                     <p className="text-sm opacity-60">Your generated keywords will appear here for later use.</p>
                   </div>
                 ) : (
-                  <div className="h-64 flex items-center justify-center">
-                      <Clock className="h-8 w-8 animate-spin text-muted-foreground opacity-20" />
-                  </div>
+                  <LoadingSpinner message="Loading history..." />
                 )}
               </CardContent>
             </Card>
