@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
-  Trash2, 
-  ShieldAlert, 
-  Layout
-} from 'lucide-react';
+  Trash, 
+  ShieldWarning, 
+  SquaresFour
+} from 'phosphor-react';
 import { 
   Card, 
   CardContent, 
@@ -14,37 +14,19 @@ import {
   CardTitle 
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { 
-  wipeAllLeadsAction, 
-  getSettingsAction,
-  updateSettingAction
+  wipeAllLeadsAction
 } from '@/app/actions';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useAutomation } from '@/context/AutomationContext';
 import ProxyManager from '@/components/ProxyManager';
-import { SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { 
-  Breadcrumb, 
-  BreadcrumbItem, 
-  BreadcrumbLink, 
-  BreadcrumbList, 
-  BreadcrumbPage, 
-  BreadcrumbSeparator 
-} from "@/components/ui/breadcrumb";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { AppPage } from "@/components/AppPage";
 
 export default function SettingsPage() {
   const { settings: appSettings, updateSetting } = useAutomation();
   const [isProcessing, setIsProcessing] = useState(false);
-
-  useEffect(() => {
-    // No need to load settings locally if using context
-  }, []);
 
   const handleWipeLeads = async () => {
     if (!window.confirm('EXTREME DANGER: This will delete ALL leads, tasks, and searches permanently. This cannot be undone. Are you absolutely sure?')) return;
@@ -67,98 +49,74 @@ export default function SettingsPage() {
   return (
     <>
       <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 sticky top-0 bg-background/80 backdrop-blur-md z-10 border-b">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Settings</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-          <ThemeToggle />
-        </header>
-
-        <div className="flex flex-1 flex-col gap-4 p-4 md:p-8 max-w-[76rem] w-full">
-          <div className="space-y-8 animate-in fade-in duration-700">
-            <Card className="border-none bg-transparent shadow-none">
-              <CardHeader className="px-0 pt-0">
-                <CardTitle className="text-3xl font-bold tracking-tight">Settings</CardTitle>
-                <CardDescription className="text-base ">
-                  Manage your application preferences and configuration.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <div className="grid gap-6">
-              {/* Export Settings */}
-              <Card className="border-border/50 shadow-sm overflow-hidden">
-                <CardHeader className="bg-muted/30">
-                  <div className="flex items-center gap-2">
-                    <Layout className="h-5 w-5 text-purple-600" />
-                    <CardTitle className="text-xl">Export Settings</CardTitle>
+      <AppPage
+        title="Settings"
+        description="Configure exports, proxies, and data retention preferences."
+        breadcrumb={[{ label: "Dashboard", href: "/" }, { label: "Settings" }]}
+      >
+        <div className="grid gap-6">
+          <Card className="border-border/60">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <SquaresFour className="h-4 w-4" />
+                </div>
+                <div>
+                  <CardTitle>Export settings</CardTitle>
+                  <CardDescription>Control how lead files are grouped and downloaded.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="flex items-start justify-between gap-6 rounded-xl border border-border/60 bg-muted/20 p-4">
+                <div className="space-y-1">
+                  <div className="text-sm font-semibold">City-wise export</div>
+                  <div className="text-xs text-muted-foreground">
+                    When enabled, multiple CSV files will be generated (one per city).
                   </div>
-                  <CardDescription>
-                    Configure how your lead data is formatted and downloaded.
+                </div>
+                <Switch 
+                  checked={appSettings.exportCityWise} 
+                  onCheckedChange={() => toggleSetting('exportCityWise')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+
+          <ProxyManager />
+
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                  <ShieldWarning className="h-4 w-4" />
+                </div>
+                <div>
+                  <CardTitle className="text-destructive">Danger zone</CardTitle>
+                  <CardDescription className="text-destructive/70">
+                    Irreversible actions that remove all data.
                   </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="space-y-0.5">
-                        <div className="text-sm font-semibold">City-wise Export</div>
-                        <div className="text-xs text-muted-foreground">
-                            When enabled, multiple CSV files will be generated (one per city).
-                        </div>
-                      </div>
-                      <Switch 
-                        checked={appSettings.exportCityWise} 
-                        onCheckedChange={() => toggleSetting('exportCityWise')}
-                      />
-                    </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="flex flex-col gap-4 rounded-xl border border-destructive/20 bg-background p-4 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <div className="text-sm font-semibold">Factory reset</div>
+                  <div className="text-xs text-muted-foreground">
+                    Delete everything including leads, tasks, and settings.
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Proxy Management */}
-              <ProxyManager />
-
-              {/* Danger Zone */}
-              <Card className="border-red-200 dark:border-red-900/30 shadow-sm bg-red-50/10 dark:bg-red-900/5 overflow-hidden">
-                <CardHeader >
-                  <div className="flex items-center gap-2">
-                    <ShieldAlert className="h-5 w-5 text-red-600" />
-                    <CardTitle className="text-xl text-red-600">Danger Zone</CardTitle>
-                  </div>
-                  <CardDescription className="text-red-600/70">
-                    Irreversible actions that will delete your data.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="space-y-0.5">
-                      <div className="text-sm font-semibold">Factory Reset</div>
-                      <div className="text-xs text-muted-foreground">Delete everything including leads, tasks, and settings.</div>
-                    </div>
-                    <Button variant="destructive" size="sm" onClick={handleWipeLeads} disabled={isProcessing}>
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Wipe All Data
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+                </div>
+                <Button variant="destructive" size="sm" onClick={handleWipeLeads} disabled={isProcessing}>
+                  <Trash className="mr-2 h-4 w-4" />
+                  Wipe All Data
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </SidebarInset>
+      </AppPage>
     </>
   );
 }

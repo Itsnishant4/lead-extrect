@@ -14,9 +14,14 @@ export const db = postgres(connectionString, {
   max: 10, // Max number of connections
   idle_timeout: 20, // Idle connection timeout in seconds
   connect_timeout: 10, // Connection timeout in seconds
+  prepare: false, // Avoid cached plan errors after schema changes
 });
 
+let isInitialized = false;
+
 export async function seed() {
+  if (isInitialized) return;
+  
   try {
     console.log('Seeding database...');
 
@@ -27,6 +32,11 @@ export async function seed() {
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
+        is_admin BOOLEAN DEFAULT FALSE,
+        plan_type TEXT DEFAULT 'free',
+        leads_extracted INTEGER DEFAULT 0,
+        bonus_credits INTEGER DEFAULT 0,
+        subscription_expiry TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
@@ -93,7 +103,19 @@ export async function seed() {
         tiktok TEXT,
         website_email TEXT,
         website_phone TEXT,
+        lead_score INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    // 4b. Create Lead Sources Table (track duplicate sources)
+    await db`
+      CREATE TABLE IF NOT EXISTS lead_sources (
+        lead_id INTEGER REFERENCES leads(id),
+        search_id INTEGER REFERENCES searches(id),
+        task_id INTEGER REFERENCES tasks(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (lead_id, search_id)
       );
     `;
 
@@ -143,6 +165,37 @@ export async function seed() {
       );
     `;
 
+    // 8b. Create Saved Lists Table
+    await db`
+      CREATE TABLE IF NOT EXISTS saved_lists (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        name TEXT NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    await db`
+      CREATE TABLE IF NOT EXISTS saved_list_items (
+        list_id INTEGER REFERENCES saved_lists(id),
+        lead_id INTEGER REFERENCES leads(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (list_id, lead_id)
+      );
+    `;
+
+    // 8c. Create Export Templates Table
+    await db`
+      CREATE TABLE IF NOT EXISTS export_templates (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        name TEXT NOT NULL,
+        columns TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
     // 9. Create Proxies Table
     await db`
       CREATE TABLE IF NOT EXISTS proxies (
@@ -155,6 +208,30 @@ export async function seed() {
         protocol TEXT DEFAULT 'http',
         is_active INTEGER DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    // 10. Create Audit Logs Table
+    await db`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        action TEXT NOT NULL,
+        status TEXT,
+        metadata TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    
+    // 11. Create Pincode Coordinates Cache Table
+    await db`
+      CREATE TABLE IF NOT EXISTS pincode_coords (
+        country TEXT NOT NULL,
+        pincode TEXT NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (country, pincode)
       );
     `;
 
@@ -184,12 +261,22 @@ export async function seed() {
     await addColumnIfNotExists('keyword_history', 'user_id', 'INTEGER REFERENCES users(id)');
     await addColumnIfNotExists('proxies', 'user_id', 'INTEGER REFERENCES users(id)');
     await addColumnIfNotExists('settings', 'user_id', 'INTEGER REFERENCES users(id)');
+    await addColumnIfNotExists('users', 'is_admin', 'BOOLEAN DEFAULT FALSE');
+    await addColumnIfNotExists('users', 'plan_type', "TEXT DEFAULT 'free'");
+    await addColumnIfNotExists('users', 'leads_extracted', 'INTEGER DEFAULT 0');
+    await addColumnIfNotExists('users', 'bonus_credits', 'INTEGER DEFAULT 0');
+    await addColumnIfNotExists('users', 'subscription_expiry', 'TIMESTAMP');
+    await addColumnIfNotExists('users', 'is_suspended', 'BOOLEAN DEFAULT FALSE');
+    await addColumnIfNotExists('leads', 'lead_score', 'INTEGER DEFAULT 0');
+    await addColumnIfNotExists('keyword_history', 'total_keywords', 'INTEGER');
+    await addColumnIfNotExists('keyword_history', 'keywords_truncated', 'BOOLEAN DEFAULT FALSE');
     
 
     // Default settings (only insert if clean DB, or ignore conflicts)
     // This insert might fail if user_id is null in the new schema constraint, but here we just try.
     // We won't insert default settings here to avoid errors with the new schema.
     
+    isInitialized = true;
     console.log('Database seeded/migrated successfully.');
   } catch (error) {
     console.error('Failed to seed database:', error);

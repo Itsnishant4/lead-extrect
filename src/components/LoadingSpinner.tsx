@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react';
+import { LoaderCircle } from "lucide-react";
 
 interface LoadingSpinnerProps {
   message?: string;
@@ -14,7 +14,7 @@ export function LoadingSpinner({ message = 'Loading...', size = 'md' }: LoadingS
 
   return (
     <div className="flex flex-col items-center justify-center py-12 gap-3">
-      <Loader2 className={`${sizeClasses[size]} animate-spin text-primary`} />
+      <LoaderCircle className={`${sizeClasses[size]} animate-spin text-primary`} />
       {message && (
         <p className="text-sm text-muted-foreground animate-pulse">{message}</p>
       )}

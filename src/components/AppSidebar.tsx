@@ -6,16 +6,20 @@ import { usePathname } from 'next/navigation';
 import {
   Activity,
   List,
-  Search,
+  MagnifyingGlass,
   Database,
-  History,
-  Settings,
-  LogOut,
+  ClockCounterClockwise,
+  GearSix,
+  SignOut,
   User,
-  ChevronUp,
-} from 'lucide-react';
-import { logoutAction, getUserAction } from '@/app/actions';
+  CaretUp,
+  CreditCard,
+  Stack
+} from 'phosphor-react';
+import { Progress } from '@/components/ui/progress';
+import { logoutAction } from '@/app/actions';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 
 import {
   Sidebar,
@@ -36,19 +40,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+import { useAutomation } from '@/context/AutomationContext';
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
-  const [user, setUser] = React.useState<{ name: string; email: string } | null>(null);
-
-  React.useEffect(() => {
-    const fetchUser = async () => {
-      const res = await getUserAction();
-      if (res.success && res.data) {
-        setUser(res.data);
-      }
-    };
-    fetchUser();
-  }, []);
+  const { user } = useAutomation();
 
   const menuItems = [
     {
@@ -56,11 +52,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       items: [
         {
           title: 'Lead Extractor',
-          icon: Search,
-          url: '/',
+          icon: MagnifyingGlass,
+          url: '/leads',
         },
         {
-          title: 'Keyword Gen',
+          title: 'Keyword Generator',
           icon: List,
           url: '/keywords',
         },
@@ -70,17 +66,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           url: '/tasks',
         },
         {
-          title: 'Generation History',
-          icon: History,
+          title: 'History',
+          icon: ClockCounterClockwise,
           url: '/history',
         },
         {
+          title: 'Saved Lists',
+          icon: Stack,
+          url: '/lists',
+        },
+        {
           title: 'Settings',
-          icon: Settings,
+          icon: GearSix,
           url: '/settings',
         },
+        {
+          title: 'Subscription',
+          icon: CreditCard,
+          url: '/subscription',
+        },
       ],
-    },
+    }
   ];
 
   return (
@@ -89,12 +95,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className=" ml-[-1.5px] data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-              <div className="flex  aspect-square size-8 items-center justify-center rounded-lg bg-blue-600 text-sidebar-primary-foreground">
+              <div className="flex  aspect-square size-8 items-center justify-center rounded-lg bg-primary text-sidebar-primary-foreground">
                 <Database className="size-4" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="font-semibold truncate">LeadExtractor Pro</span>
-                <span className="text-xs truncate">v2.0.0-pro</span>
+                <span className="text-xs truncate text-muted-foreground">Lead workspace</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -121,8 +127,61 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenu>
           </React.Fragment>
         ))}
+
+        
+
+        {user && (
+          <div className="px-4 py-4 mt-4 bg-sidebar-accent/30 rounded-xl mx-2">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-xs font-medium text-muted-foreground  tracking-wider">Usage</span>
+              {(() => {
+                const limits: Record<string, number> = { 'free': 500, 'pro': 5000, 'premium': Infinity };
+                const baseLimit = limits[user.plan_type || 'free'] || 500;
+                const bonus = (user as any).bonus_credits || 0;
+                const total = baseLimit === Infinity ? Infinity : baseLimit + bonus;
+                
+                return (
+                  <span className="text-xs font-bold text-primary">
+                    {user.leads_extracted?.toLocaleString() || 0} / {total === Infinity ? '∞' : total.toLocaleString()}
+                  </span>
+                );
+              })()}
+            </div>
+            {(() => {
+                const limits: Record<string, number> = { 'free': 500, 'pro': 5000, 'premium': Infinity };
+                const baseLimit = limits[user.plan_type || 'free'] || 500;
+                const bonus = (user as any).bonus_credits || 0;
+                const total = baseLimit === Infinity ? Infinity : baseLimit + bonus;
+                const percent = total === Infinity ? 0 : Math.min(((user.leads_extracted || 0) / total) * 100, 100);
+                
+                return <Progress value={percent} className="h-1.5" />;
+            })()}
+            <p className="text-[10px] text-muted-foreground mt-2 text-center italic">
+              Plan: <span className="font-bold capitalize">{user.plan_type}</span>
+            </p>
+          </div>
+        )}
       </SidebarContent>
       <SidebarFooter>
+        <div className="px-4 pt-4 group-data-[collapsible=icon]:hidden">
+          <div className="rounded-xl border border-border/60 bg-muted/20 p-3 overflow-hidden">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick actions</p>
+            <div className="mt-3 grid gap-2">
+              <Button asChild size="sm" className="w-full justify-start">
+                <Link href="/leads" className="flex w-full items-center gap-2 min-w-0">
+                  <MagnifyingGlass className="h-4 w-4 shrink-0" />
+                  <span className="truncate">New extraction</span>
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="outline" className="w-full justify-start">
+                <Link href="/keywords" className="flex w-full items-center gap-2 min-w-0">
+                  <List className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Generate keywords</span>
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
@@ -138,7 +197,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <span className="truncate font-semibold">{user?.name || 'Loading...'}</span>
                     <span className="truncate text-xs">{user?.email || ''}</span>
                   </div>
-                  <ChevronUp className="ml-auto size-4" />
+                  <CaretUp className="ml-auto size-4" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -150,7 +209,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                      <User className="size-4" />
+                    <User className="size-4" />
                     </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold">{user?.name}</span>
@@ -159,8 +218,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="cursor-pointer">
+                    <User className="size-4 mr-2" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  className="text-red-500 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20 cursor-pointer"
+                  className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                   onClick={async () => {
                     const res = await logoutAction();
                     if (res.success) {
@@ -169,7 +235,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     }
                   }}
                 >
-                  <LogOut className="size-4 mr-2" />
+                  <SignOut className="size-4 mr-2" />
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>

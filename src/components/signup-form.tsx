@@ -1,0 +1,217 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldSeparator,
+} from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { signupAction } from "@/app/actions"
+import { toast } from "sonner"
+import { Eye, EyeSlash, Rocket, ShieldCheck, Users } from "phosphor-react"
+import { LoaderCircle } from "lucide-react"
+
+export function SignupForm({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  const router = useRouter()
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match")
+      return
+    }
+    
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters")
+      return
+    }
+
+    setIsLoading(true)
+    
+    try {
+      const result = await signupAction(name, email, password)
+      if (result.success) {
+        toast.success("Account created successfully")
+        router.push("/")
+        router.refresh()
+      } else {
+        toast.error(result.error || "Failed to create account")
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
+      <Card className="overflow-hidden border-border/60">
+        <CardContent className="grid p-0 md:grid-cols-[1.05fr_0.95fr]">
+          <form className="p-6 md:p-8" onSubmit={handleSubmit}>
+            <FieldGroup>
+              <div className="flex flex-col items-center gap-2 text-center mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Rocket className="h-5 w-5" />
+                </div>
+                <h1 className="text-2xl font-semibold">Create your account</h1>
+                <p className="text-muted-foreground text-sm text-balance">
+                  Join us to start your localized lead extraction journey
+                </p>
+              </div>
+              <Field>
+                <FieldLabel htmlFor="name">Full Name</FieldLabel>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="John Doe"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={isLoading}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="email">Email</FieldLabel>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="m@example.com"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                />
+              </Field>
+              <Field>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field>
+                    <FieldLabel htmlFor="password">Password</FieldLabel>
+                    <div className="relative">
+                      <Input 
+                        id="password" 
+                        type={showPassword ? "text" : "password"} 
+                        required 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={isLoading}
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                    {showPassword ? <EyeSlash className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="confirm-password">
+                      Confirm
+                    </FieldLabel>
+                    <div className="relative">
+                      <Input 
+                        id="confirm-password" 
+                        type={showConfirmPassword ? "text" : "password"} 
+                        required 
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        disabled={isLoading}
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                      >
+                    {showConfirmPassword ? <EyeSlash className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </Field>
+                </div>
+                <FieldDescription>
+                  Minimum 6 characters for security.
+                </FieldDescription>
+              </Field>
+              <Field>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Create Account"
+                  )}
+                </Button>
+              </Field>
+              <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card my-4">
+                Already member?
+              </FieldSeparator>
+              <div className="text-center text-sm">
+                Already have an account?{" "}
+                <a href="/login" className="underline underline-offset-4 font-semibold text-primary">
+                  Sign in
+                </a>
+              </div>
+            </FieldGroup>
+          </form>
+          <div className="hidden md:flex flex-col justify-between gap-6 border-l border-border/60 bg-muted/20 p-8">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Built for growth</p>
+              <h2 className="text-2xl font-semibold">Launch campaigns faster</h2>
+              <p className="text-sm text-muted-foreground">
+                Use keyword automation and smart exports to scale your outreach.
+              </p>
+            </div>
+            <div className="space-y-4 text-sm">
+              <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/60 p-3">
+                <Users className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="font-medium">Collaborative workflows</p>
+                  <p className="text-muted-foreground">Track progress and exports in one place.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/60 p-3">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="font-medium">Trusted security</p>
+                  <p className="text-muted-foreground">Your lead data stays private and protected.</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 p-4 text-xs text-muted-foreground">
+              Tip: Start with a small region, then scale using bulk keyword generation.
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      <div className="px-6 text-center text-xs text-muted-foreground">
+        By clicking create account, you agree to our <a href="#" className="hover:text-primary underline underline-offset-4">Terms of Service</a>{" "}
+        and <a href="#" className="hover:text-primary underline underline-offset-4">Privacy Policy</a>.
+      </div>
+    </div>
+  )
+}

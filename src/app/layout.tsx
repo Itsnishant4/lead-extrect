@@ -4,6 +4,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { AutomationProvider } from "@/context/AutomationContext";
+import QueryProvider from "@/components/QueryProvider";
 
 export const metadata: Metadata = {
   title: "Lead Extractor Pro",
@@ -17,6 +18,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          async
+          crossOrigin="anonymous"
+          src="https://tweakcn.com/live-preview.min.js"
+        />
+      </head>
 
       <body className="antialiased min-h-screen">
         <ThemeProvider
@@ -25,12 +33,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AutomationProvider>
-            <SidebarProvider>
-              {children}
-              <Toaster />
-            </SidebarProvider>
-          </AutomationProvider>
+          <QueryProvider>
+            <AutomationProvider>
+              <SidebarProvider>
+                {children}
+                <Toaster />
+              </SidebarProvider>
+            </AutomationProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

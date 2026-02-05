@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { Download, Mail, Phone, Globe, Share2, Star, MapPin, X } from 'lucide-react';
+import { DownloadSimple, Envelope, Phone, Globe } from 'phosphor-react';
+import { LoaderCircle } from "lucide-react";
 import { 
   Sheet, 
   SheetContent, 
@@ -25,7 +26,7 @@ export interface FilterSettings {
 }
 
 interface ExportFiltersProps {
-  onExport: (filters: FilterSettings) => void;
+  onExport: (filters: FilterSettings) => Promise<void> | void;
   isLoading?: boolean;
   disabled?: boolean;
 }
@@ -39,6 +40,7 @@ export function ExportFilters({ onExport, isLoading, disabled }: ExportFiltersPr
     hasRating: false,
     hasAddress: false,
   });
+  const [isDownloading, setIsDownloading] = React.useState(false);
 
   const toggleFilter = (key: keyof FilterSettings) => {
     setFilters(prev => ({ ...prev, [key]: !prev[key] }));
@@ -49,16 +51,16 @@ export function ExportFilters({ onExport, isLoading, disabled }: ExportFiltersPr
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2 h-9   transition-all " disabled={disabled || isLoading}>
-          <Download className="h-4 w-4 text-blue-600" />
+        <Button variant="outline" size="sm" className="gap-2 h-9 transition-all" disabled={disabled || isLoading}>
+          <DownloadSimple className="h-4 w-4 text-primary" />
           {/* <span className="font-medium text-blue-700 dark:text-blue-300">Download</span> */}
          
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="sm:max-w-[420px] p-0 flex flex-col gap-0 border-l dark:border-slate-800">
-        <SheetHeader className="p-6 border-b dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+      <SheetContent side="right" className="sm:max-w-[420px] p-0 flex flex-col gap-0 border-l border-border">
+        <SheetHeader className="p-6 border-b border-border bg-muted/30">
           <SheetTitle className="text-xl font-bold flex items-center gap-2">
-            <Download className="h-5 w-5 text-blue-600" />
+            <DownloadSimple className="h-5 w-5 text-primary" />
             Export Settings
           </SheetTitle>
           <SheetDescription className="text-sm">
@@ -72,7 +74,7 @@ export function ExportFilters({ onExport, isLoading, disabled }: ExportFiltersPr
                 id="hasEmail" 
                 label="Has Email" 
                 description="Leads with contact emails" 
-                icon={<Mail className="h-4 w-4 text-blue-500" />} 
+                icon={<Envelope className="h-4 w-4 text-primary" />} 
                 checked={filters.hasEmail}
                 onCheckedChange={() => toggleFilter('hasEmail')}
              />
@@ -81,7 +83,7 @@ export function ExportFilters({ onExport, isLoading, disabled }: ExportFiltersPr
                 id="hasPhone" 
                 label="Has Phone" 
                 description="Leads with phone numbers" 
-                icon={<Phone className="h-4 w-4 text-green-500" />} 
+                icon={<Phone className="h-4 w-4 text-primary" />} 
                 checked={filters.hasPhone}
                 onCheckedChange={() => toggleFilter('hasPhone')}
              />
@@ -90,7 +92,7 @@ export function ExportFilters({ onExport, isLoading, disabled }: ExportFiltersPr
                 id="hasWebsite" 
                 label="Has Website" 
                 description="Leads with business websites" 
-                icon={<Globe className="h-4 w-4 text-purple-500" />} 
+                icon={<Globe className="h-4 w-4 text-primary" />} 
                 checked={filters.hasWebsite}
                 onCheckedChange={() => toggleFilter('hasWebsite')}
              />
@@ -98,8 +100,8 @@ export function ExportFilters({ onExport, isLoading, disabled }: ExportFiltersPr
              <FilterItem 
                 id="hasSocials" 
                 label="Has Socials" 
-                description="Leads with social media links" 
-                icon={<Share2 className="h-4 w-4 text-orange-500" />} 
+                description="Leads with FB, IG, LinkedIn, etc." 
+                icon={<Globe className="h-4 w-4 text-primary" />} 
                 checked={filters.hasSocials}
                 onCheckedChange={() => toggleFilter('hasSocials')}
              />
@@ -107,8 +109,8 @@ export function ExportFilters({ onExport, isLoading, disabled }: ExportFiltersPr
              <FilterItem 
                 id="hasRating" 
                 label="Has Rating" 
-                description="Leads with Google reviews" 
-                icon={<Star className="h-4 w-4 text-yellow-500" />} 
+                description="Leads with customer reviews" 
+                icon={<DownloadSimple className="h-4 w-4 text-primary" />} 
                 checked={filters.hasRating}
                 onCheckedChange={() => toggleFilter('hasRating')}
              />
@@ -116,22 +118,38 @@ export function ExportFilters({ onExport, isLoading, disabled }: ExportFiltersPr
              <FilterItem 
                 id="hasAddress" 
                 label="Has Address" 
-                description="Leads with physical locations" 
-                icon={<MapPin className="h-4 w-4 text-red-500" />} 
+                description="Leads with physical address" 
+                icon={<Globe className="h-4 w-4 text-primary" />} 
                 checked={filters.hasAddress}
                 onCheckedChange={() => toggleFilter('hasAddress')}
              />
+
           </div>
         </div>
 
-        <SheetFooter className="p-6 border-t dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-          <SheetClose asChild>
-            <Button className="w-full gap-2 h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200 dark:shadow-none" onClick={() => onExport(filters)}>
-              <Download className="h-5 w-5" />
-              Download CSV
-            </Button>
-          </SheetClose>
+        <SheetFooter className="p-6 border-t border-border bg-muted/30">
+          <Button 
+            className="w-full gap-2 h-12 text-base font-semibold" 
+            onClick={async () => {
+              setIsDownloading(true);
+              await Promise.resolve(onExport(filters));
+              setIsDownloading(false);
+            }}
+            disabled={isDownloading}
+          >
+            <DownloadSimple className={`h-5 w-5 ${isDownloading ? 'animate-pulse' : ''}`} />
+            {isDownloading ? "Preparing..." : "Download CSV"}
+          </Button>
         </SheetFooter>
+        {isDownloading && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3">
+              <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+              <p className="text-sm font-medium text-foreground">Preparing export...</p>
+              <p className="text-xs text-muted-foreground">This may take a few seconds for large tasks.</p>
+            </div>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );
@@ -147,11 +165,11 @@ function FilterItem({ id, label, description, icon, checked, onCheckedChange }: 
 }) {
   return (
     <div 
-      className={`flex items-center justify-between space-x-2 rounded-xl border p-4 transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 ${checked ? 'border-blue-200 bg-blue-50/30 dark:border-blue-900/30 dark:bg-blue-900/10' : 'border-slate-200 dark:border-slate-800'}`}
+      className={`flex items-center justify-between space-x-2 rounded-xl border p-4 transition-all cursor-pointer hover:bg-accent/40 ${checked ? 'border-primary/30 bg-primary/5' : 'border-border'}`}
       onClick={onCheckedChange}
     >
       <div className="flex items-center gap-4">
-        <div className={`p-2.5 rounded-lg ${checked ? 'bg-white dark:bg-slate-900 shadow-sm' : 'bg-slate-100 dark:bg-slate-800'}`}>
+        <div className={`p-2.5 rounded-lg ${checked ? 'bg-card shadow-sm' : 'bg-muted'}`}>
           {icon}
         </div>
         <div className="grid gap-0.5">

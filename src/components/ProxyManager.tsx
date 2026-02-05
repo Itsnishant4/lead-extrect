@@ -4,13 +4,12 @@ import { useState, useEffect } from 'react';
 import { 
   Globe, 
   Plus, 
-  Trash2, 
-  Server, 
+  Trash, 
+  HardDrives, 
   ShieldCheck, 
-  ShieldAlert,
-  Loader2,
-  RefreshCw
-} from 'lucide-react';
+  ShieldWarning
+} from 'phosphor-react';
+import { LoaderCircle } from "lucide-react";
 import { 
   Card, 
   CardContent, 
@@ -30,6 +29,7 @@ import {
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { 
   Dialog, 
@@ -49,8 +49,7 @@ import {
 } from "@/components/ui/select";
 
 export default function ProxyManager() {
-  const [proxies, setProxies] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isAdding, setIsAdding] = useState(false);
   const [newProxy, setNewProxy] = useState({
     host: '',
@@ -60,32 +59,22 @@ export default function ProxyManager() {
     protocol: 'http',
   });
 
-  useEffect(() => {
-    loadProxies();
-  }, []);
-
-  const loadProxies = async () => {
-    setIsLoading(true);
-    const res = await getProxiesAction();
-    if (res.success) {
-      setProxies(res.data || []);
+  const { data: proxies = [], isLoading } = useQuery({
+    queryKey: ['proxies'],
+    queryFn: async () => {
+      const res = await getProxiesAction();
+      if (!res.success) throw new Error(res.error);
+      return res.data || [];
     }
-    setIsLoading(false);
-  };
+  });
 
-  const handleAddProxy = async () => {
-    if (!newProxy.host || !newProxy.port) {
-      toast.error("Host and Port are required");
-      return;
-    }
-
-    setIsAdding(true);
-    const res = await addProxyAction({
-      ...newProxy,
-      port: parseInt(newProxy.port),
-    });
-
-    if (res.success) {
+  const addMutation = useMutation({
+    mutationFn: async (proxyData: any) => {
+      const res = await addProxyAction(proxyData);
+      if (!res.success) throw new Error(res.error);
+      return res;
+    },
+    onSuccess: () => {
       toast.success("Proxy added successfully");
       setNewProxy({
         host: '',
@@ -94,31 +83,60 @@ export default function ProxyManager() {
         password: '',
         protocol: 'http',
       });
-      loadProxies();
-    } else {
-      toast.error(res.error || "Failed to add proxy");
+      queryClient.invalidateQueries({ queryKey: ['proxies'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to add proxy");
     }
-    setIsAdding(false);
-  };
+  });
 
-  const handleDelete = async (id: number) => {
-    const res = await deleteProxyAction(id);
-    if (res.success) {
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await deleteProxyAction(id);
+      if (!res.success) throw new Error(res.error);
+      return res;
+    },
+    onSuccess: () => {
       toast.success("Proxy deleted");
-      loadProxies();
-    } else {
+      queryClient.invalidateQueries({ queryKey: ['proxies'] });
+    },
+    onError: () => {
       toast.error("Failed to delete proxy");
     }
-  };
+  });
 
-  const handleToggle = async (id: number, currentStatus: number) => {
-    const newStatus = currentStatus === 1 ? false : true;
-    const res = await toggleProxyAction(id, newStatus);
-    if (res.success) {
-      loadProxies();
-    } else {
+  const toggleMutation = useMutation({
+    mutationFn: async ({ id, newStatus }: { id: number, newStatus: boolean }) => {
+      const res = await toggleProxyAction(id, newStatus);
+      if (!res.success) throw new Error(res.error);
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proxies'] });
+    },
+    onError: () => {
       toast.error("Failed to toggle proxy");
     }
+  });
+
+  const handleAddProxy = async () => {
+    if (!newProxy.host || !newProxy.port) {
+      toast.error("Host and Port are required");
+      return;
+    }
+    addMutation.mutate({
+      ...newProxy,
+      port: parseInt(newProxy.port),
+    });
+  };
+
+  const handleDelete = (id: number) => {
+    deleteMutation.mutate(id);
+  };
+
+  const handleToggle = (id: number, currentStatus: number) => {
+    const newStatus = currentStatus === 1 ? false : true;
+    toggleMutation.mutate({ id, newStatus });
   };
 
   return (
@@ -126,7 +144,7 @@ export default function ProxyManager() {
       <CardHeader className="bg-muted/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-indigo-600" />
+            <Globe className="h-5 w-5 text-primary" />
             <CardTitle className="text-xl">Proxy Management</CardTitle>
           </div>
           <Dialog>
@@ -202,8 +220,8 @@ export default function ProxyManager() {
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddProxy} disabled={isAdding}>
-                  {isAdding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button onClick={handleAddProxy} disabled={addMutation.isPending}>
+                  {addMutation.isPending && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
                   Save Proxy
                 </Button>
               </DialogFooter>
@@ -219,7 +237,7 @@ export default function ProxyManager() {
           <LoadingSpinner message="Loading proxies..." size="sm" />
         ) : proxies.length === 0 ? (
           <div className="text-center py-8 border-2 border-dashed rounded-xl bg-muted/5">
-            <Server className="h-8 w-8 mx-auto text-muted-foreground opacity-20 mb-3" />
+            <HardDrives className="h-8 w-8 mx-auto text-muted-foreground opacity-20 mb-3" />
             <p className="text-sm font-medium text-muted-foreground">No proxies configured</p>
             <p className="text-xs text-muted-foreground/60 mt-1">Add a proxy to enable IP rotation</p>
           </div>
@@ -228,20 +246,20 @@ export default function ProxyManager() {
             {proxies.map((proxy) => (
               <div 
                 key={proxy.id} 
-                className={`flex items-center justify-between p-4 rounded-xl border transition-all ${proxy.is_active ? 'bg-indigo-50/10 border-indigo-200/50 dark:border-indigo-900/30' : 'bg-muted/10 border-border/50'}`}
+                className={`flex items-center justify-between p-4 rounded-xl border transition-all ${proxy.is_active ? 'bg-primary/5 border-primary/20' : 'bg-muted/10 border-border/50'}`}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-lg ${proxy.is_active ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40' : 'bg-muted text-muted-foreground'}`}>
-                    <Server className="h-4 w-4" />
+                  <div className={`p-2 rounded-lg ${proxy.is_active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                    <HardDrives className="h-4 w-4" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold">{proxy.host}:{proxy.port}</span>
-                      <Badge variant="outline" className="text-[10px] uppercase h-5 px-1.5 font-bold">
+                      <Badge variant="outline" className="text-[10px]  h-5 px-1.5 font-bold">
                         {proxy.protocol}
                       </Badge>
                       {proxy.username && (
-                        <ShieldCheck className="h-3.5 w-3.5 text-green-500" />
+                        <ShieldCheck className="h-3.5 w-3.5 text-primary" />
                       )}
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -257,10 +275,10 @@ export default function ProxyManager() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8 text-muted-foreground hover:text-red-600 transition-colors"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors"
                     onClick={() => handleDelete(proxy.id)}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -270,7 +288,7 @@ export default function ProxyManager() {
       </CardContent>
       <CardFooter className="bg-muted/10 border-t py-3 px-6">
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <ShieldAlert className="h-3 w-3" />
+          <ShieldWarning className="h-3 w-3" />
           <span>Active proxies will be used in rotation for all extractions.</span>
         </div>
       </CardFooter>
