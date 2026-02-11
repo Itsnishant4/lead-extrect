@@ -14,8 +14,10 @@ import {
   sendTaskExportToTelegramAction,
   getLeadsAction,
   getSettingsAction,
-  updateSettingAction,
-  getUserAction
+  getUserAction,
+  generateKeywordsAction,
+  triggerTaskAutomationAction,
+  updateSettingAction
 } from '@/app/actions';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -90,7 +92,10 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       if (!res.success) return [];
       return (res.data || []) as unknown as Task[];
     },
-    refetchInterval: isRunningTask.current ? 3000 : 15000, // Poll faster if running
+    refetchInterval: (query) => {
+      const data = query.state.data as Task[];
+      return (data && data.some(t => t.status === 'running')) ? 3000 : 15000;
+    },
   });
 
   // Settings Query
@@ -219,92 +224,6 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     });
   };
 
-  const runTaskAutomation = async (taskId: number, keywords: string[], startIndexOverride?: number) => {
-    if (isRunningTask.current) return;
-    isRunningTask.current = true;
-    
-    await updateTaskStatusAction(taskId, 'running');
-    await loadTasks();
-
-    const taskRes = await getTasksAction();
-    const taskObj = ((taskRes.data || []) as unknown as Task[])?.find((t) => t.id === taskId);
-    const startIndex = (startIndexOverride ?? taskObj?.current_keyword_index) || 0;
-    const taskName = taskObj?.name || `Task-${taskId}`;
-    const total = keywords.length;
-    const concurrency = 3;
-    let nextIndex = startIndex;
-    let completed = startIndex;
-    let inFlight = 0;
-    let stopped = false;
-
-    const processKeyword = async (keyword: string, index: number) => {
-      const checkRes = await getTasksAction();
-      const currentTask = ((checkRes.data || []) as unknown as Task[])?.find((t) => t.id === taskId);
-      if (!currentTask || currentTask.status === 'paused') {
-        stopped = true;
-        return;
-      }
-
-      const extractionRes = await handleSearch(undefined, keyword, taskId);
-      const leads = (extractionRes as any)?.leads;
-      if (leads && leads.length) {
-        handleFastModeLeads(taskId, taskName, leads);
-      }
-
-      if (extractionRes?.limitReached) {
-        stopped = true;
-        await updateTaskStatusAction(taskId, 'paused', completed);
-        toast.info("Credits exhausted. Task paused.", {
-          description: "Add credits or upgrade to resume this campaign."
-        });
-        flushTelegramExport(taskId, taskName);
-        return;
-      }
-      
-      if (!(extractionRes && extractionRes.success) && extractionRes) {
-        toast.error(`[${index + 1}/${total}] Failed: ${keyword}`, {
-          description: extractionRes.error
-        });
-      }
-
-      if (extractionRes?.success) {
-        completed += 1;
-        await updateTaskStatusAction(taskId, 'running', completed);
-        loadTasks();
-      }
-    };
-
-    const launchNext = () => {
-      while (!stopped && inFlight < concurrency && nextIndex < total) {
-        const idx = nextIndex;
-        const keyword = keywords[idx];
-        nextIndex += 1;
-        inFlight += 1;
-        processKeyword(keyword, idx)
-          .catch(() => {})
-          .finally(() => {
-            inFlight -= 1;
-            if (!stopped) {
-              launchNext();
-            }
-            if (nextIndex >= total && inFlight === 0 && !stopped) {
-              updateTaskStatusAction(taskId, 'completed', total).then(() => {
-                flushTelegramExport(taskId, taskName);
-                isRunningTask.current = false;
-                loadTasks();
-              });
-            }
-            if (stopped) {
-              isRunningTask.current = false;
-              loadTasks();
-            }
-          });
-      }
-    };
-
-    launchNext();
-  };
-
   const startNewTask = async (name: string, keywords: string[]) => {
     const largeListThreshold = 1000;
     if (keywords.length > largeListThreshold) {
@@ -327,27 +246,29 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
             return;
           }
         }
+        // Once keywords are uploaded, trigger the runner
+        await triggerTaskAutomationAction(taskId);
       };
 
       void uploadKeywordsInBackground();
-
       toast.success(`Automation task "${name}" started`);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      runTaskAutomation(taskId, keywords);
       return;
     }
 
     const res = await createTaskAction(name, keywords);
     if (res.success && res.taskId) {
       toast.success(`Automation task "${name}" started`);
+      await triggerTaskAutomationAction(Number(res.taskId));
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      runTaskAutomation(Number(res.taskId), keywords);
     } else {
       toast.error(`Failed to create task: ${res.error}`);
     }
   };
 
   const handlePauseTask = async (taskId: number) => {
+    const task = tasks.find(t => t.id === taskId);
+    flushTelegramExport(taskId, task?.name || `Task-${taskId}`);
     await updateTaskStatusAction(taskId, 'paused');
     toast.info("Task paused");
     queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -376,12 +297,8 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     
     await updateTaskStatusAction(taskId, 'running');
     toast.success("Task resumed");
+    await triggerTaskAutomationAction(taskId);
     queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    
-    if (!isRunningTask.current) {
-        const keywords = JSON.parse(task.keywords);
-        runTaskAutomation(taskId, keywords, task.current_keyword_index || 0);
-    }
   };
 
   const handleDeleteTask = async (taskId: number) => {
@@ -392,16 +309,10 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     return res;
   };
 
-  // Auto-resume on start
+  // Auto-resume logic removed - handled by server
   useEffect(() => {
-    if (tasks.length > 0 && !isRunningTask.current) {
-      const runningTask = tasks.find(t => t.status === 'running');
-      if (runningTask) {
-        toast.info(`Resuming task: ${runningTask.name}`);
-        runTaskAutomation(runningTask.id, JSON.parse(runningTask.keywords), runningTask.current_keyword_index || 0);
-      }
-    }
-  }, [tasks.length]);
+    // We can still use polling to keep UI updated
+  }, []);
 
   const loadKeywordSession = (name: string, niche: string, keywords: string[]) => {
     setLoadedSession({ name, niche, keywords });

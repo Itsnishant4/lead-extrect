@@ -30,12 +30,12 @@ export function LoginForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    
+
     try {
       const result = await loginAction(email, password)
       if (result.success) {
         toast.success("Logged in successfully")
-        router.push("/")
+        router.push("/leads")
         router.refresh()
       } else {
         toast.error(result.error || "Invalid credentials")
@@ -85,10 +85,10 @@ export function LoginForm({
                   </a>
                 </div>
                 <div className="relative">
-                  <Input 
-                    id="password" 
-                    type={showPassword ? "text" : "password"} 
-                    required 
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isLoading}

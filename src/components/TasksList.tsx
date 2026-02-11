@@ -10,8 +10,10 @@ import {
   CheckCircle, 
   Clock, 
   WarningCircle,
-  Activity
+  Activity,
+  CircleNotch
 } from 'phosphor-react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { ExportFilters, FilterSettings } from './ExportFilters';
 import { 
@@ -91,6 +93,7 @@ interface TasksListProps {
 }
 
 export default function TasksList({ tasks, onPause, onResume, onDelete }: TasksListProps) {
+  const [deletingTasks, setDeletingTasks] = useState<Set<number>>(new Set());
   const { settings, user } = useAutomation();
   const limits: Record<string, number> = {
     free: 500,
@@ -235,7 +238,12 @@ export default function TasksList({ tasks, onPause, onResume, onDelete }: TasksL
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'running':
-        return <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 gap-1"><Activity className="h-3 w-3" /> Running</Badge>;
+        return (
+          <div className="flex flex-col gap-1.5">
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 gap-1"><Activity className="h-3 w-3" /> Running</Badge>
+            <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4 w-fit opacity-70">Running on Server</Badge>
+          </div>
+        );
       case 'paused':
         if (creditsExhausted) {
           return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 gap-1"><Clock className="h-3 w-3" /> Paused • Credits exhausted</Badge>;
@@ -364,18 +372,36 @@ export default function TasksList({ tasks, onPause, onResume, onDelete }: TasksL
                                   variant="outline" 
                                   size="icon" 
                                   className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors" 
+                                  disabled={deletingTasks.has(task.id)}
                                   onClick={async () => {
                                     if (window.confirm('Are you sure you want to delete this task? All associated leads will be removed.')) {
-                                      const res = await onDelete(task.id);
-                                      if (res.success) {
-                                        toast.success("Task deleted successfully");
-                                      } else {
-                                        toast.error(`Failed to delete task: ${res.error}`);
+                                      setDeletingTasks(prev => {
+                                        const next = new Set(prev);
+                                        next.add(task.id);
+                                        return next;
+                                      });
+                                      try {
+                                        const res = await onDelete(task.id);
+                                        if (res.success) {
+                                          toast.success("Task deleted successfully");
+                                        } else {
+                                          toast.error(`Failed to delete task: ${res.error}`);
+                                        }
+                                      } finally {
+                                        setDeletingTasks(prev => {
+                                          const next = new Set(prev);
+                                          next.delete(task.id);
+                                          return next;
+                                        });
                                       }
                                     }
                                   }}
                                 >
-                                  <Trash className="h-4 w-4" />
+                                  {deletingTasks.has(task.id) ? (
+                                    <CircleNotch className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash className="h-4 w-4" />
+                                  )}
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>Delete Task</TooltipContent>

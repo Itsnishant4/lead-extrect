@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 import { useAutomation } from '@/context/AutomationContext';
+import { Logo } from './Logo';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
@@ -95,12 +96,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className=" ml-[-1.5px] data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-              <div className="flex  aspect-square size-8 items-center justify-center rounded-lg bg-primary text-sidebar-primary-foreground">
-                <Database className="size-4" />
+              <div className="flex items-center justify-center rounded-lg text-sidebar-primary-foreground">
+                <Logo className='w-13 h-13'/>
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="font-semibold truncate">LeadExtractor Pro</span>
-                <span className="text-xs truncate text-muted-foreground">Lead workspace</span>
+                <span className="font-semibold truncate">LeadSpotter</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>

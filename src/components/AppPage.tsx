@@ -11,7 +11,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
-import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { ThemeToggle } from "@/components/ThemeToggle"
 
 type Crumb = {
@@ -34,9 +34,10 @@ export function AppPage({
   actions,
   children,
 }: AppPageProps) {
+  const { open, setOpen } = useSidebar();
   return (
     <SidebarInset>
-      <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background/80 px-4 backdrop-blur-md">
+      <header className={`sticky ${open ? 'ml-[250px]' : 'md:ml-[60px] '} transition-all ease-in-out duration-300 top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background/80 px-4 backdrop-blur-md`}>
         <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
@@ -69,7 +70,7 @@ export function AppPage({
         </div>
       </header>
 
-      <main className="flex-1">
+      <main className={`flex-1 transition-all ease-in-out duration-300 ${open ? 'ml-[250px]' : 'md:ml-[50px]'}`}>
         <div className="relative">
           <div className="pointer-events-none absolute inset-0 -z-10">
             <div className="absolute -top-24 left-6 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />

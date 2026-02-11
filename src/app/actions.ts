@@ -1,11 +1,11 @@
 'use server';
 
-import { db } from '@/lib/db/index';
+import { db, seed } from '@/lib/db/index';
 import { fetchLeads } from '@/lib/extractor';
 import { Lead } from '@/lib/parser';
 import { enrichLead } from '@/lib/enricher';
 import { hashPassword, verifyPassword, signToken, getSession } from '@/lib/auth';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 
 // --- Logging Helper ---
 
@@ -123,12 +123,20 @@ export async function getUserAction() {
 
 // --- Protected Data Actions ---
 
-export async function searchLeadsAction(query: string, taskId?: number, forceStore?: boolean) {
+export async function searchLeadsAction(query: string, taskId?: number, forceStore?: boolean, options?: { userAgent?: string; acceptLanguage?: string; manualUserId?: number }) {
+  let effectiveUserId: number;
   const session = await getSession();
-  if (!session) return { success: false, error: 'Unauthorized' };
+  
+  if (options?.manualUserId) {
+    effectiveUserId = options.manualUserId;
+  } else if (session) {
+    effectiveUserId = session.id;
+  } else {
+    return { success: false, error: 'Unauthorized' };
+  }
 
   try {
-    const suspendedCheck = await db`SELECT is_suspended FROM users WHERE id = ${session.id}`;
+    const suspendedCheck = await db`SELECT is_suspended FROM users WHERE id = ${effectiveUserId}`;
     if (suspendedCheck[0]?.is_suspended) {
       return { success: false, error: 'Account suspended. Contact support.' };
     }
@@ -159,7 +167,17 @@ export async function searchLeadsAction(query: string, taskId?: number, forceSto
       return Math.min(score, 100);
     };
 
-    const users = await db`SELECT plan_type, leads_extracted, bonus_credits FROM users WHERE id = ${session.id}`;
+    const getLeadKey = (lead: any) => {
+      const placeId = (lead.placeId || lead.place_id || '').toString().trim();
+      if (placeId) return `pid:${placeId}`;
+      const name = (lead.name || '').toString().trim().toLowerCase();
+      const address = (lead.address || '').toString().trim().toLowerCase();
+      const phone = (lead.phone || '').toString().trim();
+      const website = (lead.website || '').toString().trim().toLowerCase();
+      return `fb:${name}|${address}|${phone}|${website}`;
+    };
+
+    const users = await db`SELECT plan_type, leads_extracted, bonus_credits FROM users WHERE id = ${effectiveUserId}`;
     const user = users[0];
     const { currentLimit, used, remaining } = computeLimit(user);
 
@@ -170,6 +188,13 @@ export async function searchLeadsAction(query: string, taskId?: number, forceSto
         limitReached: true 
       };
     }
+
+    const headerList = await headers();
+    const userAgent = options?.userAgent || headerList.get('user-agent') || undefined;
+    const acceptLanguage = options?.acceptLanguage || headerList.get('accept-language') || undefined;
+
+    await saveServerLogAction(taskId || null, 'INFO', `searchLeadsAction started for query: "${query}"`);
+    console.log(`[ACTION] UA: ${userAgent?.substring(0, 50)}...`);
 
     const trimmedQuery = query.trim();
 
@@ -196,7 +221,7 @@ export async function searchLeadsAction(query: string, taskId?: number, forceSto
         // 2. Fetch from external API (Nominatim is free but has rate limits, perfect for background)
         try {
           const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?postalcode=${pincode}&country=India&format=json`, {
-            headers: { 'User-Agent': 'LeadExtractorPro/1.0' }
+            headers: { 'User-Agent': 'LeadSpotter/1.0' }
           });
           const geoData = await geoRes.json();
 
@@ -219,7 +244,7 @@ export async function searchLeadsAction(query: string, taskId?: number, forceSto
     }
 
     const settingsRows = await db`
-      SELECT value FROM settings WHERE user_id = ${session.id} AND key = 'fastMode'
+      SELECT value FROM settings WHERE user_id = ${effectiveUserId} AND key = 'fastMode'
     `;
     const fastMode = settingsRows[0] ? JSON.parse(settingsRows[0].value) : true;
     const shouldStoreLeads = forceStore ? true : !fastMode;
@@ -229,7 +254,7 @@ export async function searchLeadsAction(query: string, taskId?: number, forceSto
       const existingSearches = await db`
         SELECT id, task_id FROM searches 
         WHERE query = ${trimmedQuery} 
-        AND user_id = ${session.id}
+        AND user_id = ${effectiveUserId}
         AND created_at > NOW() - INTERVAL '30 days'
         ORDER BY created_at DESC 
         LIMIT 1
@@ -241,9 +266,11 @@ export async function searchLeadsAction(query: string, taskId?: number, forceSto
         
         // Get leads associated with this search
         const existingLeads = await db`SELECT id, place_id FROM leads WHERE search_id = ${searchId}`;
+        const existingLeadKeys = new Set(existingLeads.map((lead: any) => getLeadKey(lead)));
+        const existingLeadCount = existingLeadKeys.size;
 
         if (existingLeads.length > 0) {
-          if (currentLimit !== Infinity && existingLeads.length > remaining) {
+          if (currentLimit !== Infinity && existingLeadCount > remaining) {
             return {
               success: false,
               error: "Limit reached. Not enough credits to use cached results.",
@@ -254,7 +281,7 @@ export async function searchLeadsAction(query: string, taskId?: number, forceSto
           const cachedResult = await db.begin(async (tx: any) => {
             const lockedUsers = await tx`
               SELECT plan_type, leads_extracted, bonus_credits 
-              FROM users WHERE id = ${session.id} FOR UPDATE
+              FROM users WHERE id = ${effectiveUserId} FOR UPDATE
             `;
             const lockedUser = lockedUsers[0];
             const locked = computeLimit(lockedUser);
@@ -265,7 +292,7 @@ export async function searchLeadsAction(query: string, taskId?: number, forceSto
                 limitReached: true 
               };
             }
-            if (locked.currentLimit !== Infinity && existingLeads.length > locked.remaining) {
+            if (locked.currentLimit !== Infinity && existingLeadCount > locked.remaining) {
               return {
                 success: false,
                 error: "Limit reached. Not enough credits to use cached results.",
@@ -293,9 +320,9 @@ export async function searchLeadsAction(query: string, taskId?: number, forceSto
               `;
             }
 
-            await tx`UPDATE users SET leads_extracted = leads_extracted + ${existingLeads.length} WHERE id = ${session.id}`;
+            await tx`UPDATE users SET leads_extracted = leads_extracted + ${existingLeadCount} WHERE id = ${effectiveUserId}`;
 
-            return { success: true, count: existingLeads.length, searchId, cached: true, leads: [] };
+            return { success: true, count: existingLeadCount, searchId, cached: true, leads: [] };
           });
 
           return cachedResult;
@@ -304,7 +331,9 @@ export async function searchLeadsAction(query: string, taskId?: number, forceSto
     }
 
     // 2. CACHE MISS: Fetch from API
-    const rawLeads = await fetchLeads(query, lat, lng);
+    await saveServerLogAction(taskId || null, 'INFO', `Cache miss for "${query}". Calling fetchLeads...`);
+    const rawLeads = await fetchLeads(query, lat, lng, { userAgent, acceptLanguage });
+    await saveServerLogAction(taskId || null, 'SUCCESS', `fetchLeads returned ${rawLeads.length} raw leads`);
 
     // 4. Enrich leads
     const enrichedLeads = await Promise.all(rawLeads.map(async (lead) => {
@@ -324,11 +353,17 @@ export async function searchLeadsAction(query: string, taskId?: number, forceSto
       }
       return lead;
     }));
+    const dedupeMap = new Map<string, any>();
+    for (const lead of enrichedLeads) {
+      const key = getLeadKey(lead);
+      if (!dedupeMap.has(key)) dedupeMap.set(key, lead);
+    }
+    const uniqueLeads = Array.from(dedupeMap.values());
 
     const insertResult = await db.begin(async (tx: any) => {
       const lockedUsers = await tx`
         SELECT plan_type, leads_extracted, bonus_credits 
-        FROM users WHERE id = ${session.id} FOR UPDATE
+        FROM users WHERE id = ${effectiveUserId} FOR UPDATE
       `;
       const lockedUser = lockedUsers[0];
       const locked = computeLimit(lockedUser);
@@ -341,8 +376,8 @@ export async function searchLeadsAction(query: string, taskId?: number, forceSto
       }
 
       const allowedCount = locked.currentLimit === Infinity
-        ? enrichedLeads.length
-        : Math.min(enrichedLeads.length, locked.remaining);
+        ? uniqueLeads.length
+        : Math.min(uniqueLeads.length, locked.remaining);
 
       if (allowedCount <= 0) {
         return {
@@ -352,10 +387,10 @@ export async function searchLeadsAction(query: string, taskId?: number, forceSto
         };
       }
 
-      const leadsToInsert = enrichedLeads.slice(0, allowedCount);
+      const leadsToInsert = uniqueLeads.slice(0, allowedCount);
 
       const searchResult = await tx`
-        INSERT INTO searches (user_id, query, task_id) VALUES (${session.id}, ${trimmedQuery}, ${taskId || null}) RETURNING id
+        INSERT INTO searches (user_id, query, task_id) VALUES (${effectiveUserId}, ${trimmedQuery}, ${taskId || null}) RETURNING id
       `;
       const searchId = searchResult[0].id;
 
@@ -397,14 +432,14 @@ export async function searchLeadsAction(query: string, taskId?: number, forceSto
         }
       }
 
-      await tx`UPDATE users SET leads_extracted = leads_extracted + ${leadsToInsert.length} WHERE id = ${session.id}`;
+      await tx`UPDATE users SET leads_extracted = leads_extracted + ${leadsToInsert.length} WHERE id = ${effectiveUserId}`;
 
       return { 
         success: true, 
         count: leadsToInsert.length, 
         searchId, 
         cached: false,
-        limitReached: locked.currentLimit !== Infinity && leadsToInsert.length < enrichedLeads.length,
+        limitReached: locked.currentLimit !== Infinity && leadsToInsert.length < uniqueLeads.length,
         leads: shouldStoreLeads ? [] : leadsToInsert,
         fastMode
       };
@@ -422,14 +457,13 @@ export async function createTaskAction(name: string, keywords: string[]) {
   if (!session) return { success: false, error: 'Unauthorized' };
 
   try {
-    const suspendedCheck = await db`SELECT is_suspended FROM users WHERE id = ${session.id}`;
-    if (suspendedCheck[0]?.is_suspended) {
-      return { success: false, error: 'Account suspended. Contact support.' };
-    }
-    
+    const headerList = await headers();
+    const userAgent = headerList.get('user-agent') || null;
+    const acceptLanguage = headerList.get('accept-language') || null;
+
     const result = await db`
-      INSERT INTO tasks (user_id, name, keywords, total_keywords, status) 
-      VALUES (${session.id}, ${name}, ${JSON.stringify(keywords)}, ${keywords.length}, 'pending')
+      INSERT INTO tasks (user_id, name, keywords, total_keywords, status, user_agent, accept_language) 
+      VALUES (${session.id}, ${name}, ${JSON.stringify(keywords)}, ${keywords.length}, 'pending', ${userAgent}, ${acceptLanguage})
       RETURNING id
     `;
     
@@ -444,14 +478,13 @@ export async function createTaskShellAction(name: string, totalKeywords: number)
   if (!session) return { success: false, error: 'Unauthorized' };
 
   try {
-    const suspendedCheck = await db`SELECT is_suspended FROM users WHERE id = ${session.id}`;
-    if (suspendedCheck[0]?.is_suspended) {
-      return { success: false, error: 'Account suspended. Contact support.' };
-    }
-    
+    const headerList = await headers();
+    const userAgent = headerList.get('user-agent') || null;
+    const acceptLanguage = headerList.get('accept-language') || null;
+
     const result = await db`
-      INSERT INTO tasks (user_id, name, keywords, total_keywords, status) 
-      VALUES (${session.id}, ${name}, ${JSON.stringify([])}, ${totalKeywords}, 'pending')
+      INSERT INTO tasks (user_id, name, keywords, total_keywords, status, user_agent, accept_language) 
+      VALUES (${session.id}, ${name}, ${JSON.stringify([])}, ${totalKeywords}, 'pending', ${userAgent}, ${acceptLanguage})
       RETURNING id
     `;
 
@@ -504,6 +537,7 @@ export async function updateTaskStatusAction(taskId: number, status: string, cur
         UPDATE tasks SET status = ${status}, updated_at = CURRENT_TIMESTAMP WHERE id = ${taskId} AND user_id = ${session.id}
       `;
     }
+
     return { success: true };
   } catch (error) {
     return { success: false, error: (error as Error).message };
@@ -1486,5 +1520,264 @@ export async function bulkUpdateTasksAdminAction(mode: "pause_running" | "resume
     return { success: true, count: result.count };
   } catch (error) {
     return { success: false, error: (error as Error).message };
+  }
+}
+export async function generateKeywordsAction(niche: string, country: string, state: string, city: string | null, selectAllCities: boolean) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const niches = niche.split(',').map(n => n.trim()).filter(n => n.length > 0);
+    let generated: string[] = [];
+
+    if (selectAllCities && country === 'India') {
+      const statesCheck = await db`SELECT id FROM users WHERE id = ${session.id}`; // dummy check
+      
+      const resCities = await fetch(`https://nominatim.openstreetmap.org/search?state=${encodeURIComponent(state)}&country=India&format=json&featuretype=city`, {
+          headers: { 'User-Agent': 'LeadSpotter/1.0' }
+      });
+      const cityData = await resCities.json();
+      const cityNames = Array.from(new Set(cityData.map((c: any) => c.name || c.display_name.split(',')[0]))) as string[];
+
+      const bulkCache = await getBulkCityAreasAction(country, state, cityNames);
+      const cachedData: Record<string, string[]> = (bulkCache.success && bulkCache.data) ? bulkCache.data : {};
+      
+      for (const cityName of cityNames) {
+        let areas = cachedData[cityName];
+        if (!areas) {
+          try {
+            const res = await fetch(`https://api.postalpincode.in/postoffice/${cityName}`);
+            const data = await res.json();
+            if (data && data[0] && data[0].Status === "Success") {
+              areas = data[0].PostOffice.map((po: any) => po.Name);
+              areas = Array.from(new Set(areas)) as string[];
+              await saveCityAreasAction(country, state, cityName, areas);
+            }
+          } catch (e) {}
+        }
+        
+        if (areas) {
+          for (const nicheItem of niches) {
+            generated.push(...areas.map(area => `${nicheItem} in ${area}, ${cityName}, ${state}, ${country}`));
+          }
+        } else {
+           for (const nicheItem of niches) {
+            generated.push(`${nicheItem} in ${cityName}, ${state}, ${country}`);
+          }
+        }
+      }
+    } else if (country === 'India' && city) {
+      const cache = await getCityAreasAction(country, state, city);
+      let areas = cache.success ? cache.data : null;
+      
+      if (!areas) {
+        try {
+          const res = await fetch(`https://api.postalpincode.in/postoffice/${city}`);
+          const data = await res.json();
+          if (data && data[0] && data[0].Status === "Success") {
+            areas = data[0].PostOffice.map((po: any) => po.Name);
+            areas = Array.from(new Set(areas)) as string[];
+            await saveCityAreasAction(country, state, city, areas);
+          }
+        } catch (e) {}
+      }
+
+      if (areas) {
+        for (const nicheItem of niches) {
+          generated.push(...areas.map(area => `${nicheItem} in ${area}, ${city}, ${state}, ${country}`));
+        }
+      } else {
+        for (const nicheItem of niches) {
+          generated.push(`${nicheItem} in ${city}, ${state}, ${country}`);
+        }
+      }
+    } else {
+      // Basic fallback
+      const location = city ? `${city}, ${state}, ${country}` : `${state}, ${country}`;
+      for (const nicheItem of niches) {
+        generated.push(`${nicheItem} in ${location}`);
+      }
+    }
+
+    return { success: true, data: generated };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function triggerTaskAutomationAction(taskId: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const task = await db`SELECT status FROM tasks WHERE id = ${taskId} AND user_id = ${session.id}`;
+    if (!task[0]) return { success: false, error: 'Task not found' };
+    
+    // Trigger the recursive worker via internal API call (non-blocking)
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+    const host = process.env.VERCEL_URL || 'localhost:3000';
+    const url = `${protocol}://${host}/api/automation/run`;
+
+    // We don't await this to let it run in background
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId, userId: session.id }),
+    }).catch(e => console.error('Background trigger failed:', e));
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function processTaskStepAction(taskId: number, userId: number) {
+  // This is the internal worker that processes ONE keyword
+  try {
+    const tasks = await db`SELECT * FROM tasks WHERE id = ${taskId} AND user_id = ${userId}`;
+    const task = tasks[0];
+    if (!task || task.status !== 'running') return { success: false, error: 'Task not running or not found' };
+
+    const keywords = JSON.parse(task.keywords);
+    const index = task.current_keyword_index || 0;
+
+    if (index >= keywords.length) {
+      await db`UPDATE tasks SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
+      return { success: true, completed: true };
+    }
+
+    const keyword = keywords[index];
+    
+    // Pass stored headers and userId to extractor
+    const options = {
+      userAgent: task.user_agent || undefined,
+      acceptLanguage: task.accept_language || undefined,
+      manualUserId: userId
+    };
+
+    await saveServerLogAction(taskId, 'INFO', `Preparing to search keyword: "${keyword}"`);
+    const res = await searchLeadsAction(keyword, taskId, true, options); // forceStore = true
+    await saveServerLogAction(taskId, res.success ? 'SUCCESS' : 'ERROR', `searchLeadsAction result: success=${res.success}, count=${'count' in res ? res.count : 0}`);
+    
+    if (!res.success) {
+        console.error(`Task ${taskId} step failed:`, res.error);
+        if (res.limitReached) {
+            await db`UPDATE tasks SET status = 'paused', updated_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
+            return { success: false, limitReached: true };
+        }
+        // If it failed for other reasons, maybe don't stop but log it.
+        // For now, let's stop to avoid fake progress if it's unauthorized or something critical.
+        await db`UPDATE tasks SET status = 'failed', updated_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
+        await saveServerLogAction(taskId, 'ERROR', `Task failed: ${res.error}`);
+        await sendLogsToTelegramAction(taskId);
+        return { success: false, error: res.error };
+    }
+
+    const nextIndex = index + 1;
+    await db`UPDATE tasks SET current_keyword_index = ${nextIndex}, updated_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
+
+    // Check if we should send logs periodically (every 1 minute for testing)
+    const taskStatusRes = await db`SELECT last_logs_sent_at FROM tasks WHERE id = ${taskId}`;
+    const lastSent = taskStatusRes[0]?.last_logs_sent_at ? new Date(taskStatusRes[0].last_logs_sent_at) : new Date(0);
+    const now = new Date();
+    
+    if (now.getTime() - lastSent.getTime() > 60 * 1000) { // 1 minute
+        await sendLogsToTelegramAction(taskId);
+        await db`UPDATE tasks SET last_logs_sent_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
+        await saveServerLogAction(taskId, 'INFO', 'Periodic logs sent to Telegram');
+    }
+
+    if (nextIndex < keywords.length) {
+        // Trigger next step
+        const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+        const host = process.env.VERCEL_URL || 'localhost:3000';
+        fetch(`${protocol}://${host}/api/automation/run`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ taskId, userId }),
+        }).catch(e => console.error('Next step trigger failed:', e));
+    } else {
+        await db`UPDATE tasks SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
+        await saveServerLogAction(taskId, 'SUCCESS', 'Task completed');
+        await sendLogsToTelegramAction(taskId);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error(`Error processing task ${taskId} at step:`, error);
+    await db`UPDATE tasks SET status = 'failed', updated_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
+    await saveServerLogAction(taskId, 'ERROR', `Task crashed: ${(error as Error).message}`);
+    await sendLogsToTelegramAction(taskId);
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function saveServerLogAction(taskId: number | null, level: 'INFO' | 'SUCCESS' | 'ERROR' | 'WARN', message: string) {
+  try {
+    await db`
+      INSERT INTO server_logs (task_id, level, message)
+      VALUES (${taskId}, ${level}, ${message})
+    `;
+    console.log(`[LOG][${level}][Task:${taskId}] ${message}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to save server log:', error);
+    return { success: false };
+  }
+}
+
+export async function sendLogsToTelegramAction(taskId: number) {
+  try {
+    // This is an internal function used by worker, but making it an action for flexibility
+    const logs = await db`
+      SELECT level, message, created_at 
+      FROM server_logs 
+      WHERE task_id = ${taskId} 
+      ORDER BY created_at ASC
+    `;
+
+    if (logs.length === 0) return { success: true, message: 'No logs to send' };
+
+    const logContent = logs.map(l => `[${l.created_at.toISOString()}] [${l.level}] ${l.message}`).join('\n');
+    
+    // We'll use the existing Telegram logic
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
+    if (!token || !chatId) return { success: false, error: 'Telegram not configured' };
+
+    const taskData = await db`SELECT name FROM tasks WHERE id = ${taskId}`;
+    const taskName = taskData[0]?.name || `Task ${taskId}`;
+
+    // Telegram Document API requires a file name
+    const form = new FormData();
+    form.append('chat_id', chatId);
+    const logBlob = new Blob([logContent], { type: 'text/plain' });
+    form.append('document', logBlob, `${taskName.replace(/\s+/g, '_')}_logs.txt`);
+
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, {
+      method: 'POST',
+      body: form
+    });
+
+    const data = await res.json();
+    if (!data.ok) return { success: false, error: data.description };
+
+    // Delete logs older than 1 minute to keep DB clean (testing)
+    await db`DELETE FROM server_logs WHERE created_at < NOW() - INTERVAL '15 minute'`;
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to send logs to Telegram:', error);
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+// Helper to cleanup old logs
+export async function cleanupServerLogsAction() {
+  try {
+    await db`DELETE FROM server_logs WHERE created_at < NOW() - INTERVAL '1 minute'`;
+    return { success: true };
+  } catch (error) {
+    return { success: false };
   }
 }

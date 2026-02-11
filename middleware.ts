@@ -18,20 +18,27 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Paths reserved for unauthenticated users
+  // Paths reserved for unauthenticated users (login/signup)
   const authPaths = ['/login', '/signup'];
   const isAuthPath = authPaths.some(path => request.nextUrl.pathname.startsWith(path));
 
+  // Paths accessible to public (unauthenticated users)
+  const isPublicPath = request.nextUrl.pathname === '/';
+
   // If session is valid:
   if (isValidSession) {
-    // Redirect authenticated users away from auth pages
+    // Redirect authenticated users away from auth pages to /leads
     if (isAuthPath) {
-      return NextResponse.redirect(new URL('/', request.url));
+      return NextResponse.redirect(new URL('/leads', request.url));
+    }
+    // Redirect authenticated users from landing page to /leads
+    if (isPublicPath) {
+      return NextResponse.redirect(new URL('/leads', request.url));
     }
   } else {
     // If session is invalid/missing:
-    // Redirect unauthenticated users to login, UNLESS they are on an auth page
-    if (!isAuthPath) {
+    // Redirect unauthenticated users to login, UNLESS they are on an auth page OR the landing page
+    if (!isAuthPath && !isPublicPath) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
   }

@@ -52,8 +52,22 @@ export async function seed() {
         current_keyword_index INTEGER DEFAULT 0,
         total_leads INTEGER DEFAULT 0,
         keywords TEXT, 
+        user_agent TEXT,
+        accept_language TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Add last_logs_sent_at to tasks
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS last_logs_sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+      -- Create server_logs table
+      CREATE TABLE IF NOT EXISTS server_logs (
+        id SERIAL PRIMARY KEY,
+        task_id INTEGER,
+        level TEXT DEFAULT 'INFO',
+        message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
 
@@ -270,6 +284,8 @@ export async function seed() {
     await addColumnIfNotExists('leads', 'lead_score', 'INTEGER DEFAULT 0');
     await addColumnIfNotExists('keyword_history', 'total_keywords', 'INTEGER');
     await addColumnIfNotExists('keyword_history', 'keywords_truncated', 'BOOLEAN DEFAULT FALSE');
+    await addColumnIfNotExists('tasks', 'user_agent', 'TEXT');
+    await addColumnIfNotExists('tasks', 'accept_language', 'TEXT');
     
 
     // Default settings (only insert if clean DB, or ignore conflicts)

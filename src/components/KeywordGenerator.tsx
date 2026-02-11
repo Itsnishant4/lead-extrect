@@ -32,6 +32,7 @@ import {
   saveKeywordHistoryAction,
   getBulkCityAreasAction,
   saveBulkCityAreasAction,
+  generateKeywordsAction,
 } from '@/app/actions';
 import { toast } from 'sonner';
 import { useAutomation } from '@/context/AutomationContext';
@@ -112,134 +113,36 @@ export default function KeywordGenerator({ onSearch, onStartTask }: KeywordGener
   const generateKeywords = async () => {
     if (!niche || !country || !state) return;
     setIsGenerating(true);
+    setGenStatus('Building list on server...');
     
-    // Split niches by comma and trim whitespace
-    const niches = niche.split(',').map(n => n.trim()).filter(n => n.length > 0);
-    
-    let generated: string[] = [];
-    
-    if (selectAllCities && country === 'India') {
-      const cityNames = cities.map(c => c.name);
-      setGenStatus(`Checking cache for ${cityNames.length} cities...`);
+    try {
+      const res = await generateKeywordsAction(niche, country, state, city || null, selectAllCities);
       
-      const bulkCache = await getBulkCityAreasAction(country, state, cityNames);
-      const cachedData: Record<string, string[]> = (bulkCache.success && bulkCache.data) ? bulkCache.data : {};
-      const citiesToFetch = cityNames.filter(name => !cachedData[name]);
-      
-      // Process cached cities first
-      if (cachedData) {
-        Object.entries(cachedData).forEach(([cityName, areas]) => {
-          for (const nicheItem of niches) {
-            const cityAreas = areas.map(area => `${nicheItem} in ${area}, ${cityName}, ${state}, ${country}`);
-            generated = [...generated, ...cityAreas];
-          }
-        });
-      }
-
-      if (citiesToFetch.length > 0) {
-        toast.info(`Fetching additional data for ${citiesToFetch.length} cities...`);
-        const newCityAreas: { city: string, areas: string[] }[] = [];
-
-        for (let i = 0; i < citiesToFetch.length; i++) {
-          const cityName = citiesToFetch[i];
-          setGenStatus(`Fetching areas for ${cityName} (${i + 1}/${citiesToFetch.length})...`);
-          
-          try {
-            const res = await fetch(`https://api.postalpincode.in/postoffice/${cityName}`);
-            const data = await res.json();
-            if (data && data[0] && data[0].Status === "Success") {
-              const areas = data[0].PostOffice.map((po: any) => po.Name);
-              const uniqueAreas = Array.from(new Set(areas)) as string[];
-              
-              newCityAreas.push({ city: cityName, areas: uniqueAreas });
-              
-              for (const nicheItem of niches) {
-                const cityAreas = uniqueAreas.map(area => `${nicheItem} in ${area}, ${cityName}, ${state}, ${country}`);
-                generated = [...generated, ...cityAreas];
-              }
-            } else {
-              for (const nicheItem of niches) {
-                generated.push(`${nicheItem} in ${cityName}, ${state}, ${country}`);
-              }
-            }
-          } catch (e) {
-            for (const nicheItem of niches) {
-              generated.push(`${nicheItem} in ${cityName}, ${state}, ${country}`);
-            }
-          }
-          // Batch save every 20 cities or at the end
-          if (newCityAreas.length >= 20 || i === citiesToFetch.length - 1) {
-            await saveBulkCityAreasAction(country, state, newCityAreas);
-            newCityAreas.length = 0; // Clear the batch array
-          }
-          await new Promise(r => setTimeout(r, 100));
-        }
-      }
-      toast.success(`Generated ${generated.length} keywords for all cities in ${state}`);
-    } else if (country === 'India' && city) {
-      setGenStatus(`Fetching areas for ${city}...`);
-      const cache = await getCityAreasAction(country, state, city);
-      if (cache.success && cache.data) {
-        // Generate keywords for each niche
-        for (const nicheItem of niches) {
-          generated = [...generated, ...cache.data.map(area => `${nicheItem} in ${area}, ${city}, ${state}, ${country}`)];
-        }
+      if (res.success && res.data) {
+        setKeywords(res.data);
+        toast.success(`Generated ${res.data.length} keywords`);
+        
+        const location = selectAllCities ? `All cities in ${state}` : (city ? `${city}, ${state}` : state);
+        const historyLimit = 1000;
+        const isTruncated = res.data.length > historyLimit;
+        const historyKeywords = isTruncated ? res.data.slice(0, historyLimit) : res.data;
+        
+        await saveKeywordHistoryAction(
+          taskName || `${niche} Generation`,
+          niche,
+          location,
+          historyKeywords,
+          res.data.length,
+          isTruncated
+        );
       } else {
-        try {
-          const res = await fetch(`https://api.postalpincode.in/postoffice/${city}`);
-          const data = await res.json();
-          if (data && data[0] && data[0].Status === "Success") {
-            const areas = data[0].PostOffice.map((po: any) => po.Name);
-            const uniqueAreas = Array.from(new Set(areas)) as string[];
-            await saveCityAreasAction(country, state, city, uniqueAreas);
-            // Generate keywords for each niche
-            for (const nicheItem of niches) {
-              generated = [...generated, ...uniqueAreas.map(area => `${nicheItem} in ${area}, ${city}, ${state}, ${country}`)];
-            }
-          }
-        } catch (e) {
-           console.error("Area fetching failed", e);
-        }
+        toast.error(`Generation failed: ${res.error}`);
       }
-      toast.success(`Generated ${generated.length} keywords for ${city}`);
-    }
-
-    if (generated.length === 0) {
-      if (!selectAllCities && city) {
-        // Generate keywords for each niche
-        for (const nicheItem of niches) {
-          generated.push(`${nicheItem} in ${city}, ${state}, ${country}`);
-        }
-      } else if (selectAllCities) {
-        // Generate keywords for each niche and each city
-        for (const nicheItem of niches) {
-          generated = [...generated, ...cities.map(c => `${nicheItem} in ${c.name}, ${state}, ${country}`)];
-        }
-      } else {
-        // Generate keywords for each niche and first 20 cities
-        for (const nicheItem of niches) {
-          generated = [...generated, ...cities.slice(0, 20).map(c => `${nicheItem} in ${c.name}, ${state}, ${country}`)];
-        }
-      }
-    }
-
-    setKeywords(generated);
-    setIsGenerating(false);
-    setGenStatus('');
-    
-    if (generated.length > 0) {
-      const location = selectAllCities ? `All cities in ${state}` : (city ? `${city}, ${state}` : state);
-      const historyLimit = 1000;
-      const isTruncated = generated.length > historyLimit;
-      const historyKeywords = isTruncated ? generated.slice(0, historyLimit) : generated;
-      await saveKeywordHistoryAction(
-        taskName || `${niche} Generation`,
-        niche,
-        location,
-        historyKeywords,
-        generated.length,
-        isTruncated
-      );
+    } catch (e) {
+      toast.error("An error occurred during generation");
+    } finally {
+      setIsGenerating(false);
+      setGenStatus('');
     }
   };
 

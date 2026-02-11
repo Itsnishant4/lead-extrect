@@ -53,7 +53,7 @@ export default function ProfilePage() {
           <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.4fr]">
+          <div className="grid  gap-6 lg:grid-cols-[0.9fr_1.4fr]">
             <Card className="border-border/60">
               <CardHeader className="items-center text-center">
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-3xl font-semibold text-primary">
@@ -184,7 +184,7 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    LeadExtractor Pro encrypts stored leads and keeps access locked to your account only.
+                    LeadSpotter encrypts stored leads and keeps access locked to your account only.
                   </p>
                 </CardContent>
               </Card>

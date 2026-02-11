@@ -33,24 +33,24 @@ export function SignupForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (password !== confirmPassword) {
       toast.error("Passwords do not match")
       return
     }
-    
+
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters")
       return
     }
 
     setIsLoading(true)
-    
+
     try {
       const result = await signupAction(name, email, password)
       if (result.success) {
         toast.success("Account created successfully")
-        router.push("/")
+        router.push("/leads")
         router.refresh()
       } else {
         toast.error(result.error || "Failed to create account")
@@ -106,10 +106,10 @@ export function SignupForm({
                   <Field>
                     <FieldLabel htmlFor="password">Password</FieldLabel>
                     <div className="relative">
-                      <Input 
-                        id="password" 
-                        type={showPassword ? "text" : "password"} 
-                        required 
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         disabled={isLoading}
@@ -123,7 +123,7 @@ export function SignupForm({
                         onClick={() => setShowPassword((prev) => !prev)}
                         aria-label={showPassword ? "Hide password" : "Show password"}
                       >
-                    {showPassword ? <EyeSlash className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPassword ? <EyeSlash className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
                     </div>
                   </Field>
@@ -132,10 +132,10 @@ export function SignupForm({
                       Confirm
                     </FieldLabel>
                     <div className="relative">
-                      <Input 
-                        id="confirm-password" 
-                        type={showConfirmPassword ? "text" : "password"} 
-                        required 
+                      <Input
+                        id="confirm-password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        required
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         disabled={isLoading}
@@ -149,7 +149,7 @@ export function SignupForm({
                         onClick={() => setShowConfirmPassword((prev) => !prev)}
                         aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                       >
-                    {showConfirmPassword ? <EyeSlash className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showConfirmPassword ? <EyeSlash className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
                     </div>
                   </Field>

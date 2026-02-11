@@ -1,19 +1,19 @@
 "use client"
 
 import { useState } from "react"
-import { 
-  getAllUsersAdminAction, 
+import {
+  getAllUsersAdminAction,
   toggleUserAdminAction,
   updateUserCreditsAction,
   suspendUserAction
 } from "@/app/actions"
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -44,18 +44,20 @@ import {
 
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { 
-  Breadcrumb, 
-  BreadcrumbItem, 
-  BreadcrumbLink, 
-  BreadcrumbList, 
-  BreadcrumbPage, 
-  BreadcrumbSeparator 
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator
 } from "@/components/ui/breadcrumb"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import { useSidebar } from "@/components/ui/sidebar"
 
 export default function AdminUsersPage() {
   const queryClient = useQueryClient();
+  const { open } = useSidebar();
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['admin-users'],
@@ -143,11 +145,11 @@ export default function AdminUsersPage() {
     return matchesSearch && matchesPlan && matchesStatus && matchesRole;
   });
 
-  
+
 
   return (
     <>
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 sticky top-0 bg-background/80 backdrop-blur-md z-10 border-b">
+      <header className={`flex transition-all ease-in-out duration-300 ${open ? 'md:ml-[250px]' : 'md:ml-[60px]'} h-16 shrink-0 items-center justify-between gap-2 px-4 sticky top-0 bg-background/80 backdrop-blur-md z-10 border-b`}>
         <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
@@ -166,7 +168,7 @@ export default function AdminUsersPage() {
         <ThemeToggle />
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 pt-6">
+      <main className={`flex-1 overflow-y-auto p-4 md:p-8 pt-6 ${open ? 'md:ml-[250px]' : 'md:ml-[30px]'}`}>
         {isLoading ? (
           <div className="flex h-[80vh] items-center justify-center">
             <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
@@ -248,28 +250,28 @@ export default function AdminUsersPage() {
                         </TableCell>
                         <TableCell className="text-muted-foreground">{user.email}</TableCell>
                         <TableCell>
-                          <Badge 
-                            variant={user.plan_type === 'premium' ? 'default' : user.plan_type === 'pro' ? 'secondary' : 'outline'} 
+                          <Badge
+                            variant={user.plan_type === 'premium' ? 'default' : user.plan_type === 'pro' ? 'secondary' : 'outline'}
                             className="capitalize"
-                            >
+                          >
                             {user.plan_type}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                           <Badge variant="secondary" className="gap-1">
-                             <Coins className="h-3 w-3" />
-                             {user.bonus_credits || 0}
-                           </Badge>
+                          <Badge variant="secondary" className="gap-1">
+                            <Coins className="h-3 w-3" />
+                            {user.bonus_credits || 0}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
                             <span className="text-xs font-bold">
                               {user.leads_extracted?.toLocaleString() || 0} / {((user.plan_type === 'pro' ? 5000 : user.plan_type === 'premium' ? 9999999 : 500) + (user.bonus_credits || 0)).toLocaleString()}
                             </span>
-                            <Progress 
-                              value={user.plan_type === 'premium' ? 0 : Math.min(((user.leads_extracted || 0) / ((user.plan_type === 'pro' ? 5000 : 500) + (user.bonus_credits || 0))) * 100, 100)} 
+                            <Progress
+                              value={user.plan_type === 'premium' ? 0 : Math.min(((user.leads_extracted || 0) / ((user.plan_type === 'pro' ? 5000 : 500) + (user.bonus_credits || 0))) * 100, 100)}
                               className="h-1.5 w-24"
-                              />
+                            />
                           </div>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
@@ -280,12 +282,12 @@ export default function AdminUsersPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="sm"
                               onClick={() => handleToggleAdmin(user.id, user.is_admin)}
                               title={user.is_admin ? "Remove Admin" : "Make Admin"}
-                              >
+                            >
                               {user.is_admin ? <ShieldSlash className="h-4 w-4 text-red-500" /> : <Shield className="h-4 w-4 text-blue-500" />}
                             </Button>
                             <Button
@@ -315,66 +317,66 @@ export default function AdminUsersPage() {
               </CardContent>
             </Card>
           </div>
-      )}
-        </main>
+        )}
+      </main>
 
-        <Dialog open={isCreditDialogOpen} onOpenChange={setIsCreditDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Manage User Credits</DialogTitle>
-              <DialogDescription>
-                Add or remove additional lead extraction credits for <b>{selectedUser?.name}</b>.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-dashed text-xs">
-                <div className="space-y-1">
-                   <p className="text-muted-foreground uppercase font-black">Current Bonus</p>
-                   <p className="text-xl font-bold text-foreground">{selectedUser?.bonus_credits || 0} Credits</p>
-                </div>
-                <Coins className="h-8 w-8 text-yellow-500 opacity-20" />
+      <Dialog open={isCreditDialogOpen} onOpenChange={setIsCreditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Manage User Credits</DialogTitle>
+            <DialogDescription>
+              Add or remove additional lead extraction credits for <b>{selectedUser?.name}</b>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-dashed text-xs">
+              <div className="space-y-1">
+                <p className="text-muted-foreground uppercase font-black">Current Bonus</p>
+                <p className="text-xl font-bold text-foreground">{selectedUser?.bonus_credits || 0} Credits</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="amount">Adjustment Amount</Label>
-                <div className="relative">
-                   <Coins className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                   <Input 
-                    id="amount" 
-                    type="number" 
-                    value={creditAmount} 
-                    onChange={(e) => setCreditAmount(e.target.value)} 
-                    className="pl-9 bg-muted/10"
-                    placeholder="e.g. 500"
-                  />
-                </div>
-                <p className="text-[10px] text-muted-foreground px-1">Positive values add credits, negative values remove them.</p>
-              </div>
+              <Coins className="h-8 w-8 text-yellow-500 opacity-20" />
             </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button 
-                variant="outline" 
-                className="gap-2" 
-                onClick={() => {
-                  const amount = Math.abs(parseInt(creditAmount) || 0);
-                  if (selectedUser) updateCreditsMutation.mutate({ userId: selectedUser.id, amount: -amount });
-                }}
-                disabled={updateCreditsMutation.isPending || !selectedUser || !creditAmount}
-              >
-                <Minus className="h-4 w-4" /> Deduct
-              </Button>
-              <Button 
-                className="gap-2" 
-                onClick={() => {
-                  const amount = Math.abs(parseInt(creditAmount) || 0);
-                  if (selectedUser) updateCreditsMutation.mutate({ userId: selectedUser.id, amount: amount });
-                }}
-                disabled={updateCreditsMutation.isPending || !selectedUser || !creditAmount}
-              >
-                <Plus className="h-4 w-4" /> {updateCreditsMutation.isPending ? "Updating..." : "Add Credits"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            <div className="space-y-2">
+              <Label htmlFor="amount">Adjustment Amount</Label>
+              <div className="relative">
+                <Coins className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="amount"
+                  type="number"
+                  value={creditAmount}
+                  onChange={(e) => setCreditAmount(e.target.value)}
+                  className="pl-9 bg-muted/10"
+                  placeholder="e.g. 500"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground px-1">Positive values add credits, negative values remove them.</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2  sm:gap-0">
+            <Button
+              variant="outline"
+              className="gap-2 mr-2"
+              onClick={() => {
+                const amount = Math.abs(parseInt(creditAmount) || 0);
+                if (selectedUser) updateCreditsMutation.mutate({ userId: selectedUser.id, amount: -amount });
+              }}
+              disabled={updateCreditsMutation.isPending || !selectedUser || !creditAmount}
+            >
+              <Minus className="h-4 w-4" /> Deduct
+            </Button>
+            <Button
+              className="gap-2"
+              onClick={() => {
+                const amount = Math.abs(parseInt(creditAmount) || 0);
+                if (selectedUser) updateCreditsMutation.mutate({ userId: selectedUser.id, amount: amount });
+              }}
+              disabled={updateCreditsMutation.isPending || !selectedUser || !creditAmount}
+            >
+              <Plus className="h-4 w-4" /> {updateCreditsMutation.isPending ? "Updating..." : "Add Credits"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
