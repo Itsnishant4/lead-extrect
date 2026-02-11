@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Paths reserved for unauthenticated users (login/signup)
-  const authPaths = ['/login', '/signup'];
+  const authPaths = ['/login', '/signup', "/googleb9ce8135773393a8.html", "/robots.txt", "/sitemap.xml", "/icon.png", "/opengraph-image.png", "/favicon.ico", "/icon.ico", "/icon.png"];
   const isAuthPath = authPaths.some(path => request.nextUrl.pathname.startsWith(path));
 
   // Paths accessible to public (unauthenticated users)
@@ -56,6 +56,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - .png, .jpg, .jpeg, .svg, .gif, .webp (common image extensions)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp)|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|webmanifest)|favicon.ico).*)',
   ],
 };
