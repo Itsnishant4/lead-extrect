@@ -1,49 +1,66 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { jwtVerify } from 'jose';
-
-const SECRET_KEY = process.env.JWT_SECRET || 'dev-secret-key-change-in-prod';
-const key = new TextEncoder().encode(SECRET_KEY);
+import { verifyToken } from '@/lib/auth-edge';
 
 export async function middleware(request: NextRequest) {
   const session = request.cookies.get('session');
   let isValidSession = false;
 
   if (session) {
-    try {
-      await jwtVerify(session.value, key, { algorithms: ['HS256'] });
+    console.log(`[Middleware] Session cookie found: ${session.value.substring(0, 10)}...`);
+    const payload = await verifyToken(session.value);
+    if (payload) {
+      console.log("[Middleware] Session is VALID");
       isValidSession = true;
-    } catch (error) {
-      // Invalid token
-    }
-  }
-
-  // Paths reserved for unauthenticated users (login/signup)
-  const authPaths = ['/login', '/signup', "/googleb9ce8135773393a8.html", "/robots.txt", "/sitemap.xml", "/icon.png", "/opengraph-image.png", "/favicon.ico", "/icon.ico", "/icon.png"];
-  const isAuthPath = authPaths.some(path => request.nextUrl.pathname.startsWith(path));
-
-  // Paths accessible to public (unauthenticated users)
-  const isPublicPath = request.nextUrl.pathname === '/';
-
-  // If session is valid:
-  if (isValidSession) {
-    // Redirect authenticated users away from auth pages to /leads
-    if (isAuthPath) {
-      return NextResponse.redirect(new URL('/leads', request.url));
-    }
-    // Redirect authenticated users from landing page to /leads
-    if (isPublicPath) {
-      return NextResponse.redirect(new URL('/leads', request.url));
+    } else {
+      console.log("[Middleware] Session is INVALID (verifyToken returned null)");
     }
   } else {
-    // If session is invalid/missing:
-    // Redirect unauthenticated users to login, UNLESS they are on an auth page OR the landing page
-    if (!isAuthPath && !isPublicPath) {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
+    console.log("[Middleware] No session cookie found");
   }
 
-  return NextResponse.next();
+  const path = request.nextUrl.pathname;
+
+  // 1. Guest-only paths: Logged-in users should NOT see these (redirect to /leads)
+  const guestOnlyPaths = ['/login', '/signup'];
+  const isGuestOnlyPath = guestOnlyPaths.some(p => path.startsWith(p));
+
+  // 2. Public paths: Everyone can see these (no redirect)
+  // Assets like favicon, robots, etc are also caught here if they are not excluded by matcher
+  const publicPaths = [
+    '/',
+    '/company',
+    '/privacy',
+    '/terms',
+    '/robots.txt',
+    '/sitemap.xml',
+    '/googleb9ce8135773393a8.html'
+  ];
+  const isPublicPath = publicPaths.includes(path) || path.startsWith('/favicon/'); // Allow favicon folder
+
+  // LOGIC:
+
+  if (isValidSession) {
+    // If user is logged in:
+
+    // Redirect away from guest-only paths (login/signup) and the landing page (root) to /leads
+    if (isGuestOnlyPath || path === '/') {
+      return NextResponse.redirect(new URL('/leads', request.url));
+    }
+
+    // Otherwise, allow access (dashboard, public pages like privacy, robots, etc)
+    return NextResponse.next();
+  } else {
+    // If user is NOT logged in:
+
+    // Allow access to guest-only paths and public paths
+    if (isGuestOnlyPath || isPublicPath) {
+      return NextResponse.next();
+    }
+
+    // Redirect everything else (protected routes) to /login
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
 }
 
 export const config = {

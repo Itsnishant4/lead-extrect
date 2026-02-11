@@ -1,6 +1,15 @@
 import { LoginForm } from "@/components/login-form"
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const cookieStore = await cookies()
+  const session = cookieStore.get("session")
+
+  if (session) {
+    redirect("/leads")
+  }
+
   return (
     <div className="relative flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="pointer-events-none absolute inset-0 -z-10">

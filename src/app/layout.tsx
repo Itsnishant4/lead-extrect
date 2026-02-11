@@ -74,17 +74,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script
-          async
-          crossOrigin="anonymous"
-          src="https://tweakcn.com/live-preview.min.js"
-        />
-        <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
-
-      <body className="antialiased min-h-screen">
+      <body className="antialiased min-h-screen ">
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -94,7 +85,7 @@ export default function RootLayout({
           <QueryProvider>
             <AutomationProvider>
               <SidebarProvider>
-                <div className="flex-1 w-full min-h-screen">
+                <div className="flex-1 w-full min-h-screen h-screen">
                   {children}
                 </div>
                 <Toaster />

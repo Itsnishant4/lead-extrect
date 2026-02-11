@@ -42,10 +42,12 @@ import {
 
 import { useAutomation } from '@/context/AutomationContext';
 import { Logo } from './Logo';
+import { useSidebar } from '@/components/ui/sidebar';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user } = useAutomation();
+  const { open } = useSidebar();
 
   const menuItems = [
     {
@@ -97,7 +99,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className=" ml-[-1.5px] data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
               <div className="flex items-center justify-center rounded-lg text-sidebar-primary-foreground">
-                <Logo className='w-13 h-13'/>
+                <Logo className={`${open ? "w-10" : "w-7"} ${open ? "h-10" : "h-7"} ml-[-4px]`}/>
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="font-semibold truncate">LeadSpotter</span>
@@ -130,7 +132,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         
 
-        {user && (
+        {user && open && (
           <div className="px-4 py-4 mt-4 bg-sidebar-accent/30 rounded-xl mx-2">
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs font-medium text-muted-foreground  tracking-wider">Usage</span>
