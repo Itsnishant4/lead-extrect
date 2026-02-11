@@ -1,4 +1,4 @@
-import { Logo } from "@/components/Logo";
+
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
@@ -34,10 +34,25 @@ export default async function Image() {
                         marginBottom: 40,
                     }}
                 >
-                    {/* Recreating the Logo SVG structure inline for OG image compatibility */}
-                    {/* <div className="size-4 flex items-center justify-center"> */}
-                    <Logo  />
-                    {/* </div> */}
+                    <svg
+                        width="150"
+                        height="150"
+                        viewBox="-50 0 256 256"
+                        xmlns="http://www.w3.org/2000/svg"
+                        style={{ marginRight: 24 }}
+                    >
+                        <rect
+                            x="64"
+                            y="64"
+                            width="128"
+                            height="128"
+                            rx="35"
+                            stroke="#1192EC"
+                            strokeWidth="16"
+                            fill="none"
+                        />
+                        <circle cx="160" cy="96" r="20" fill="#1192EC" />
+                    </svg>
                     <div style={{ display: "flex", fontSize: 80, fontWeight: 800 }}>
                         Lead<span style={{ color: "#1192EC" }}>Spotter</span>
                     </div>
@@ -49,6 +64,7 @@ export default async function Image() {
                         textAlign: "center",
                         maxWidth: "80%",
                         lineHeight: 1.4,
+                        display: "flex", // Explicitly added display: flex
                     }}
                 >
                     Turn Google Maps into your Lead Machine
