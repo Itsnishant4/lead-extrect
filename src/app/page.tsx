@@ -118,7 +118,7 @@ export default function Home() {
               viewBox="0 0 120 40"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <path d="M12 10l-4 8 4 8h10l4-8-4-8H12zm25 0h6v16h-6V10zm12 0h6v6h-6v-6zm0 10h6v6h-6v-6zm12-10h6v16h-6V10zm12 0h6v16h-6V10zm12 0h6v16h-6V10z opacity-20"></path>
+              <path className="opacity-20" d="M12 10l-4 8 4 8h10l4-8-4-8H12zm25 0h6v16h-6V10zm12 0h6v6h-6v-6zm0 10h6v6h-6v-6zm12-10h6v16h-6V10zm12 0h6v16h-6V10zm12 0h6v16h-6V10z"></path>
             </svg>
             <svg
               className="h-8 w-auto"
@@ -426,8 +426,8 @@ export default function Home() {
               <div className="p-2 md:p-6 bg-slate-50 dark:bg-slate-900">
                 <img
                   alt="LeadSpotter Interactive Dashboard"
-                  className="rounded-xl w-full shadow-inner dark:brightness-90"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuASuWXbVXa6QCa3llIQRf7qF-yrJTuI9cpk1IosnoX-JO2tihjcyJkTG0o9otaIxsjqdLcgNXO_1xgtGlEmXXFbjDy93eTZ1QzNtHm21NOClpJ95NtYTJ6b1RHbeZHU0ew8ARoUl7cRqlr1WHud5HxpiDh_xs7hMW28mp0hQvUyGMvLN6Tlps5hAQ0fKpVoVM1e5e7Jx69mgRBS5KeoX7wUTx7bsDPwTp_XQl4GLbYLPN42eyPuVkUTP6k3u3qtBvp1LfBixRUvsPc"
+                  className="rounded-xl w-full shadow-inner object-contain dark:brightness-90"
+                  src="/hero.png"
                 />
               </div>
             </div>

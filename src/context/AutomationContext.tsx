@@ -1,14 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { 
-  getTasksAction, 
-  createTaskAction, 
+import {
+  getTasksAction,
+  createTaskAction,
   createTaskShellAction,
   appendTaskKeywordsAction,
-  updateTaskStatusAction, 
+  updateTaskStatusAction,
   updateTaskLeadCountAction,
-  deleteTaskAction, 
+  deleteTaskAction,
   searchLeadsAction,
   uploadTaskExportChunkAction,
   sendTaskExportToTelegramAction,
@@ -94,7 +94,8 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     },
     refetchInterval: (query) => {
       const data = query.state.data as Task[];
-      return (data && data.some(t => t.status === 'running')) ? 3000 : 15000;
+      // Increase polling interval to save requests (10s for running, 30s for others)
+      return (data && data.some(t => t.status === 'running')) ? 10000 : 30000;
     },
   });
 
@@ -132,16 +133,16 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
 
     const res = await searchLeadsAction(finalQuery, taskId);
     if (res.success) {
-        refreshUser();
+      refreshUser();
     }
     return res;
   };
 
   const serializeLeads = (leads: any[]) => {
     const headers = [
-      'Name', 'Category', 'City', 'Rating', 'Reviews', 'Phone', 'Website Phone', 
-      'Email', 'Website Email', 'Website', 'Address', 'DirectionUrl', 
-      'Latitude', 'Longitude', 'Monday Hours', 'Tuesday Hours', 'Wednesday Hours', 
+      'Name', 'Category', 'City', 'Rating', 'Reviews', 'Phone', 'Website Phone',
+      'Email', 'Website Email', 'Website', 'Address', 'DirectionUrl',
+      'Latitude', 'Longitude', 'Monday Hours', 'Tuesday Hours', 'Wednesday Hours',
       'Thursday Hours', 'Friday Hours', 'Saturday Hours', 'Sunday Hours',
       'Facebook', 'Instagram', 'LinkedIn', 'Twitter', 'YouTube', 'Pinterest', 'TikTok'
     ];
@@ -157,7 +158,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
   };
 
   const enqueueExport = (fn: () => Promise<void>) => {
-    exportQueueRef.current = exportQueueRef.current.then(fn).catch(() => {});
+    exportQueueRef.current = exportQueueRef.current.then(fn).catch(() => { });
   };
 
   const handleFastModeLeads = (taskId: number, taskName: string, leads: any[]) => {
@@ -294,7 +295,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       });
       return;
     }
-    
+
     await updateTaskStatusAction(taskId, 'running');
     toast.success("Task resumed");
     await triggerTaskAutomationAction(taskId);
@@ -323,23 +324,23 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <AutomationContext.Provider value={{ 
-        tasks, 
-        loadTasks: loadTasksAsync, 
-        startNewTask, 
-        handlePauseTask, 
-        handleResumeTask, 
-        handleDeleteTask,
-        handleSearch,
-        isLoadingTasks,
-        user,
-        isLoadingUser,
-        refreshUser: async () => { await refreshUser() },
-        loadedSession,
-        loadKeywordSession,
-        clearKeywordSession,
-        settings,
-        updateSetting
+    <AutomationContext.Provider value={{
+      tasks,
+      loadTasks: loadTasksAsync,
+      startNewTask,
+      handlePauseTask,
+      handleResumeTask,
+      handleDeleteTask,
+      handleSearch,
+      isLoadingTasks,
+      user,
+      isLoadingUser,
+      refreshUser: async () => { await refreshUser() },
+      loadedSession,
+      loadKeywordSession,
+      clearKeywordSession,
+      settings,
+      updateSetting
     }}>
       {children}
     </AutomationContext.Provider>

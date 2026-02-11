@@ -157,8 +157,8 @@ export function LoginForm({
         </CardContent>
       </Card>
       <div className="px-6 text-center text-xs text-muted-foreground">
-        By clicking continue, you agree to our <a href="#" className="hover:text-primary underline underline-offset-4">Terms of Service</a>{" "}
-        and <a href="#" className="hover:text-primary underline underline-offset-4">Privacy Policy</a>.
+        By clicking continue, you agree to our <a href="/terms" className="hover:text-primary underline underline-offset-4">Terms of Service</a>{" "}
+        and <a href="/privacy" className="hover:text-primary underline underline-offset-4">Privacy Policy</a>.
       </div>
     </div>
   )

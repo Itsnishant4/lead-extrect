@@ -41,6 +41,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAutomation } from '@/context/AutomationContext';
+import { Loader2 } from 'lucide-react';
 
 interface Task {
   id: number;
@@ -240,8 +241,11 @@ export default function TasksList({ tasks, onPause, onResume, onDelete }: TasksL
       case 'running':
         return (
           <div className="flex flex-col gap-1.5">
-            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 gap-1"><Activity className="h-3 w-3" /> Running</Badge>
-            <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4 w-fit opacity-70">Running on Server</Badge>
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 gap-1">
+            <Loader2 className="h-3 w-3 animate-spin" />
+
+            Running</Badge>
+            {/* <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4 w-fit opacity-70">Running on Server</Badge> */}
           </div>
         );
       case 'paused':
