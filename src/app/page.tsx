@@ -29,27 +29,30 @@ export default function Home() {
       <LandingHeader />
 
       {/* Hero Section */}
-      <section className=" overflow-hidden h-screen ">
-        <div className="absolute inset-0 -z-10  overflow-hidden">
+      <section className="relative overflow-hidden min-h-screen flex items-center">
+        <div className="absolute inset-0 -z-10 bg-slate-50 dark:bg-slate-900/50" />
+        <div className="absolute inset-0 -z-10 overflow-hidden">
           <div
-            className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full opacity-30 pointer-events-none"
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full opacity-[0.15] pointer-events-none"
             style={{
               backgroundImage:
-                "radial-gradient(#1392ec 1px, transparent 1px)",
-              backgroundSize: "40px 40px",
+                "radial-gradient(circle at 2px 2px, #1392ec 1px, transparent 0)",
+              backgroundSize: "48px 48px",
             }}
           ></div>
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white via-transparent to-white dark:from-background-dark dark:via-transparent dark:to-background-dark" />
         </div>
-        <div className="container mx-auto px-6 pt-[12%]">
+        <div className="container mx-auto px-6 relative z-10">
           <motion.div
             className="max-w-4xl mx-auto text-center"
             initial="hidden"
-            animate="visible"
+            whileInView="visible"
+            viewport={{ once: true }}
             variants={staggerContainer}
           >
             <motion.div
               variants={fadeInUp}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-8"
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider mb-8 backdrop-blur-sm"
             >
               <span className="flex h-2 w-2 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -59,14 +62,22 @@ export default function Home() {
             </motion.div>
             <motion.h1
               variants={fadeInUp}
-              className="text-5xl lg:text-7xl font-800 text-slate-900 dark:text-white leading-[1.1] mb-6"
+              className="text-6xl lg:text-8xl font-900 text-slate-900 dark:text-white leading-[1.05] mb-8 tracking-tight"
             >
               Turn Google Maps into your{" "}
-              <span className="text-primary">Lead Machine</span>
+              <span className="relative inline-block">
+                <span className="relative z-10 text-primary">Lead Machine</span>
+                <motion.span
+                  initial={{ scaleX: 0 }}
+                  whileInView={{ scaleX: 1 }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
+                  className="absolute bottom-2 left-0 w-full h-3 bg-primary/10 -z-10 origin-left"
+                />
+              </span>
             </motion.h1>
             <motion.p
               variants={fadeInUp}
-              className="text-xl text-slate-600 dark:text-slate-400 mb-10 leading-relaxed max-w-2xl mx-auto"
+              className="text-xl lg:text-2xl text-slate-600 dark:text-slate-400 mb-12 leading-relaxed max-w-2xl mx-auto font-medium"
             >
               Automate your prospecting with background extraction and bulk
               keyword generation. Get verified data while you focus on closing
@@ -74,18 +85,18 @@ export default function Home() {
             </motion.p>
             <motion.div
               variants={fadeInUp}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
+              className="flex flex-col sm:flex-row items-center justify-center gap-5"
             >
               <Link href="/signup">
-                <button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-xl text-lg font-bold transition-all shadow-xl shadow-primary/30 flex items-center justify-center gap-2 group">
+                <button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white px-10 py-5 rounded-2xl text-xl font-bold transition-all shadow-2xl shadow-primary/30 flex items-center justify-center gap-2 group hover:-translate-y-1 active:scale-95">
                   Start for Free (500 Leads)
                   <span className="group-hover:translate-x-1 transition-transform">
-                    <ArrowRight className="text-white h-5 w-5" strokeWidth={3} />
+                    <ArrowRight className="text-white h-6 w-6" strokeWidth={3} />
                   </span>
                 </button>
               </Link>
-              <Link href="#features" className="w-full sm:w-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-8 py-4 rounded-xl text-lg font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2">
-                <PlayCircle className="text-primary h-5 w-5" />
+              <Link href="#features" className="w-full sm:w-auto bg-white/50 dark:bg-slate-800/50 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-10 py-5 rounded-2xl text-xl font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2 hover:-translate-y-1 active:scale-95">
+                <PlayCircle className="text-primary h-6 w-6" />
                 How it Works
               </Link>
             </motion.div>
