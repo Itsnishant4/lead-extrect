@@ -30,7 +30,7 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-    res.json({ status: 'ok', message: 'Worker is running' });
+    res.json({ status: 'ok', message: 'Worker ' });
 });
 
 
