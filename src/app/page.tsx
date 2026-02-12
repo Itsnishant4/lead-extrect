@@ -234,9 +234,9 @@ export default function Home() {
             variants={staggerContainer}
             className="grid lg:grid-cols-2 gap-8"
           >
-            <motion.div variants={fadeInUp} className="group relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden hover:shadow-2xl transition-all duration-300">
+            <motion.div variants={fadeInUp} className="group relative bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/20 dark:border-white/5 rounded-3xl overflow-hidden hover:shadow-[0_20px_50px_rgba(19,146,236,0.15)] transition-all duration-500 hover:-translate-y-1">
               <div className="p-8 pb-0">
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
+                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                   <Layers className="text-primary h-8 w-8" />
                 </div>
                 <h4 className="text-2xl font-bold mb-3 dark:text-white">
@@ -248,31 +248,31 @@ export default function Home() {
                 </p>
               </div>
               <div className="px-8 pb-8">
-                <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 border border-slate-100 dark:border-slate-800">
+                <div className="bg-white/50 dark:bg-slate-900/50 rounded-2xl p-4 border border-white/20 dark:border-white/5 shadow-inner">
                   <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-lg shadow-sm">
+                    <div className="flex items-center gap-3 bg-white/80 dark:bg-slate-800/80 p-3 rounded-xl shadow-sm backdrop-blur-sm">
                       <div className="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded">
                         NICHE
                       </div>
-                      <div className="h-2 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                      <div className="h-2 w-24 bg-slate-200/50 dark:bg-slate-700/50 rounded"></div>
                       <div className="text-primary font-bold text-xs ml-auto">
                         × 50
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-lg shadow-sm">
+                    <div className="flex items-center gap-3 bg-white/80 dark:bg-slate-800/80 p-3 rounded-xl shadow-sm backdrop-blur-sm">
                       <div className="px-2 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-bold rounded">
                         CITY
                       </div>
-                      <div className="h-2 w-32 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                      <div className="h-2 w-32 bg-slate-200/50 dark:bg-slate-700/50 rounded"></div>
                       <div className="text-amber-500 font-bold text-xs ml-auto">
                         × 100
                       </div>
                     </div>
-                    <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center justify-between pt-2 px-2">
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter">
                         Total Combinations
                       </span>
-                      <span className="text-xl font-800 text-primary">
+                      <span className="text-xl font-900 text-primary">
                         5,000
                       </span>
                     </div>
@@ -280,9 +280,9 @@ export default function Home() {
                 </div>
               </div>
             </motion.div>
-            <motion.div variants={fadeInUp} className="group relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden hover:shadow-2xl transition-all duration-300">
+            <motion.div variants={fadeInUp} className="group relative bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/20 dark:border-white/5 rounded-3xl overflow-hidden hover:shadow-[0_20px_50px_rgba(19,146,236,0.15)] transition-all duration-500 hover:-translate-y-1">
               <div className="p-8 pb-0">
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
+                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                   <Map className="text-primary h-8 w-8" />
                 </div>
                 <h4 className="text-2xl font-bold mb-3 dark:text-white">
@@ -294,9 +294,9 @@ export default function Home() {
                 </p>
               </div>
               <div className="px-8 pb-8 h-48 relative">
-                <div className="absolute inset-x-8 bottom-8 top-0 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div className="absolute inset-x-8 bottom-8 top-0 rounded-2xl bg-white/50 dark:bg-slate-900/50 border border-white/20 dark:border-white/5 overflow-hidden">
                   <div
-                    className="absolute inset-0 opacity-20"
+                    className="absolute inset-0 opacity-10"
                     style={{
                       backgroundImage:
                         "radial-gradient(circle, #1392ec 1px, transparent 1px)",
@@ -305,13 +305,13 @@ export default function Home() {
                   ></div>
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
                     <div className="relative">
-                      <div className="absolute -inset-12 bg-primary/10 rounded-full animate-pulse"></div>
-                      <div className="relative w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg">
-                        <MapPin className="text-white h-4 w-4" />
+                      <div className="absolute -inset-16 bg-primary/10 rounded-full animate-pulse"></div>
+                      <div className="absolute -inset-8 bg-primary/5 rounded-full animate-pulse delay-75"></div>
+                      <div className="relative w-10 h-10 bg-primary rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(19,146,236,0.5)] group-hover:scale-110 transition-transform duration-300">
+                        <MapPin className="text-white h-5 w-5" />
                       </div>
-                      <Pin className="absolute -top-12 -right-16 text-primary w-6 h-6 opacity-50" />
-                      <Pin className="absolute top-8 -left-20 text-primary w-6 h-6 opacity-50" />
-                      <Pin className="absolute -bottom-14 right-4 text-primary w-6 h-6 opacity-50" />
+                      <Pin className="absolute -top-12 -right-16 text-primary w-6 h-6 opacity-30 group-hover:opacity-60 transition-opacity" />
+                      <Pin className="absolute top-8 -left-20 text-primary w-6 h-6 opacity-30 group-hover:opacity-60 transition-opacity" />
                     </div>
                   </div>
                 </div>
@@ -421,25 +421,28 @@ export default function Home() {
             transition={{ duration: 0.8 }}
             className="max-w-5xl mx-auto"
           >
-            <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <div className="h-10 bg-slate-100 dark:bg-slate-700 flex items-center px-4 gap-2 border-b border-slate-200 dark:border-slate-700">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                  <div className="w-3 h-3 rounded-full bg-amber-400"></div>
-                  <div className="w-3 h-3 rounded-full bg-green-400"></div>
+            <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-2xl rounded-3xl shadow-[0_30px_100px_rgba(0,0,0,0.1)] dark:shadow-[0_30px_100px_rgba(0,0,0,0.4)] border border-white/20 dark:border-white/5 overflow-hidden">
+              <div className="h-12 bg-white/50 dark:bg-slate-700/50 flex items-center px-6 gap-2 border-b border-white/20 dark:border-white/5 backdrop-blur-md">
+                <div className="flex gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-400/80"></div>
+                  <div className="w-3 h-3 rounded-full bg-amber-400/80"></div>
+                  <div className="w-3 h-3 rounded-full bg-green-400/80"></div>
                 </div>
-                <div className="flex-1 max-w-md bg-white dark:bg-slate-600 h-6 mx-auto rounded flex items-center px-3">
-                  <span className="text-[10px] text-slate-400 truncate max-w-[100px] md:max-w-[200px]">
+                <div className="flex-1 max-w-md bg-white/50 dark:bg-slate-600/50 h-7 mx-auto rounded-lg flex items-center px-4 border border-white/20 dark:border-white/5">
+                  <span className="text-[10px] font-medium text-slate-400 truncate tracking-tight">
                     app.leadspotter.io/campaigns/extraction-ny-agencies
                   </span>
                 </div>
               </div>
-              <div className="p-2 md:p-6 bg-slate-50 dark:bg-slate-900">
-                <img
-                  alt="LeadSpotter Interactive Dashboard"
-                  className="rounded-xl w-full shadow-inner object-contain dark:brightness-90"
-                  src="/hero.png"
-                />
+              <div className="p-3 md:p-8 bg-transparent">
+                <div className="relative group">
+                  <div className="absolute inset-0 bg-primary/20 blur-[100px] opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+                  <img
+                    alt="LeadSpotter Interactive Dashboard"
+                    className="rounded-2xl w-full shadow-2xl object-contain dark:brightness-110 relative z-10 border border-white/10"
+                    src="/hero.png"
+                  />
+                </div>
               </div>
             </div>
             <div className="mt-12 text-center">
