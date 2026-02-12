@@ -1613,21 +1613,20 @@ export async function triggerTaskAutomationAction(taskId: number) {
     const task = await db`SELECT status FROM tasks WHERE id = ${taskId} AND user_id = ${session.id}`;
     if (!task[0]) return { success: false, error: 'Task not found' };
 
-    // Trigger the recursive worker via internal API call (non-blocking)
-    const headerList = await headers();
-    const host = headerList.get('host') || 'localhost:3000';
-    const protocol = host.includes('localhost') ? 'http' : 'https';
-    const url = `${protocol}://${host}/api/automation/run`;
+    // Trigger the external worker via HTTP (fire-and-forget)
+    const workerUrl = process.env.WORKER_URL || 'http://localhost:4000';
+    const workerToken = process.env.WORKER_AUTH_TOKEN || '';
 
-    console.log(`[TRIGGER] Starting task ${taskId} on ${url}`);
+    console.log(`[TRIGGER] Delegating task ${taskId} to worker at ${workerUrl}`);
 
-    // We MUST NOT await this for the recursion to work as "fire and forget" from the client's perspective
-    // BUT we should ensure it catches errors.
-    fetch(url, {
+    fetch(`${workerUrl}/run-task`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-worker-token': workerToken
+      },
       body: JSON.stringify({ taskId, userId: session.id }),
-    }).catch(e => console.error('Background trigger failed:', e));
+    }).catch(e => console.error('Worker trigger failed:', e));
 
     return { success: true };
   } catch (error) {
@@ -1680,12 +1679,12 @@ export async function processTaskStepAction(taskId: number, userId: number) {
     const nextIndex = index + 1;
     await db`UPDATE tasks SET current_keyword_index = ${nextIndex}, updated_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
 
-    // Check if we should send logs periodically (every 1 minute for testing)
+    // Check if we should send logs periodically (every 1 hour for testing)
     const taskStatusRes = await db`SELECT last_logs_sent_at FROM tasks WHERE id = ${taskId}`;
     const lastSent = taskStatusRes[0]?.last_logs_sent_at ? new Date(taskStatusRes[0].last_logs_sent_at) : new Date(0);
     const now = new Date();
 
-    if (now.getTime() - lastSent.getTime() > 60 * 1000) { // 1 minute
+    if (now.getTime() - lastSent.getTime() > 60 * 60 * 1000) { // 1 hour
       await sendLogsToTelegramAction(taskId);
       await db`UPDATE tasks SET last_logs_sent_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
       await saveServerLogAction(taskId, 'INFO', 'Periodic logs sent to Telegram');
@@ -1773,8 +1772,8 @@ export async function sendLogsToTelegramAction(taskId: number) {
     const data = await res.json();
     if (!data.ok) return { success: false, error: data.description };
 
-    // Delete logs older than 1 minute to keep DB clean (testing)
-    await db`DELETE FROM server_logs WHERE created_at < NOW() - INTERVAL '15 minute'`;
+    // Delete logs older than 1 hour to keep DB clean (testing)
+    await db`DELETE FROM server_logs WHERE created_at < NOW() - INTERVAL '1 hour'`;
 
     return { success: true };
   } catch (error) {
@@ -1786,7 +1785,7 @@ export async function sendLogsToTelegramAction(taskId: number) {
 // Helper to cleanup old logs
 export async function cleanupServerLogsAction() {
   try {
-    await db`DELETE FROM server_logs WHERE created_at < NOW() - INTERVAL '1 minute'`;
+    await db`DELETE FROM server_logs WHERE created_at < NOW() - INTERVAL '1 hour'`;
     return { success: true };
   } catch (error) {
     return { success: false };

@@ -1,0 +1,293 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.saveServerLog = saveServerLog;
+exports.sendLogsToTelegram = sendLogsToTelegram;
+exports.searchLeadsInternal = searchLeadsInternal;
+const db_1 = require("./db");
+const extractor_1 = require("./extractor");
+const enricher_1 = require("./enricher");
+const node_fetch_1 = __importDefault(require("node-fetch"));
+const getTs = () => `[${new Date().toLocaleTimeString('en-GB')}]`;
+async function saveServerLog(taskId, level, message) {
+    try {
+        await (0, db_1.db) `
+      INSERT INTO server_logs (task_id, level, message)
+      VALUES (${taskId}, ${level}, ${message})
+    `;
+        console.log(`${getTs()} [LOG][${level}][Task:${taskId}] ${message}`);
+    }
+    catch (error) {
+        console.error(`${getTs()} Failed to save server log:`, error);
+    }
+}
+async function sendLogsToTelegram(taskId) {
+    try {
+        const logs = await (0, db_1.db) `
+      SELECT level, message, created_at 
+      FROM server_logs 
+      WHERE task_id = ${taskId} 
+      ORDER BY created_at ASC
+    `;
+        if (logs.length === 0)
+            return;
+        const logContent = logs.map(l => `[${l.created_at.toISOString()}] [${l.level}] ${l.message}`).join('\n');
+        const token = process.env.TELEGRAM_BOT_TOKEN;
+        const chatId = process.env.TELEGRAM_CHAT_ID;
+        if (!token || !chatId)
+            return;
+        const taskData = await (0, db_1.db) `SELECT name FROM tasks WHERE id = ${taskId}`;
+        const taskName = taskData[0]?.name || `Task ${taskId}`;
+        const { FormData, Blob } = await Promise.resolve().then(() => __importStar(require('formdata-node')));
+        const form = new FormData();
+        form.append('chat_id', chatId);
+        const logBlob = new Blob([logContent], { type: 'text/plain' });
+        form.append('document', logBlob, `${taskName.replace(/\s+/g, '_')}_logs.txt`);
+        const res = await (0, node_fetch_1.default)(`https://api.telegram.org/bot${token}/sendDocument`, {
+            method: 'POST',
+            // @ts-ignore
+            body: form
+        });
+        const data = await res.json();
+        if (data.ok) {
+            await (0, db_1.db) `DELETE FROM server_logs WHERE created_at < NOW() - INTERVAL '15 minute'`;
+        }
+    }
+    catch (error) {
+        console.error('Failed to send logs to Telegram:', error);
+    }
+}
+const limits = {
+    'free': 500,
+    'pro': 5000,
+    'premium': Infinity
+};
+const computeLimit = (userRow) => {
+    const baseLimit = limits[userRow?.plan_type || 'free'] ?? 500;
+    const bonusCredits = userRow?.bonus_credits || 0;
+    const currentLimit = baseLimit === Infinity ? Infinity : baseLimit + bonusCredits;
+    const used = userRow?.leads_extracted || 0;
+    const remaining = currentLimit === Infinity ? Infinity : Math.max(currentLimit - used, 0);
+    return { baseLimit, bonusCredits, currentLimit, used, remaining };
+};
+const computeLeadScore = (lead) => {
+    let score = 0;
+    if (lead.rating)
+        score += Math.min(Math.round(Number(lead.rating) * 10), 50);
+    if (lead.reviewsCount)
+        score += Math.min(Math.round(Number(lead.reviewsCount) / 10), 30);
+    if (lead.email || lead.website_email)
+        score += 10;
+    if (lead.phone || lead.website_phone)
+        score += 10;
+    if (lead.website)
+        score += 5;
+    return Math.min(score, 100);
+};
+const getLeadKey = (lead) => {
+    const placeId = (lead.placeId || lead.place_id || '').toString().trim();
+    if (placeId)
+        return `pid:${placeId}`;
+    const name = (lead.name || '').toString().trim().toLowerCase();
+    const address = (lead.address || '').toString().trim().toLowerCase();
+    const phone = (lead.phone || '').toString().trim();
+    const website = (lead.website || '').toString().trim().toLowerCase();
+    return `fb:${name}|${address}|${phone}|${website}`;
+};
+async function searchLeadsInternal(query, userId, taskId, options) {
+    const totalStartTime = Date.now();
+    try {
+        const users = await (0, db_1.db) `SELECT plan_type, leads_extracted, bonus_credits FROM users WHERE id = ${userId}`;
+        const user = users[0];
+        if (!user)
+            return { success: false, error: 'User not found' };
+        const { currentLimit, remaining } = computeLimit(user);
+        if (currentLimit !== Infinity && remaining <= 0) {
+            return { success: false, error: 'Limit reached', limitReached: true };
+        }
+        const trimmedQuery = query.trim();
+        let lat;
+        let lng;
+        const pincodeMatch = trimmedQuery.match(/\b(\d{6})\b/);
+        if (pincodeMatch) {
+            const pincode = pincodeMatch[1];
+            const cachedCoords = await (0, db_1.db) `SELECT latitude, longitude FROM pincode_coords WHERE country = 'India' AND pincode = ${pincode}`;
+            if (cachedCoords[0]) {
+                lat = cachedCoords[0].latitude;
+                lng = cachedCoords[0].longitude;
+            }
+            else {
+                try {
+                    const geoRes = await (0, node_fetch_1.default)(`https://nominatim.openstreetmap.org/search?postalcode=${pincode}&country=India&format=json`, {
+                        headers: { 'User-Agent': 'LeadSpotter/1.0' }
+                    });
+                    const geoData = await geoRes.json();
+                    if (geoData && geoData[0]) {
+                        lat = parseFloat(geoData[0].lat);
+                        lng = parseFloat(geoData[0].lon);
+                        await (0, db_1.db) `INSERT INTO pincode_coords (country, pincode, latitude, longitude) VALUES ('India', ${pincode}, ${lat}, ${lng}) ON CONFLICT DO NOTHING`;
+                    }
+                }
+                catch (e) { }
+            }
+        }
+        await saveServerLog(taskId || null, 'INFO', `Extraction started for: "${query}"`);
+        const heartbeat = async (leadsFound) => {
+            if (taskId) {
+                try {
+                    await (0, db_1.db) `UPDATE tasks SET updated_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
+                    console.log(`${getTs()} [HEARTBEAT][Task:${taskId}] Extraction in progress. Leads found: ${leadsFound}`);
+                }
+                catch (e) {
+                    console.error(`${getTs()} Heartbeat update failed:`, e);
+                }
+            }
+        };
+        const rawLeads = await (0, extractor_1.fetchLeads)(query, lat, lng, {
+            ...options,
+            onProgress: (count) => {
+                heartbeat(count).catch(e => console.error(e));
+                if (options?.onProgress)
+                    options.onProgress(count);
+            }
+        });
+        console.log(`${getTs()} [WORKER][Task:${taskId}] Starting enrichment for ${rawLeads.length} leads...`);
+        const enrichmentStartTime = Date.now();
+        const enrichedLeads = await Promise.all(rawLeads.map(async (lead) => {
+            if (lead.website) {
+                const enrichment = await (0, enricher_1.enrichLead)(lead.website);
+                return {
+                    ...lead,
+                    email: lead.email || (enrichment.emails.length > 0 ? enrichment.emails[0] : null),
+                    website_email: enrichment.emails.join(', ') || null,
+                    website_phone: enrichment.phones.join(', ') || null,
+                    socials: { ...lead.socials, ...enrichment.socials }
+                };
+            }
+            return lead;
+        }));
+        const enrichmentDuration = ((Date.now() - enrichmentStartTime) / 1000).toFixed(2);
+        console.log(`${getTs()} [WORKER][Task:${taskId}] Enrichment completed for ${rawLeads.length} leads. (Took ${enrichmentDuration}s)`);
+        const dedupeMap = new Map();
+        for (const lead of enrichedLeads) {
+            const key = getLeadKey(lead);
+            if (!dedupeMap.has(key))
+                dedupeMap.set(key, lead);
+        }
+        const uniqueLeads = Array.from(dedupeMap.values());
+        const result = await db_1.db.begin(async (tx) => {
+            const lockedUsers = await tx `SELECT leads_extracted FROM users WHERE id = ${userId} FOR UPDATE`;
+            const lockedUser = lockedUsers[0];
+            const { remaining: lockedRemaining } = computeLimit({ ...user, leads_extracted: lockedUser.leads_extracted });
+            if (currentLimit !== Infinity && lockedRemaining <= 0) {
+                return { success: false, error: 'Limit reached during processing', limitReached: true };
+            }
+            const allowedCount = currentLimit === Infinity ? uniqueLeads.length : Math.min(uniqueLeads.length, lockedRemaining);
+            const leadsToInsert = uniqueLeads.slice(0, allowedCount);
+            const searchResult = await tx `INSERT INTO searches (user_id, query, task_id) VALUES (${userId}, ${trimmedQuery}, ${taskId || null}) RETURNING id`;
+            const searchId = searchResult[0].id;
+            const leadsData = leadsToInsert.map(lead => ({
+                search_id: searchId,
+                task_id: taskId || null,
+                name: lead.name,
+                address: lead.address,
+                city: lead.city,
+                website: lead.website,
+                phone: lead.phone,
+                email: lead.email,
+                rating: lead.rating,
+                reviews_count: lead.reviewsCount,
+                category: lead.category,
+                place_id: lead.placeId,
+                latitude: lead.latitude,
+                longitude: lead.longitude,
+                direction_url: lead.directionUrl,
+                monday_hours: lead.hours?.monday || null,
+                tuesday_hours: lead.hours?.tuesday || null,
+                wednesday_hours: lead.hours?.wednesday || null,
+                thursday_hours: lead.hours?.thursday || null,
+                friday_hours: lead.hours?.friday || null,
+                saturday_hours: lead.hours?.saturday || null,
+                sunday_hours: lead.hours?.sunday || null,
+                facebook: lead.socials?.facebook || null,
+                instagram: lead.socials?.instagram || null,
+                linkedin: lead.socials?.linkedin || null,
+                twitter: lead.socials?.twitter || null,
+                youtube: lead.socials?.youtube || null,
+                pinterest: lead.socials?.pinterest || null,
+                tiktok: lead.socials?.tiktok || null,
+                website_email: lead.website_email || null,
+                website_phone: lead.website_phone || null,
+                lead_score: computeLeadScore(lead)
+            }));
+            if (leadsData.length > 0) {
+                const insertedLeads = await tx `
+                    INSERT INTO leads ${tx(leadsData)}
+                    ON CONFLICT (place_id) DO UPDATE SET name = EXCLUDED.name
+                    RETURNING id, place_id
+                `;
+                const taskLeadsData = taskId ? insertedLeads.map((l) => ({
+                    task_id: taskId,
+                    lead_id: l.id
+                })) : [];
+                const leadSourcesData = insertedLeads.map((l) => ({
+                    lead_id: l.id,
+                    search_id: searchId,
+                    task_id: taskId || null
+                }));
+                if (taskLeadsData.length > 0) {
+                    await tx `INSERT INTO task_leads ${tx(taskLeadsData)} ON CONFLICT DO NOTHING`;
+                }
+                await tx `INSERT INTO lead_sources ${tx(leadSourcesData)} ON CONFLICT DO NOTHING`;
+            }
+            if (taskId) {
+                const countRes = await tx `SELECT COUNT(*) as count FROM task_leads WHERE task_id = ${taskId}`;
+                await tx `UPDATE tasks SET total_leads = ${countRes[0].count} WHERE id = ${taskId}`;
+            }
+            await tx `UPDATE users SET leads_extracted = leads_extracted + ${leadsToInsert.length} WHERE id = ${userId}`;
+            const totalDuration = ((Date.now() - totalStartTime) / 1000).toFixed(2);
+            console.log(`${getTs()} [WORKER] Finished searchLeadsInternal for "${query}". [Total Duration: ${totalDuration}s]`);
+            return { success: true, count: leadsToInsert.length };
+        });
+        return result;
+    }
+    catch (error) {
+        console.error('Worker internal error:', error);
+        return { success: false, error: error.message };
+    }
+}
