@@ -21,7 +21,7 @@ let isInitialized = false;
 
 export async function seed() {
   if (isInitialized) return;
-  
+
   try {
     console.log('Seeding database...');
 
@@ -40,7 +40,7 @@ export async function seed() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
-    
+
     // 2. Create Tasks Table
     await db`
       CREATE TABLE IF NOT EXISTS tasks (
@@ -236,7 +236,7 @@ export async function seed() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
-    
+
     // 11. Create Pincode Coordinates Cache Table
     await db`
       CREATE TABLE IF NOT EXISTS pincode_coords (
@@ -251,7 +251,7 @@ export async function seed() {
 
     // --- MIGRATION LOGIC (For existing tables) ---
     // Safely add columns if they don't exist
-    
+
     // Helper to check if column exists and add if missing
     const addColumnIfNotExists = async (table: string, column: string, columnType: string) => {
       try {
@@ -260,7 +260,7 @@ export async function seed() {
           FROM information_schema.columns 
           WHERE table_name = ${table} AND column_name = ${column}
         `;
-        
+
         if (result.length === 0) {
           await db.unsafe(`ALTER TABLE ${table} ADD COLUMN ${column} ${columnType}`);
           console.log(`Added column ${column} to ${table}`);
@@ -286,12 +286,14 @@ export async function seed() {
     await addColumnIfNotExists('keyword_history', 'keywords_truncated', 'BOOLEAN DEFAULT FALSE');
     await addColumnIfNotExists('tasks', 'user_agent', 'TEXT');
     await addColumnIfNotExists('tasks', 'accept_language', 'TEXT');
-    
+    await addColumnIfNotExists('tasks', 'export_file_ids', 'TEXT');
+    await addColumnIfNotExists('tasks', 'exported_leads_count', 'INTEGER DEFAULT 0');
+
 
     // Default settings (only insert if clean DB, or ignore conflicts)
     // This insert might fail if user_id is null in the new schema constraint, but here we just try.
     // We won't insert default settings here to avoid errors with the new schema.
-    
+
     isInitialized = true;
     console.log('Database seeded/migrated successfully.');
   } catch (error) {

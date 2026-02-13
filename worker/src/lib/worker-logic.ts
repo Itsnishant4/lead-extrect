@@ -3,6 +3,7 @@ import { fetchLeads } from './extractor';
 import { enrichLead } from './enricher';
 import { Lead } from './parser';
 import fetch from 'node-fetch';
+import { FormData, Blob } from 'formdata-node';
 
 const getTs = () => `[${new Date().toLocaleTimeString('en-GB')}]`;
 
@@ -38,7 +39,6 @@ export async function sendLogsToTelegram(taskId: number) {
         const taskData = await db`SELECT name FROM tasks WHERE id = ${taskId}`;
         const taskName = taskData[0]?.name || `Task ${taskId}`;
 
-        const { FormData, Blob } = await import('formdata-node');
         const form = new FormData();
         form.append('chat_id', chatId);
         const logBlob = new Blob([logContent], { type: 'text/plain' });
@@ -276,5 +276,85 @@ export async function searchLeadsInternal(
     } catch (error) {
         console.error('Worker internal error:', error);
         return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function uploadExportChunk(taskId: number, leads: any[]) {
+    if (leads.length === 0) return;
+
+    try {
+        const token = process.env.TELEGRAM_BOT_TOKEN;
+        const chatId = process.env.TELEGRAM_CHAT_ID;
+        if (!token || !chatId) return;
+
+        const taskData = await db`SELECT name, export_file_ids FROM tasks WHERE id = ${taskId}`;
+        if (!taskData[0]) return;
+
+        const taskName = taskData[0].name || `Task ${taskId}`;
+        const existingIds = taskData[0].export_file_ids ? JSON.parse(taskData[0].export_file_ids) : [];
+        const chunkIndex = existingIds.length + 1;
+
+        // Generate CSV
+        const header = [
+            "Name", "Category", "Rating", "Reviews",
+            "Phone", "Website Phone", "Email", "Website Email",
+            "Website", "Address", "City", "Latitude", "Longitude", "Place ID",
+            "Facebook", "Instagram", "LinkedIn", "Twitter", "YouTube", "Pinterest", "TikTok",
+            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+        ];
+
+        const escapeCsv = (str: any) => {
+            if (str === null || str === undefined) return "";
+            const stringValue = String(str);
+            if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
+                return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+        };
+
+        const csvRows = leads.map(lead => [
+            lead.name, lead.category, lead.rating, lead.reviewsCount || lead.reviews_count,
+            lead.phone, lead.website_phone, lead.email, lead.website_email,
+            lead.website, lead.address, lead.city, lead.latitude, lead.longitude, lead.place_id,
+            lead.facebook, lead.instagram, lead.linkedin, lead.twitter, lead.youtube, lead.pinterest, lead.tiktok,
+            lead.monday_hours, lead.tuesday_hours, lead.wednesday_hours, lead.thursday_hours, lead.friday_hours, lead.saturday_hours, lead.sunday_hours
+        ].map(escapeCsv).join(","));
+
+        // Include headers in every chunk for standalone validity
+        const output = [header.join(","), ...csvRows].join("\n");
+
+        const filename = `${taskName.replace(/\s+/g, '_')}_part_${chunkIndex}.csv`;
+
+        const form = new FormData();
+        form.append('chat_id', chatId);
+        const fileBlob = new Blob([output], { type: 'text/csv' });
+        form.append('document', fileBlob, filename);
+
+        const res = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, {
+            method: 'POST',
+            // @ts-ignore
+            body: form
+        });
+
+        const data: any = await res.json();
+
+        if (data.ok && data.result?.document?.file_id) {
+            const fileId = data.result.document.file_id;
+            existingIds.push(fileId);
+
+            await db`
+                UPDATE tasks 
+                SET export_file_ids = ${JSON.stringify(existingIds)}, 
+                    exported_leads_count = COALESCE(exported_leads_count, 0) + ${leads.length},
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ${taskId}
+            `;
+            console.log(`${getTs()} [WORKER][Task:${taskId}] Exported chunk ${chunkIndex} with ${leads.length} leads to Telegram.`);
+        } else {
+            console.error(`${getTs()} [WORKER][Task:${taskId}] Failed to upload export chunk to Telegram:`, data);
+        }
+
+    } catch (error) {
+        console.error(`${getTs()} [WORKER][Task:${taskId}] Export error:`, error);
     }
 }
