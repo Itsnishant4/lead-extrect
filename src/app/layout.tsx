@@ -5,6 +5,8 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { AutomationProvider } from "@/context/AutomationContext";
 import QueryProvider from "@/components/QueryProvider";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
+import JsonLd from "@/components/JsonLd";
 
 export const metadata: Metadata = {
   title: {
@@ -52,6 +54,9 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://leadspotter.in"),
   alternates: {
     canonical: "/",
+    languages: {
+      "en-US": "/en-US",
+    },
   },
   icons: {
     icon: [
@@ -64,6 +69,11 @@ export const metadata: Metadata = {
     ],
   },
   manifest: "/favicon/site.webmanifest",
+  verification: {
+    google: "google-site-verification-code", // User to replace
+  },
+  category: "Business",
+  classification: "SaaS",
 };
 
 export default function RootLayout({
@@ -74,8 +84,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <JsonLd />
       </head>
       <body className="antialiased min-h-screen ">
+        <GoogleAnalytics />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

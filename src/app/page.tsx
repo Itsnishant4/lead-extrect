@@ -33,12 +33,7 @@ export default function Home() {
         <div className="absolute inset-0 -z-10 bg-slate-50 dark:bg-slate-900/50" />
         <div className="absolute inset-0 -z-10 overflow-hidden">
           <div
-            className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full opacity-[0.15] pointer-events-none"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 2px 2px, #1392ec 1px, transparent 0)",
-              backgroundSize: "48px 48px",
-            }}
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full opacity-[0.15] pointer-events-none bg-grid-pattern"
           ></div>
           <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white via-transparent to-white dark:from-background-dark dark:via-transparent dark:to-background-dark" />
         </div>
@@ -296,12 +291,7 @@ export default function Home() {
               <div className="px-8 pb-8 h-48 relative">
                 <div className="absolute inset-x-8 bottom-8 top-0 rounded-2xl bg-white/50 dark:bg-slate-900/50 border border-white/20 dark:border-white/5 overflow-hidden">
                   <div
-                    className="absolute inset-0 opacity-10"
-                    style={{
-                      backgroundImage:
-                        "radial-gradient(circle, #1392ec 1px, transparent 1px)",
-                      backgroundSize: "20px 20px",
-                    }}
+                    className="absolute inset-0 opacity-10 bg-dot-pattern"
                   ></div>
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
                     <div className="relative">
@@ -524,12 +514,7 @@ export default function Home() {
             className="bg-primary rounded-[2rem] p-8 md:p-12 text-center text-white relative overflow-hidden shadow-2xl shadow-primary/20"
           >
             <div
-              className="absolute inset-0 opacity-10"
-              style={{
-                backgroundImage:
-                  "radial-gradient(white 1px, transparent 1px)",
-                backgroundSize: "20px 20px",
-              }}
+              className="absolute inset-0 opacity-10 bg-dot-pattern-white"
             ></div>
             <div className="relative z-10">
               <h4 className="text-3xl md:text-4xl font-800 mb-6">

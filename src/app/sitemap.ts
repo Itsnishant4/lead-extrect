@@ -7,19 +7,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
         {
             url: baseUrl,
             lastModified: new Date(),
-            changeFrequency: "daily",
+            changeFrequency: "weekly",
             priority: 1,
         },
         {
-            url: `${baseUrl}/features`,
+            url: `${baseUrl}/login`,
             lastModified: new Date(),
-            changeFrequency: "weekly",
+            changeFrequency: "monthly",
             priority: 0.8,
         },
         {
-            url: `${baseUrl}/pricing`,
+            url: `${baseUrl}/signup`,
             lastModified: new Date(),
-            changeFrequency: "weekly",
+            changeFrequency: "monthly",
             priority: 0.8,
         },
         {
@@ -28,29 +28,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
             changeFrequency: "monthly",
             priority: 0.5,
         },
-        {
-            url: `${baseUrl}/login`,
-            lastModified: new Date(),
-            changeFrequency: "yearly",
-            priority: 0.5,
-        },
-        {
-            url: `${baseUrl}/signup`,
-            lastModified: new Date(),
-            changeFrequency: "yearly",
-            priority: 0.8,
-        },
-        {
-            url: `${baseUrl}/privacy`,
-            lastModified: new Date(),
-            changeFrequency: "yearly",
-            priority: 0.3,
-        },
-        {
-            url: `${baseUrl}/terms`,
-            lastModified: new Date(),
-            changeFrequency: "yearly",
-            priority: 0.3,
-        },
+        // Add more dynamic routes here if needed
     ];
 }
