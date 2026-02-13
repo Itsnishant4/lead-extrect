@@ -30,7 +30,7 @@ export default function JsonLd() {
             "@type": "SearchAction",
             target: "https://leadspotter.in/search?q={search_term_string}",
             "query-input": "required name=search_term_string",
-        },
+        } as any,
     };
 
     const softwareJsonLd: WithContext<SoftwareApplication> = {
