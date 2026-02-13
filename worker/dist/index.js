@@ -28,6 +28,9 @@ const workerAuth = (req, res, next) => {
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
+app.get('/', (req, res) => {
+    res.json({ status: 'ok', message: 'Worker is running ' });
+});
 app.post('/run-task', workerAuth, async (req, res) => {
     const { taskId, userId } = req.body;
     if (!taskId || !userId) {
