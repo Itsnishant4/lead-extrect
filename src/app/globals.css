@@ -201,3 +201,18 @@ body {
     background-size: 20px 20px;
   }
 }
+
+
+.animate {
+  animation: shimmer 3s;
+  animation-iteration-count: infinite;
+  background: linear-gradient(to right, #e6e6e605 1%, #cccccc10 2%, #00000000 35%);
+}
+@keyframes shimmer {
+  from {
+    background-position: -1000px 0;
+  }
+  to {
+    background-position: 1000px 0;
+  }
+}

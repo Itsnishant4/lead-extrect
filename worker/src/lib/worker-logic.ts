@@ -94,6 +94,39 @@ const getLeadKey = (lead: any) => {
     return `fb:${name}|${address}|${phone}|${website}`;
 };
 
+const BLOCKED_CATEGORIES = [
+    'Housing society',
+    'Apartment building',
+    'Condominium complex',
+    'Housing complex',
+    'Residents association',
+    'Gated community',
+    'Tea store',
+    'Flour mill',
+    'Private User',
+    'Transit station',
+    'Public toilet',
+    'Park',
+    'Garden',
+    'Playground'
+];
+
+function validateLead(lead: any, query: string): boolean {
+    if (!lead.category) return true; // Keep if unknown, or strict? Let's keep for now.
+
+    const lowerCat = lead.category.toLowerCase();
+
+    // 1. Blocklist Check
+    if (BLOCKED_CATEGORIES.some(c => lowerCat.includes(c.toLowerCase()))) {
+        return false;
+    }
+
+    // 2. Optional: Keyword Relevance (Strict Mode)
+    // For now, rely on Blocklist as per plan. Can expand later.
+
+    return true;
+}
+
 export async function searchLeadsInternal(
     query: string,
     userId: number,
@@ -158,10 +191,19 @@ export async function searchLeadsInternal(
             }
         });
 
-        console.log(`${getTs()} [WORKER][Task:${taskId}] Starting enrichment for ${rawLeads.length} leads...`);
+        // --- FILTERING STEP ---
+        const validRawLeads = rawLeads.filter(lead => validateLead(lead, trimmedQuery));
+        const filteredCount = rawLeads.length - validRawLeads.length;
+        if (filteredCount > 0) {
+            console.log(`${getTs()} [WORKER][Task:${taskId}] Filtered out ${filteredCount} irrelevant leads.`);
+            await saveServerLog(taskId || null, 'INFO', `Filtered out ${filteredCount} irrelevant leads (e.g. Housing societies).`);
+        }
+        // ----------------------
+
+        console.log(`${getTs()} [WORKER][Task:${taskId}] Starting enrichment for ${validRawLeads.length} leads...`);
         const enrichmentStartTime = Date.now();
 
-        const enrichedLeads = await Promise.all(rawLeads.map(async (lead) => {
+        const enrichedLeads = await Promise.all(validRawLeads.map(async (lead) => {
             if (lead.website) {
                 const enrichment = await enrichLead(lead.website);
                 return {
@@ -356,5 +398,18 @@ export async function uploadExportChunk(taskId: number, leads: any[]) {
 
     } catch (error) {
         console.error(`${getTs()} [WORKER][Task:${taskId}] Export error:`, error);
+    }
+}
+
+export async function ensureWorkerSchema() {
+    try {
+        await db`
+            ALTER TABLE tasks 
+            ADD COLUMN IF NOT EXISTS export_file_ids TEXT,
+            ADD COLUMN IF NOT EXISTS exported_leads_count INTEGER DEFAULT 0
+        `;
+        console.log(`${getTs()} [WORKER] Schema verified: export_file_ids and exported_leads_count columns exist.`);
+    } catch (error) {
+        console.error(`${getTs()} [WORKER] Failed to verify schema:`, error);
     }
 }

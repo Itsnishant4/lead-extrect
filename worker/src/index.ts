@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { db } from './lib/db';
-import { searchLeadsInternal, saveServerLog, sendLogsToTelegram, uploadExportChunk } from './lib/worker-logic';
+import { searchLeadsInternal, saveServerLog, sendLogsToTelegram, uploadExportChunk, ensureWorkerSchema } from './lib/worker-logic';
 
 dotenv.config();
 
@@ -160,41 +160,56 @@ async function processTask(taskId: number, userId: number) {
             const nextIndex = index + 1;
             await db`UPDATE tasks SET current_keyword_index = ${nextIndex}, updated_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
 
-            // --- EXPORT LOGIC ---
+            // --- EXPORT LOGIC (Every 2 Keywords) ---
             try {
-                // Check if we have enough unexported leads to make a chunk
-                const currentTaskState = await db`SELECT total_leads, exported_leads_count, export_file_ids FROM tasks WHERE id = ${taskId}`;
-                if (currentTaskState[0]) {
-                    const totalLeads = currentTaskState[0].total_leads || 0;
-                    const exportedCount = currentTaskState[0].exported_leads_count || 0;
-                    const unexported = totalLeads - exportedCount;
+                // User Request: Export every 2 keywords to avoid too many small CSVs
+                // Check if we just finished an even number of keywords (2, 4, 6...)
+                if (nextIndex > 0 && nextIndex % 2 === 0) {
+                    const currentTaskState = await db`SELECT total_leads, exported_leads_count, export_file_ids FROM tasks WHERE id = ${taskId}`;
+                    if (currentTaskState[0]) {
+                        const totalLeads = currentTaskState[0].total_leads || 0;
+                        const exportedCount = currentTaskState[0].exported_leads_count || 0;
+                        const unexported = totalLeads - exportedCount;
 
-                    // Export chunk if > 50 leads pending
-                    if (unexported >= 50) {
-                        const leadsToExport = await db`
-                            SELECT l.* 
-                            FROM leads l 
-                            JOIN task_leads tl ON l.id = tl.lead_id 
-                            WHERE tl.task_id = ${taskId}
-                            ORDER BY l.created_at ASC
-                            OFFSET ${exportedCount}
-                            LIMIT 50
-                        `;
+                        console.log(`[WORKER] Task ${taskId} Keyword Check: Processed ${nextIndex} keywords. Unexported leads: ${unexported}`);
 
-                        if (leadsToExport.length > 0) {
-                            await uploadExportChunk(taskId, leadsToExport);
+                        if (unexported > 0) {
+                            console.log(`[WORKER] Triggering export for ${unexported} leads (Batch of 2 keywords completed)...`);
+                            const leadsToExport = await db`
+                                SELECT l.* 
+                                FROM leads l 
+                                JOIN task_leads tl ON l.id = tl.lead_id 
+                                WHERE tl.task_id = ${taskId}
+                                ORDER BY l.created_at ASC
+                                OFFSET ${exportedCount}
+                            `;
+
+                            if (leadsToExport.length > 0) {
+                                await uploadExportChunk(taskId, leadsToExport);
+                            }
                         }
                     }
                 }
             } catch (e) {
-                console.error(`[WORKER] Export check failed for task ${taskId}:`, e);
+                console.error(`[WORKER] Export chunk failed for task ${taskId}:`, e);
             }
             // --------------------
 
+            // --------------------
+
             // Check if we should send periodic logs
-            const lastSent = task.last_logs_sent_at ? new Date(task.last_logs_sent_at) : new Date(0);
+            // Logic: Send logs only if > 1 hour has passed since last *successful* send.
+            let lastSent = task.last_logs_sent_at ? new Date(task.last_logs_sent_at) : null;
             const now = new Date();
-            if (now.getTime() - lastSent.getTime() > 2 * 60 * 1000) { // Every 2 mins
+
+            // If never sent, mark current time as start (don't send immediately on first run, wait 1 hour)
+            if (!lastSent) {
+                await db`UPDATE tasks SET last_logs_sent_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
+                lastSent = now;
+            }
+
+            if (now.getTime() - lastSent.getTime() > 60 * 60 * 1000) { // Every 1 hour
+                console.log(`[WORKER] Sending hourly logs for task ${taskId}...`);
                 await sendLogsToTelegram(taskId);
                 await db`UPDATE tasks SET last_logs_sent_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
             }
@@ -231,6 +246,13 @@ setInterval(async () => {
     }
 }, 2 * 60 * 1000);
 
-app.listen(port, () => {
-    console.log(`LeadSpotter Worker listening at http://localhost:${port}`);
+// Start Server
+const PORT = process.env.PORT || 4001;
+
+// Ensure schema on startup
+// Ensure schema on startup
+ensureWorkerSchema().then(() => {
+    app.listen(PORT, () => {
+        console.log(`LeadSpotter Worker listening at http://localhost:${PORT}`);
+    });
 });

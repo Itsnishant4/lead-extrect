@@ -1,14 +1,14 @@
 'use client';
 
 import { toast } from 'sonner';
-import { 
-  Play, 
-  Pause, 
-  Trash, 
-  Calendar, 
-  Stack, 
-  CheckCircle, 
-  Clock, 
+import {
+  Play,
+  Pause,
+  Trash,
+  Calendar,
+  Stack,
+  CheckCircle,
+  Clock,
   WarningCircle,
   Activity,
   CircleNotch
@@ -16,25 +16,17 @@ import {
 import { useState } from 'react';
 import Link from 'next/link';
 import { ExportFilters, FilterSettings } from './ExportFilters';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
 import { getTaskLeadsAction } from '@/app/actions';
-import { 
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -42,6 +34,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useAutomation } from '@/context/AutomationContext';
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Task {
   id: number;
@@ -95,6 +88,7 @@ interface TasksListProps {
 
 export default function TasksList({ tasks, onPause, onResume, onDelete }: TasksListProps) {
   const [deletingTasks, setDeletingTasks] = useState<Set<number>>(new Set());
+  const [exportProgressMap, setExportProgressMap] = useState<Record<number, number>>({});
   const { settings, user } = useAutomation();
   const limits: Record<string, number> = {
     free: 500,
@@ -137,17 +131,63 @@ export default function TasksList({ tasks, onPause, onResume, onDelete }: TasksL
       URL.revokeObjectURL(objectUrl);
       return;
     }
-    const res = await getTaskLeadsAction(taskId);
-    if (!res.success || !res.data) {
-      toast.error(`Failed to download leads for task: ${taskName}`);
+    const CHUNK_SIZE = 1000;
+    const task = tasks.find(t => t.id === taskId);
+    const totalLeads = task?.total_leads || 0;
+    let leads: Lead[] = [];
+
+    try {
+      if (totalLeads > 0) {
+        setExportProgressMap(prev => ({ ...prev, [taskId]: 0 }));
+        let offset = 0;
+        while (offset < totalLeads + CHUNK_SIZE) { // Fetch slightly more to be safe or until empty
+          // Update progress
+          const progress = Math.min(Math.round((offset / totalLeads) * 100), 99);
+          setExportProgressMap(prev => ({ ...prev, [taskId]: progress }));
+
+          const res = await getTaskLeadsAction(taskId, CHUNK_SIZE, offset);
+          if (!res.success || !res.data || res.data.length === 0) {
+            break;
+          }
+          leads = [...leads, ...(res.data as unknown as Lead[])];
+          offset += CHUNK_SIZE;
+
+          if (res.data.length < CHUNK_SIZE) break; // End of data
+        }
+      } else {
+        // Fallback for 0 leads or unknown count (shouldn't happen if button enabled)
+        const res = await getTaskLeadsAction(taskId);
+        if (res.success && res.data) {
+          leads = res.data as unknown as Lead[];
+        }
+      }
+    } catch (error) {
+      console.error("Export failed:", error);
+      toast.error("Export failed. Please try again.");
+      setExportProgressMap(prev => {
+        const next = { ...prev };
+        delete next[taskId];
+        return next;
+      });
       return;
+    } finally {
+      // Clear progress after short delay or immediately?
+      // ExportFilters needs it to show 100%. 
+      setExportProgressMap(prev => ({ ...prev, [taskId]: 100 }));
+      setTimeout(() => {
+        setExportProgressMap(prev => {
+          const next = { ...prev };
+          delete next[taskId];
+          return next;
+        });
+      }, 2000);
     }
 
-    const leads = (res.data || []) as unknown as Lead[];
-    
+    // Apply filters
+
     // Apply filters
     let filteredLeads = [...leads];
-    
+
     if (filters.hasEmail) {
       filteredLeads = filteredLeads.filter((l: Lead) => l.email || l.website_email);
     }
@@ -158,7 +198,7 @@ export default function TasksList({ tasks, onPause, onResume, onDelete }: TasksL
       filteredLeads = filteredLeads.filter((l: Lead) => l.website && l.website.startsWith('http'));
     }
     if (filters.hasSocials) {
-      filteredLeads = filteredLeads.filter((l: Lead) => 
+      filteredLeads = filteredLeads.filter((l: Lead) =>
         l.facebook || l.instagram || l.linkedin || l.twitter || l.youtube || l.pinterest || l.tiktok
       );
     }
@@ -175,9 +215,9 @@ export default function TasksList({ tasks, onPause, onResume, onDelete }: TasksL
     }
 
     const headers = [
-      'Name', 'Category', 'City', 'Rating', 'Reviews', 'Phone', 'Website Phone', 
-      'Email', 'Website Email', 'Website', 'Address', 'DirectionUrl', 
-      'Latitude', 'Longitude', 'Monday Hours', 'Tuesday Hours', 'Wednesday Hours', 
+      'Name', 'Category', 'City', 'Rating', 'Reviews', 'Phone', 'Website Phone',
+      'Email', 'Website Email', 'Website', 'Address', 'DirectionUrl',
+      'Latitude', 'Longitude', 'Monday Hours', 'Tuesday Hours', 'Wednesday Hours',
       'Thursday Hours', 'Friday Hours', 'Saturday Hours', 'Sunday Hours',
       'Facebook', 'Instagram', 'LinkedIn', 'Twitter', 'YouTube', 'Pinterest', 'TikTok'
     ];
@@ -190,49 +230,49 @@ export default function TasksList({ tasks, onPause, onResume, onDelete }: TasksL
     ]);
 
     if (settings.exportCityWise) {
-        // Group by city
-        const cityGroups: Record<string, any[][]> = {};
-        rows.forEach(row => {
-          const city = row[2] || 'Unknown';
-          if (!cityGroups[city]) cityGroups[city] = [];
-          cityGroups[city].push(row);
-        });
+      // Group by city
+      const cityGroups: Record<string, any[][]> = {};
+      rows.forEach(row => {
+        const city = row[2] || 'Unknown';
+        if (!cityGroups[city]) cityGroups[city] = [];
+        cityGroups[city].push(row);
+      });
 
-        Object.entries(cityGroups).forEach(([city, cityRows], index) => {
-          const cityCsv = [headers, ...cityRows]
-            .map(e => e.map(String).map(s => `"${s.replace(/"/g, '""')}"`).join(","))
-            .join("\n");
-            
-          const blob = new Blob([cityCsv], { type: 'text/csv;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.setAttribute("href", url);
-          link.setAttribute("download", `${taskName.replace(/\s+/g, '_')}_${city.replace(/\s+/g, '_')}_leads.csv`);
-          link.style.visibility = 'hidden';
-          document.body.appendChild(link);
-          
-          // Delay each download slightly to prevent browser blocking or race conditions
-          setTimeout(() => {
-            link.click();
-            document.body.removeChild(link);
-          }, index * 200);
-        });
-        toast.success(`Exporting ${Object.keys(cityGroups).length} city-wise CSV files...`);
-    } else {
-        const csvContent = [headers, ...rows]
+      Object.entries(cityGroups).forEach(([city, cityRows], index) => {
+        const cityCsv = [headers, ...cityRows]
           .map(e => e.map(String).map(s => `"${s.replace(/"/g, '""')}"`).join(","))
           .join("\n");
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const blob = new Blob([cityCsv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `task_${taskName.replace(/\s+/g, '_')}_leads.csv`);
+        link.setAttribute("download", `${taskName.replace(/\s+/g, '_')}_${city.replace(/\s+/g, '_')}_leads.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast.success(`${taskName} leads exported (${filteredLeads.length} leads)`);
+
+        // Delay each download slightly to prevent browser blocking or race conditions
+        setTimeout(() => {
+          link.click();
+          document.body.removeChild(link);
+        }, index * 200);
+      });
+      toast.success(`Exporting ${Object.keys(cityGroups).length} city-wise CSV files...`);
+    } else {
+      const csvContent = [headers, ...rows]
+        .map(e => e.map(String).map(s => `"${s.replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `task_${taskName.replace(/\s+/g, '_')}_leads.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success(`${taskName} leads exported (${filteredLeads.length} leads)`);
     }
   };
 
@@ -242,9 +282,8 @@ export default function TasksList({ tasks, onPause, onResume, onDelete }: TasksL
         return (
           <div className="flex flex-col gap-1.5">
             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 gap-1">
-            <Loader2 className="h-3 w-3 animate-spin" />
-
-            Running</Badge>
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Running</Badge>
             {/* <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4 w-fit opacity-70">Running on Server</Badge> */}
           </div>
         );
@@ -293,130 +332,149 @@ export default function TasksList({ tasks, onPause, onResume, onDelete }: TasksL
         ) : (
           <CardContent>
             <div className="rounded-xl border border-border/60 text-card-foreground shadow-sm overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30">
-                    <TableHead className="w-[300px]">Task Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Keyword</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>Leads</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tasks.map((task) => (
-                    <TableRow key={task.id} className="hover:bg-accent/30 transition-colors">
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          <div className="truncate max-w-[250px]" title={task.name}>
-                            <span className="font-semibold">{task.name}</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Calendar className="h-3 w-3" /> {new Date(task.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(task.status)}
-                      </TableCell>
-                      <TableCell>
-                        {task.total_keywords} keywords
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-2 min-w-[120px] max-w-[200px] pr-10">
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>{Math.round((task.current_keyword_index / task.total_keywords) * 100)}%</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-accent rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full transition-all duration-500 ${task.status === 'running' ? 'bg-primary animate-pulse' : 'bg-primary/80'}`}
-                              style={{ width: `${(task.current_keyword_index / task.total_keywords) * 100}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Stack className="h-4 w-4 text-primary" />
-                          <span className="font-medium">{task.total_leads}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <TooltipProvider>
-                            {task.status === 'running' ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onPause(task.id)}>
-                                    <Pause className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Pause Task</TooltipContent>
-                              </Tooltip>
-                            ) : task.status === 'paused' || task.status === 'pending' ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onResume(task.id)}>
-                                    <Play className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Resume Task</TooltipContent>
-                              </Tooltip>
-                            ) : null}
+              {/* Header Row */}
+              <div className="grid grid-cols-[minmax(250px,2fr)_120px_100px_1.5fr_100px_100px] gap-4 p-4 bg-muted/30 font-medium text-sm text-muted-foreground border-b border-border/60 items-center">
+                <div>Task Name</div>
+                <div>Status</div>
+                <div>Keyword</div>
+                <div>Progress</div>
+                <div>Leads</div>
+                <div className="text-right">Actions</div>
+              </div>
 
-                            <ExportFilters 
-                              onExport={(f) => downloadTaskCSV(task.id, task.name, f)}
-                              disabled={task.total_leads === 0}
-                            />
+              {/* Rows */}
+              {tasks.map((task) => {
+                const isRunning = task.status === 'running';
 
+                const RowContent = (
+                  <div className={cn(
+                    "grid grid-cols-[minmax(250px,2fr)_120px_100px_1.5fr_100px_100px] gap-4 p-4 items-center bg-card transition-colors",
+                    !isRunning && "hover:bg-accent/30"
+                  )}>
+                    <div className="overflow-hidden">
+                      <div className="flex flex-col gap-1">
+                        <div className="truncate max-w-[250px]" title={task.name}>
+                          <span className="font-semibold">{task.name}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" /> {new Date(task.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      {getStatusBadge(task.status)}
+                    </div>
+                    <div>
+                      {task.total_keywords} keywords
+                    </div>
+                    <div>
+                      <div className="flex flex-col gap-2 min-w-[120px] max-w-[200px] pr-4">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{Math.round((task.current_keyword_index / task.total_keywords) * 100)}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-accent rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-500 ${task.status === 'running' ? 'bg-primary animate-pulse' : 'bg-primary/80'}`}
+                            style={{ width: `${(task.current_keyword_index / task.total_keywords) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Stack className="h-4 w-4 text-primary" />
+                        <span className="font-medium">{task.total_leads}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <TooltipProvider>
+                          {task.status === 'running' ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button 
-                                  variant="outline" 
-                                  size="icon" 
-                                  className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors" 
-                                  disabled={deletingTasks.has(task.id)}
-                                  onClick={async () => {
-                                    if (window.confirm('Are you sure you want to delete this task? All associated leads will be removed.')) {
-                                      setDeletingTasks(prev => {
-                                        const next = new Set(prev);
-                                        next.add(task.id);
-                                        return next;
-                                      });
-                                      try {
-                                        const res = await onDelete(task.id);
-                                        if (res.success) {
-                                          toast.success("Task deleted successfully");
-                                        } else {
-                                          toast.error(`Failed to delete task: ${res.error}`);
-                                        }
-                                      } finally {
-                                        setDeletingTasks(prev => {
-                                          const next = new Set(prev);
-                                          next.delete(task.id);
-                                          return next;
-                                        });
-                                      }
-                                    }
-                                  }}
-                                >
-                                  {deletingTasks.has(task.id) ? (
-                                    <CircleNotch className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Trash className="h-4 w-4" />
-                                  )}
+                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onPause(task.id)}>
+                                  <Pause className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Delete Task</TooltipContent>
+                              <TooltipContent>Pause Task</TooltipContent>
                             </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                          ) : task.status === 'paused' || task.status === 'pending' ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onResume(task.id)}>
+                                  <Play className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Resume Task</TooltipContent>
+                            </Tooltip>
+                          ) : null}
+
+                          <ExportFilters
+                            onExport={(f) => downloadTaskCSV(task.id, task.name, f)}
+                            disabled={task.total_leads === 0}
+                            progress={exportProgressMap[task.id]}
+                          />
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors"
+                                disabled={deletingTasks.has(task.id)}
+                                onClick={async () => {
+                                  if (window.confirm('Are you sure you want to delete this task? All associated leads will be removed.')) {
+                                    setDeletingTasks(prev => {
+                                      const next = new Set(prev);
+                                      next.add(task.id);
+                                      return next;
+                                    });
+                                    try {
+                                      const res = await onDelete(task.id);
+                                      if (res.success) {
+                                        toast.success("Task deleted successfully");
+                                      } else {
+                                        toast.error(`Failed to delete task: ${res.error}`);
+                                      }
+                                    } finally {
+                                      setDeletingTasks(prev => {
+                                        const next = new Set(prev);
+                                        next.delete(task.id);
+                                        return next;
+                                      });
+                                    }
+                                  }
+                                }}
+                              >
+                                {deletingTasks.has(task.id) ? (
+                                  <CircleNotch className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Delete Task</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </div>
+                  </div>
+                );
+
+                if (isRunning) {
+                  return (
+                    <div key={task.id} className="rounded-lg my-1 border border-primary shadow-[0_0_10px_-4px_rgba(1,169,255,0.9)] bg-primary/5 overflow-hidden">
+                      {RowContent}
+                    </div>
+                  )
+                }
+
+                return (
+                  <div key={task.id} className="border-b border-border/40 last:border-0">
+                    {RowContent}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         )}

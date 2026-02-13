@@ -6,7 +6,8 @@ import {
   getAdminInsightsAction,
   getAdminTasksAction,
   updateTaskStatusAdminAction,
-  bulkUpdateTasksAdminAction
+  bulkUpdateTasksAdminAction,
+  updateUserPlanAction
 } from "@/app/actions"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -48,6 +49,14 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/components/ui/sidebar"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { toast } from "sonner"
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -130,6 +139,22 @@ export default function AdminDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-tasks'] });
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+    }
+  });
+
+  const planMutation = useMutation({
+    mutationFn: async ({ userId, plan }: { userId: number; plan: string }) => {
+      const res = await updateUserPlanAction(userId, plan);
+      if (!res.success) throw new Error(res.error || "Failed to update plan");
+      return res;
+    },
+    onSuccess: () => {
+      toast.success("User plan updated successfully");
+      queryClient.invalidateQueries({ queryKey: ['admin-insights'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+    },
+    onError: (error) => {
+      toast.error(`Failed to update plan: ${error.message}`);
     }
   });
 
@@ -372,7 +397,23 @@ export default function AdminDashboard() {
                           <div className="font-semibold text-foreground">{user.name}</div>
                           <div className="text-muted-foreground">{user.email}</div>
                         </div>
-                        <Badge variant="outline" className="tabular-nums">{user.leads_extracted || 0}</Badge>
+                        <div className="flex items-center gap-2">
+                          <Select
+                            defaultValue={user.plan_type}
+                            onValueChange={(val) => planMutation.mutate({ userId: user.id, plan: val })}
+                            disabled={planMutation.isPending}
+                          >
+                            <SelectTrigger className="h-6 w-[80px] text-[10px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="free">Free</SelectItem>
+                              <SelectItem value="pro">Pro</SelectItem>
+                              <SelectItem value="premium">Premium</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Badge variant="outline" className="tabular-nums">{user.leads_extracted || 0}</Badge>
+                        </div>
                       </div>
                     ))}
                     {insights?.topUsers?.length === 0 && (
@@ -424,7 +465,20 @@ export default function AdminDashboard() {
                           <div className="text-muted-foreground">{user.email}</div>
                         </div>
                         <div className="text-right">
-                          <Badge variant="outline" className="capitalize">{user.plan_type}</Badge>
+                          <Select
+                            defaultValue={user.plan_type}
+                            onValueChange={(val) => planMutation.mutate({ userId: user.id, plan: val })}
+                            disabled={planMutation.isPending}
+                          >
+                            <SelectTrigger className="h-7 w-[100px] text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="free">Free</SelectItem>
+                              <SelectItem value="pro">Pro</SelectItem>
+                              <SelectItem value="premium">Premium</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <div className="text-[10px] text-muted-foreground mt-1">
                             {format(new Date(user.created_at), 'MMM dd')}
                           </div>

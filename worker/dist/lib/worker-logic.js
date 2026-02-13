@@ -1,37 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -39,10 +6,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.saveServerLog = saveServerLog;
 exports.sendLogsToTelegram = sendLogsToTelegram;
 exports.searchLeadsInternal = searchLeadsInternal;
+exports.uploadExportChunk = uploadExportChunk;
+exports.ensureWorkerSchema = ensureWorkerSchema;
 const db_1 = require("./db");
 const extractor_1 = require("./extractor");
 const enricher_1 = require("./enricher");
 const node_fetch_1 = __importDefault(require("node-fetch"));
+const formdata_node_1 = require("formdata-node");
 const getTs = () => `[${new Date().toLocaleTimeString('en-GB')}]`;
 async function saveServerLog(taskId, level, message) {
     try {
@@ -73,10 +43,9 @@ async function sendLogsToTelegram(taskId) {
             return;
         const taskData = await (0, db_1.db) `SELECT name FROM tasks WHERE id = ${taskId}`;
         const taskName = taskData[0]?.name || `Task ${taskId}`;
-        const { FormData, Blob } = await Promise.resolve().then(() => __importStar(require('formdata-node')));
-        const form = new FormData();
+        const form = new formdata_node_1.FormData();
         form.append('chat_id', chatId);
-        const logBlob = new Blob([logContent], { type: 'text/plain' });
+        const logBlob = new formdata_node_1.Blob([logContent], { type: 'text/plain' });
         form.append('document', logBlob, `${taskName.replace(/\s+/g, '_')}_logs.txt`);
         const res = await (0, node_fetch_1.default)(`https://api.telegram.org/bot${token}/sendDocument`, {
             method: 'POST',
@@ -289,5 +258,89 @@ async function searchLeadsInternal(query, userId, taskId, options) {
     catch (error) {
         console.error('Worker internal error:', error);
         return { success: false, error: error.message };
+    }
+}
+async function uploadExportChunk(taskId, leads) {
+    if (leads.length === 0)
+        return;
+    try {
+        const token = process.env.TELEGRAM_BOT_TOKEN;
+        const chatId = process.env.TELEGRAM_CHAT_ID;
+        if (!token || !chatId)
+            return;
+        const taskData = await (0, db_1.db) `SELECT name, export_file_ids FROM tasks WHERE id = ${taskId}`;
+        if (!taskData[0])
+            return;
+        const taskName = taskData[0].name || `Task ${taskId}`;
+        const existingIds = taskData[0].export_file_ids ? JSON.parse(taskData[0].export_file_ids) : [];
+        const chunkIndex = existingIds.length + 1;
+        // Generate CSV
+        const header = [
+            "Name", "Category", "Rating", "Reviews",
+            "Phone", "Website Phone", "Email", "Website Email",
+            "Website", "Address", "City", "Latitude", "Longitude", "Place ID",
+            "Facebook", "Instagram", "LinkedIn", "Twitter", "YouTube", "Pinterest", "TikTok",
+            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+        ];
+        const escapeCsv = (str) => {
+            if (str === null || str === undefined)
+                return "";
+            const stringValue = String(str);
+            if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
+                return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+        };
+        const csvRows = leads.map(lead => [
+            lead.name, lead.category, lead.rating, lead.reviewsCount || lead.reviews_count,
+            lead.phone, lead.website_phone, lead.email, lead.website_email,
+            lead.website, lead.address, lead.city, lead.latitude, lead.longitude, lead.place_id,
+            lead.facebook, lead.instagram, lead.linkedin, lead.twitter, lead.youtube, lead.pinterest, lead.tiktok,
+            lead.monday_hours, lead.tuesday_hours, lead.wednesday_hours, lead.thursday_hours, lead.friday_hours, lead.saturday_hours, lead.sunday_hours
+        ].map(escapeCsv).join(","));
+        // Include headers in every chunk for standalone validity
+        const output = [header.join(","), ...csvRows].join("\n");
+        const filename = `${taskName.replace(/\s+/g, '_')}_part_${chunkIndex}.csv`;
+        const form = new formdata_node_1.FormData();
+        form.append('chat_id', chatId);
+        const fileBlob = new formdata_node_1.Blob([output], { type: 'text/csv' });
+        form.append('document', fileBlob, filename);
+        const res = await (0, node_fetch_1.default)(`https://api.telegram.org/bot${token}/sendDocument`, {
+            method: 'POST',
+            // @ts-ignore
+            body: form
+        });
+        const data = await res.json();
+        if (data.ok && data.result?.document?.file_id) {
+            const fileId = data.result.document.file_id;
+            existingIds.push(fileId);
+            await (0, db_1.db) `
+                UPDATE tasks 
+                SET export_file_ids = ${JSON.stringify(existingIds)}, 
+                    exported_leads_count = COALESCE(exported_leads_count, 0) + ${leads.length},
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ${taskId}
+            `;
+            console.log(`${getTs()} [WORKER][Task:${taskId}] Exported chunk ${chunkIndex} with ${leads.length} leads to Telegram.`);
+        }
+        else {
+            console.error(`${getTs()} [WORKER][Task:${taskId}] Failed to upload export chunk to Telegram:`, data);
+        }
+    }
+    catch (error) {
+        console.error(`${getTs()} [WORKER][Task:${taskId}] Export error:`, error);
+    }
+}
+async function ensureWorkerSchema() {
+    try {
+        await (0, db_1.db) `
+            ALTER TABLE tasks 
+            ADD COLUMN IF NOT EXISTS export_file_ids TEXT,
+            ADD COLUMN IF NOT EXISTS exported_leads_count INTEGER DEFAULT 0
+        `;
+        console.log(`${getTs()} [WORKER] Schema verified: export_file_ids and exported_leads_count columns exist.`);
+    }
+    catch (error) {
+        console.error(`${getTs()} [WORKER] Failed to verify schema:`, error);
     }
 }

@@ -584,12 +584,14 @@ export async function getTaskAction(taskId: number) {
   }
 }
 
-export async function getTaskLeadsAction(taskId: number) {
+export async function getTaskLeadsAction(taskId: number, limit?: number, offset?: number) {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };
 
   try {
-    const results = await db`
+    let results;
+    if (limit !== undefined && offset !== undefined) {
+      results = await db`
         SELECT l.* 
         FROM leads l 
         JOIN task_leads tl ON l.id = tl.lead_id 
@@ -597,7 +599,19 @@ export async function getTaskLeadsAction(taskId: number) {
         WHERE tl.task_id = ${taskId} 
         AND t.user_id = ${session.id}
         ORDER BY tl.created_at DESC
-    `;
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+    } else {
+      results = await db`
+          SELECT l.* 
+          FROM leads l 
+          JOIN task_leads tl ON l.id = tl.lead_id 
+          JOIN tasks t ON tl.task_id = t.id
+          WHERE tl.task_id = ${taskId} 
+          AND t.user_id = ${session.id}
+          ORDER BY tl.created_at DESC
+      `;
+    }
     return { success: true, data: results };
   } catch (error) {
     return { success: false, error: (error as Error).message };
@@ -1477,6 +1491,30 @@ export async function getAdminInsightsAction() {
       success: true,
       data: { planBreakdown, taskStatusBreakdown, topUsers, recentSignups }
     };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function updateUserPlanAction(targetUserId: number, newPlan: string) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
+  const userCheck = await db`SELECT is_admin FROM users WHERE id = ${session.id}`;
+  if (!userCheck[0]?.is_admin) return { success: false, error: 'Forbidden' };
+
+  try {
+    const allowedPlans = ['free', 'pro', 'premium'];
+    if (!allowedPlans.includes(newPlan)) return { success: false, error: 'Invalid plan type' };
+
+    await db`
+      UPDATE users 
+      SET plan_type = ${newPlan}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${targetUserId}
+    `;
+
+    await logAction('admin_update_user_plan', 'success', { targetUserId, newPlan });
+    return { success: true };
   } catch (error) {
     return { success: false, error: (error as Error).message };
   }

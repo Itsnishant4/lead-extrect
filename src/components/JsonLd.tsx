@@ -8,9 +8,9 @@ export default function JsonLd() {
         url: "https://leadspotter.in",
         logo: "https://leadspotter.in/logo.png", // Assuming logo path
         sameAs: [
-            "https://facebook.com/leadspotter",
-            "https://twitter.com/leadspotter",
-            "https://instagram.com/leadspotter",
+            "https://www.facebook.com/share/1Hr3qboz8F/",
+            "https://x.com/leadspotter_in",
+            "https://www.instagram.com/leadspotter.in/",
             "https://linkedin.com/company/leadspotter", // User has personal linkedin, updating to company if/when avail
             "https://linkedin.com/in/nishantpatel44",
         ],

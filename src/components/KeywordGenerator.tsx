@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Country, State, City } from 'country-state-city';
-import { 
-  Play, 
-  Copy, 
-  Check, 
-  MagnifyingGlass, 
+import {
+  Play,
+  Copy,
+  Check,
+  MagnifyingGlass,
   Command,
   ArrowRight,
   Trash,
@@ -16,18 +16,19 @@ import {
 import { LoaderCircle } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import {
-  getCityAreasAction, 
+  getCityAreasAction,
   saveCityAreasAction,
   saveKeywordHistoryAction,
   getBulkCityAreasAction,
@@ -73,6 +74,7 @@ export default function KeywordGenerator({ onSearch, onStartTask }: KeywordGener
   const [genStatus, setGenStatus] = useState('');
   const [isCustomNiche, setIsCustomNiche] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [isDeepSearch, setIsDeepSearch] = useState(false); // New State
 
   const { loadedSession, clearKeywordSession } = useAutomation();
   const router = useRouter();
@@ -87,7 +89,7 @@ export default function KeywordGenerator({ onSearch, onStartTask }: KeywordGener
       setTaskName(loadedSession.name);
       setNiche(loadedSession.niche);
       setIsCustomNiche(true); // Force custom niche if loading from history to ensure it displays what's saved
-      
+
       // Clear the session from context after loading it into local state
       // so it doesn't try to reload if the component re-mounts
       // clearKeywordSession();
@@ -114,25 +116,60 @@ export default function KeywordGenerator({ onSearch, onStartTask }: KeywordGener
     if (!niche || !country || !state) return;
     setIsGenerating(true);
     setGenStatus('Building list on server...');
-    
+
     try {
+      // 1. Generate Base Keywords using Server Action
       const res = await generateKeywordsAction(niche, country, state, city || null, selectAllCities);
-      
+
       if (res.success && res.data) {
-        setKeywords(res.data);
-        toast.success(`Generated ${res.data.length} keywords`);
-        
+        let finalKeywords = res.data;
+
+        // 2. Deep Search Expansion
+        if (isDeepSearch && city) {
+          setGenStatus('Fetching pincodes for Deep Search...');
+          try {
+            const pinRes = await fetch(`/api/pincodes?city=${city}`);
+            const pinData = await pinRes.json();
+
+            if (pinData.success && pinData.pincodes?.length > 0) {
+              const pincodes = pinData.pincodes as string[];
+              setGenStatus(`Expanding with ${pincodes.length} pincodes...`);
+
+              // Generate Pincode-specific keywords (Niche + City + Pincode)
+              const pincodeKeywords: string[] = [];
+              const baseLocation = city ? `${city}` : state; // Use city if available, else state
+
+              for (const pin of pincodes) {
+                pincodeKeywords.push(`${niche} in ${baseLocation} ${pin}`);
+              }
+
+              // Combine original area-based keywords with new pincode keywords
+              finalKeywords = [...finalKeywords, ...pincodeKeywords];
+              toast.success(`Deep Search Added: ${pincodeKeywords.length} pincode variations`);
+
+            } else {
+              toast.warning("Deep Search: No pincodes found, using base keywords.");
+            }
+          } catch (err) {
+            console.error("Deep Search Error:", err);
+            toast.error("Deep Search failed to fetch pincodes");
+          }
+        }
+
+        setKeywords(finalKeywords);
+        if (!isDeepSearch) toast.success(`Generated ${finalKeywords.length} keywords`);
+
         const location = selectAllCities ? `All cities in ${state}` : (city ? `${city}, ${state}` : state);
-        const historyLimit = 1000;
-        const isTruncated = res.data.length > historyLimit;
-        const historyKeywords = isTruncated ? res.data.slice(0, historyLimit) : res.data;
-        
+        const historyLimit = 10000; // Increased limit for Deep Search
+        const isTruncated = finalKeywords.length > historyLimit;
+        const historyKeywords = isTruncated ? finalKeywords.slice(0, historyLimit) : finalKeywords;
+
         await saveKeywordHistoryAction(
           taskName || `${niche} Generation`,
           niche,
           location,
           historyKeywords,
-          res.data.length,
+          finalKeywords.length,
           isTruncated
         );
       } else {
@@ -167,7 +204,7 @@ export default function KeywordGenerator({ onSearch, onStartTask }: KeywordGener
           </div>
         </div>
       )}
-      
+
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
         <Card className="border-border/60">
           <CardHeader className="space-y-4">
@@ -186,9 +223,9 @@ export default function KeywordGenerator({ onSearch, onStartTask }: KeywordGener
               <div className="flex items-center justify-between">
                 <label className="text-sm font-semibold text-foreground">Business niche</label>
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Checkbox 
-                    id="customNiche" 
-                    checked={isCustomNiche} 
+                  <Checkbox
+                    id="customNiche"
+                    checked={isCustomNiche}
                     onCheckedChange={(checked) => {
                       setIsCustomNiche(!!checked);
                       if (!checked) setNiche('');
@@ -249,9 +286,9 @@ export default function KeywordGenerator({ onSearch, onStartTask }: KeywordGener
               <div className="flex items-center justify-between">
                 <label className="text-sm font-semibold text-foreground">City coverage</label>
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Checkbox 
-                    id="selectAllCities" 
-                    checked={selectAllCities} 
+                  <Checkbox
+                    id="selectAllCities"
+                    checked={selectAllCities}
                     onCheckedChange={(checked) => setSelectAllCities(!!checked)}
                     disabled={!state}
                   />
@@ -269,8 +306,24 @@ export default function KeywordGenerator({ onSearch, onStartTask }: KeywordGener
               />
             </div>
 
-            <Button 
-              onClick={generateKeywords} 
+            {/* Deep Search Toggle - Compact */}
+            <div className="flex items-center space-x-2 px-1">
+              <Switch
+                id="deepSearch"
+                checked={isDeepSearch}
+                onCheckedChange={(checked) => setIsDeepSearch(!!checked)}
+                disabled={!city || selectAllCities}
+              />
+              <label
+                htmlFor="deepSearch"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
+              >
+                Deep Search <span className="text-xs text-muted-foreground">(Search every Pincode)</span>
+              </label>
+            </div>
+
+            <Button
+              onClick={generateKeywords}
               disabled={!niche || !state || isGenerating}
               size="lg"
               className="gap-2"
@@ -350,15 +403,15 @@ export default function KeywordGenerator({ onSearch, onStartTask }: KeywordGener
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground">Campaign name</label>
-                <Input 
+                <Input
                   value={taskName}
                   onChange={(e) => setTaskName(e.target.value)}
                   placeholder="e.g. Q1 New York Dentist Leads"
                   className="py-2"
                 />
               </div>
-              <Button 
-                className="font-semibold text-base gap-3 w-full" 
+              <Button
+                className="font-semibold text-base gap-3 w-full"
                 onClick={async () => {
                   if (!taskName.trim()) {
                     toast.error("Please enter a campaign name");
