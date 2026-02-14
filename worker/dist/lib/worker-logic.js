@@ -54,7 +54,8 @@ async function sendLogsToTelegram(taskId) {
         });
         const data = await res.json();
         if (data.ok) {
-            await (0, db_1.db) `DELETE FROM server_logs WHERE created_at < NOW() - INTERVAL '15 minute'`;
+            // Delete ALL logs for this task as they have been sent.
+            await (0, db_1.db) `DELETE FROM server_logs WHERE task_id = ${taskId}`;
         }
     }
     catch (error) {
@@ -98,6 +99,118 @@ const getLeadKey = (lead) => {
     const website = (lead.website || '').toString().trim().toLowerCase();
     return `fb:${name}|${address}|${phone}|${website}`;
 };
+const BLOCKED_CATEGORIES = [
+    'Housing society',
+    'Apartment building',
+    'Condominium complex',
+    'Housing complex',
+    'Residents association',
+    'Gated community',
+    'Tea store',
+    'Coffee shop',
+    'Flour mill',
+    'Private User',
+    'Transit station',
+    'Public toilet',
+    'Park',
+    'Garden',
+    'Playground',
+    'Hostel',
+    'Dormitory',
+    'Paying guest',
+    'Lodging',
+    'Cottage',
+    'Villa',
+    'Resort',
+    'Homestay',
+    'Guest house',
+    'School',
+    'College',
+    'University',
+    'Library'
+];
+const IT_BLOCKED_CATEGORIES = [
+    'Manufacturer',
+    'Wholesaler',
+    'Supplier',
+    'Store',
+    'Shop',
+    'Factory',
+    'Mill',
+    'Industrial',
+    'Plant',
+    'Agency', // Be careful, Web Agency is valid. Handled in validateLead.
+    'Consultant', // Computer Consultant is valid. 
+    'Travel',
+    'Transport',
+    'Logistics',
+    'Real estate',
+    'Broker',
+    'Gym',
+    'Fitness',
+    'Hospital',
+    'Clinic',
+    'Doctor',
+    'Pharmacy',
+    'Restaurant',
+    'Hotel',
+    'Cafe',
+    'Bakery',
+    'Food',
+    'Beverage',
+    'Clothing',
+    'Textile',
+    'Fashion',
+    'Jewelry',
+    'Furniture',
+    'Hardware',
+    'Construction',
+    'Contractor',
+    'Interior',
+    'Automobile',
+    'Car',
+    'Bike',
+    'Garage',
+    'Repair',
+    'Salon',
+    'Spa',
+    'Beauty',
+    'Makeup'
+];
+function validateLead(lead, query) {
+    if (!lead.category)
+        return true;
+    const lowerCat = lead.category.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    // 1. Global Blocklist Check (Always blocked)
+    if (BLOCKED_CATEGORIES.some(c => lowerCat.includes(c.toLowerCase()))) {
+        return false;
+    }
+    // 2. Intent-Based Strict Filtering
+    const isITIntent = ['it company', 'software', 'web', 'digital', 'tech', 'app dev', 'cyber'].some(k => lowerQuery.includes(k));
+    if (isITIntent) {
+        // Allow list overrides Blocklist
+        const isWhitelisted = ['computer', 'software', 'technology', 'web', 'digital', 'marketing', 'advertising', 'design', 'internet', 'data', 'security', 'cctv'].some(k => lowerCat.includes(k));
+        if (isWhitelisted)
+            return true;
+        // Check IT Specific Blocks
+        if (IT_BLOCKED_CATEGORIES.some(c => lowerCat.includes(c.toLowerCase()))) {
+            // Exception for "Agency" and "Consultant" and "Store" if related to IT
+            if (lowerCat.includes('agency') && (lowerCat.includes('web') || lowerCat.includes('digital') || lowerCat.includes('marketing') || lowerCat.includes('advertising') || lowerCat.includes('creative')))
+                return true;
+            if (lowerCat.includes('consultant') && (lowerCat.includes('computer') || lowerCat.includes('it') || lowerCat.includes('software')))
+                return true;
+            if (lowerCat.includes('store') && (lowerCat.includes('computer') || lowerCat.includes('mobile') || lowerCat.includes('electronic')))
+                return true; // Allow Computer Store
+            if (lowerCat.includes('shop') && (lowerCat.includes('computer') || lowerCat.includes('mobile')))
+                return true;
+            if (lowerCat.includes('repair') && (lowerCat.includes('computer') || lowerCat.includes('laptop') || lowerCat.includes('mobile')))
+                return true;
+            return false;
+        }
+    }
+    return true;
+}
 async function searchLeadsInternal(query, userId, taskId, options) {
     const totalStartTime = Date.now();
     try {
@@ -155,9 +268,17 @@ async function searchLeadsInternal(query, userId, taskId, options) {
                     options.onProgress(count);
             }
         });
-        console.log(`${getTs()} [WORKER][Task:${taskId}] Starting enrichment for ${rawLeads.length} leads...`);
+        // --- FILTERING STEP ---
+        const validRawLeads = rawLeads.filter(lead => validateLead(lead, trimmedQuery));
+        const filteredCount = rawLeads.length - validRawLeads.length;
+        if (filteredCount > 0) {
+            console.log(`${getTs()} [WORKER][Task:${taskId}] Filtered out ${filteredCount} irrelevant leads.`);
+            await saveServerLog(taskId || null, 'INFO', `Filtered out ${filteredCount} irrelevant leads (e.g. Housing societies).`);
+        }
+        // ----------------------
+        console.log(`${getTs()} [WORKER][Task:${taskId}] Starting enrichment for ${validRawLeads.length} leads...`);
         const enrichmentStartTime = Date.now();
-        const enrichedLeads = await Promise.all(rawLeads.map(async (lead) => {
+        const enrichedLeads = await Promise.all(validRawLeads.map(async (lead) => {
             if (lead.website) {
                 const enrichment = await (0, enricher_1.enrichLead)(lead.website);
                 return {
@@ -333,12 +454,20 @@ async function uploadExportChunk(taskId, leads) {
 }
 async function ensureWorkerSchema() {
     try {
+        // Fix: Force TIMESTAMPTZ to avoid 5.5hr drift
+        try {
+            await (0, db_1.db) `ALTER TABLE tasks ALTER COLUMN last_logs_sent_at TYPE TIMESTAMPTZ`;
+        }
+        catch (e) {
+            // Ignore if column doesn't exist yet
+        }
         await (0, db_1.db) `
             ALTER TABLE tasks 
             ADD COLUMN IF NOT EXISTS export_file_ids TEXT,
-            ADD COLUMN IF NOT EXISTS exported_leads_count INTEGER DEFAULT 0
+            ADD COLUMN IF NOT EXISTS exported_leads_count INTEGER DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS last_logs_sent_at TIMESTAMPTZ
         `;
-        console.log(`${getTs()} [WORKER] Schema verified: export_file_ids and exported_leads_count columns exist.`);
+        console.log(`${getTs()} [WORKER] Schema verified: export_file_ids/exported_leads_count/last_logs_sent_at exist.`);
     }
     catch (error) {
         console.error(`${getTs()} [WORKER] Failed to verify schema:`, error);

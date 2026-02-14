@@ -333,7 +333,7 @@ export default function TasksList({ tasks, onPause, onResume, onDelete }: TasksL
           <CardContent>
             <div className="rounded-xl border border-border/60 text-card-foreground shadow-sm overflow-hidden">
               {/* Header Row */}
-              <div className="grid grid-cols-[minmax(250px,2fr)_120px_100px_1.5fr_100px_100px] gap-4 p-4 bg-muted/30 font-medium text-sm text-muted-foreground border-b border-border/60 items-center">
+              <div className="grid grid-cols-[minmax(250px,2fr)_120px_100px_1.5fr_100px_100px] gap-4 px-4 py-2 bg-muted/30 font-medium text-sm text-muted-foreground border-b border-border/60 items-center">
                 <div>Task Name</div>
                 <div>Status</div>
                 <div>Keyword</div>
@@ -348,7 +348,7 @@ export default function TasksList({ tasks, onPause, onResume, onDelete }: TasksL
 
                 const RowContent = (
                   <div className={cn(
-                    "grid grid-cols-[minmax(250px,2fr)_120px_100px_1.5fr_100px_100px] gap-4 p-4 items-center bg-card transition-colors",
+                    "grid grid-cols-[minmax(250px,2fr)_120px_100px_1.5fr_100px_100px] gap-4 px-4 m-1 rounded-xl py-2 items-center bg-card transition-colors",
                     !isRunning && "hover:bg-accent/30"
                   )}>
                     <div className="overflow-hidden">
@@ -359,6 +359,7 @@ export default function TasksList({ tasks, onPause, onResume, onDelete }: TasksL
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Calendar className="h-3 w-3" /> {new Date(task.created_at).toLocaleDateString()}
                         </span>
+                        
                       </div>
                     </div>
                     <div>

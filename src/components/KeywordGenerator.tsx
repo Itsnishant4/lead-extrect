@@ -310,6 +310,8 @@ export default function KeywordGenerator({ onSearch, onStartTask }: KeywordGener
             <div className="flex items-center space-x-2 px-1">
               <Switch
                 id="deepSearch"
+                className=''
+                thumbClassName='border'
                 checked={isDeepSearch}
                 onCheckedChange={(checked) => setIsDeepSearch(!!checked)}
                 disabled={!city || selectAllCities}

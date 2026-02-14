@@ -45,7 +45,7 @@
   --shadow-blur: 0px;
   --shadow-spread: 0px;
   --shadow-opacity: 0;
-  --shadow-color: rgba(29,161,242,0.15);
+  --shadow-color: rgba(29, 161, 242, 0.15);
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
@@ -100,7 +100,7 @@
   --shadow-blur: 0px;
   --shadow-spread: 0px;
   --shadow-opacity: 0;
-  --shadow-color: rgba(29,161,242,0.25);
+  --shadow-color: rgba(29, 161, 242, 0.25);
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
@@ -164,15 +164,15 @@
   --shadow-2xl: var(--shadow-2xl);
 }
 
-body {
+/* body {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-}
+} REMOVED: Managed by next/font */
 
-.border-b{
+.border-b {
   border-bottom: 1px solid var(--border);
 }
 
-.border{
+.border {
   border: 1px solid var(--border);
 }
 
@@ -208,10 +208,12 @@ body {
   animation-iteration-count: infinite;
   background: linear-gradient(to right, #e6e6e605 1%, #cccccc10 2%, #00000000 35%);
 }
+
 @keyframes shimmer {
   from {
     background-position: -1000px 0;
   }
+
   to {
     background-position: 1000px 0;
   }

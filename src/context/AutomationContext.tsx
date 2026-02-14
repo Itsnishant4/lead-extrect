@@ -17,7 +17,8 @@ import {
   getUserAction,
   generateKeywordsAction,
   triggerTaskAutomationAction,
-  updateSettingAction
+  updateSettingAction,
+  startAllPendingTasksAction
 } from '@/app/actions';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -50,6 +51,7 @@ interface AutomationContextType {
   clearKeywordSession: () => void;
   settings: Record<string, any>;
   updateSetting: (key: string, value: any) => Promise<void>;
+  startAllPendingTasks: () => Promise<void>;
 }
 
 const AutomationContext = createContext<AutomationContextType | undefined>(undefined);
@@ -323,6 +325,14 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     setLoadedSession(null);
   };
 
+  const startAllPendingTasks = async () => {
+    const res = await startAllPendingTasksAction();
+    if (res.success && res.count && res.count > 0) {
+      toast.success(`Auto-started ${res.count} pending tasks`);
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    }
+  };
+
   return (
     <AutomationContext.Provider value={{
       tasks,
@@ -340,7 +350,8 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       loadKeywordSession,
       clearKeywordSession,
       settings,
-      updateSetting
+      updateSetting,
+      startAllPendingTasks
     }}>
       {children}
     </AutomationContext.Provider>

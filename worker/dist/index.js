@@ -180,13 +180,13 @@ async function processTask(taskId, userId) {
             const now = new Date();
             // If never sent, mark current time as start (don't send immediately on first run, wait 1 hour)
             if (!lastSent) {
-                await (0, db_1.db) `UPDATE tasks SET last_logs_sent_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
+                await (0, db_1.db) `UPDATE tasks SET last_logs_sent_at = ${now} WHERE id = ${taskId}`;
                 lastSent = now;
             }
             if (now.getTime() - lastSent.getTime() > 60 * 60 * 1000) { // Every 1 hour
                 console.log(`[WORKER] Sending hourly logs for task ${taskId}...`);
                 await (0, worker_logic_1.sendLogsToTelegram)(taskId);
-                await (0, db_1.db) `UPDATE tasks SET last_logs_sent_at = CURRENT_TIMESTAMP WHERE id = ${taskId}`;
+                await (0, db_1.db) `UPDATE tasks SET last_logs_sent_at = ${new Date()} WHERE id = ${taskId}`;
             }
             console.log(`[WORKER] Task ${taskId} progress: ${nextIndex}/${keywords.length}`);
             // Small delay between keywords to avoid rate limits
@@ -222,7 +222,20 @@ setInterval(async () => {
 const PORT = process.env.PORT || 4001;
 // Ensure schema on startup
 // Ensure schema on startup
-(0, worker_logic_1.ensureWorkerSchema)().then(() => {
+(0, worker_logic_1.ensureWorkerSchema)().then(async () => {
+    // Resume interrupted tasks on startup
+    try {
+        const interruptedTasks = await (0, db_1.db) `SELECT id, user_id FROM tasks WHERE status = 'running'`;
+        if (interruptedTasks.length > 0) {
+            console.log(`[WORKER] Found ${interruptedTasks.length} interrupted tasks. Resuming...`);
+            for (const task of interruptedTasks) {
+                processTask(task.id, task.user_id).catch(e => console.error(`Failed to resume task ${task.id}:`, e));
+            }
+        }
+    }
+    catch (e) {
+        console.error('[WORKER] Failed to resume interrupted tasks:', e);
+    }
     app.listen(PORT, () => {
         console.log(`LeadSpotter Worker listening at http://localhost:${PORT}`);
     });

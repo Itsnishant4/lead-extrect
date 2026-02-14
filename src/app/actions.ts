@@ -1437,6 +1437,58 @@ export async function getAdminTasksAction() {
   }
 }
 
+export async function startAllPendingTasksAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
+  try {
+    // 1. Find all pending tasks
+    const pendingTasks = await db`SELECT id FROM tasks WHERE status = 'pending' AND user_id = ${session.id}`;
+
+    if (pendingTasks.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    // 2. Set them all to running
+    await db`
+      UPDATE tasks 
+      SET status = 'running', updated_at = CURRENT_TIMESTAMP 
+      WHERE status = 'pending' AND user_id = ${session.id}
+    `;
+
+    // 3. Trigger them individually (fire-and-forget)
+    // We reuse triggerTaskAutomationAction logic but internally to avoid multiple auth checks
+    const workerUrl = process.env.WORKER_URL || 'http://localhost:4000';
+    const workerToken = process.env.WORKER_AUTH_TOKEN || '';
+
+    let successCount = 0;
+
+    // Use Promise.allSettled to trigger all in parallel without blocking
+    const triggers = pendingTasks.map(async (task: any) => {
+      try {
+        await fetch(`${workerUrl}/run-task`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-worker-token': workerToken
+          },
+          body: JSON.stringify({ taskId: task.id, userId: session.id }),
+        });
+        successCount++;
+      } catch (e) {
+        console.error(`Failed to auto-start task ${task.id}:`, e);
+      }
+    });
+
+    await Promise.allSettled(triggers);
+    await logAction('auto_start_all_tasks', 'info', { count: pendingTasks.length });
+
+    return { success: true, count: pendingTasks.length };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
 export async function updateTaskStatusAdminAction(taskId: number, status: string) {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -7,6 +8,8 @@ import { AutomationProvider } from "@/context/AutomationContext";
 import QueryProvider from "@/components/QueryProvider";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import JsonLd from "@/components/JsonLd";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
@@ -86,7 +89,7 @@ export default function RootLayout({
       <head>
         <JsonLd />
       </head>
-      <body className="antialiased min-h-screen ">
+      <body className={`antialiased min-h-screen ${inter.className}`}>
         <GoogleAnalytics />
         <ThemeProvider
           attribute="class"

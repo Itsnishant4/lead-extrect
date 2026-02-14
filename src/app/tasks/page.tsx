@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useEffect } from 'react';
 import TasksList from "@/components/TasksList";
 import { useAutomation } from "@/context/AutomationContext";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +9,12 @@ import { AppPage } from "@/components/AppPage";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export default function TasksPage() {
-  const { tasks, handlePauseTask, handleResumeTask, handleDeleteTask, user, isLoadingTasks } = useAutomation();
+  const { tasks, handlePauseTask, handleResumeTask, handleDeleteTask, user, isLoadingTasks, startAllPendingTasks } = useAutomation();
+
+  useEffect(() => {
+    startAllPendingTasks();
+  }, []);
+
   const limits: Record<string, number> = {
     free: 500,
     pro: 5000,
@@ -41,10 +47,10 @@ export default function TasksPage() {
         {isLoadingTasks ? (
           <LoadingSpinner message="Loading tasks..." />
         ) : (
-          <TasksList 
-            tasks={tasks} 
-            onPause={handlePauseTask} 
-            onResume={handleResumeTask} 
+          <TasksList
+            tasks={tasks}
+            onPause={handlePauseTask}
+            onResume={handleResumeTask}
             onDelete={handleDeleteTask}
           />
         )}
