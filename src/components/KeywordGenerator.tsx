@@ -92,7 +92,7 @@ export default function KeywordGenerator({ onSearch, onStartTask }: KeywordGener
 
       // Clear the session from context after loading it into local state
       // so it doesn't try to reload if the component re-mounts
-      // clearKeywordSession();
+      clearKeywordSession();
     }
   }, [loadedSession]);
 
@@ -422,6 +422,8 @@ export default function KeywordGenerator({ onSearch, onStartTask }: KeywordGener
                   setIsCreatingTask(true);
                   try {
                     await onStartTask(taskName, keywords);
+                    // Explicitly reset creating state before redirecting to ensure clean transition
+                    setIsCreatingTask(false);
                     router.push('/tasks');
                   } catch (error) {
                     toast.error("Failed to create task");
