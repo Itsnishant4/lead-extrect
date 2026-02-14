@@ -43,8 +43,8 @@ export async function middleware(request: NextRequest) {
   if (isValidSession) {
     // If user is logged in:
 
-    // Redirect away from guest-only paths (login/signup) and the landing page (root) to /leads
-    if (isGuestOnlyPath || path === '/') {
+    // Redirect away from guest-only paths (login/signup)
+    if (isGuestOnlyPath) {
       return NextResponse.redirect(new URL('/leads', request.url));
     }
 
