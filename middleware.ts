@@ -45,7 +45,7 @@ export async function middleware(request: NextRequest) {
 
     // Redirect away from guest-only paths (login/signup)
     if (isGuestOnlyPath) {
-      return NextResponse.redirect(new URL('/', request.url));
+      return NextResponse.redirect(new URL('/leads', request.url));
     }
 
     // Otherwise, allow access (dashboard, public pages like privacy, robots, etc)
