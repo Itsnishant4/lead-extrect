@@ -17,7 +17,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator
 } from "@/components/ui/breadcrumb"
-import { ThemeToggle } from "@/components/ThemeToggle"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useQuery } from '@tanstack/react-query';
@@ -60,7 +59,6 @@ export default function AdminLogsPage() {
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        <ThemeToggle />
       </header>
 
       <main className={`flex-1 overflow-y-auto p-4 md:p-8 pt-6 ${open ? 'md:ml-[250px]' : 'md:ml-[60px]'}`}>

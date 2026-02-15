@@ -1,8 +1,7 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { AutomationProvider } from "@/context/AutomationContext";
 import QueryProvider from "@/components/QueryProvider";
@@ -10,6 +9,14 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 import JsonLd from "@/components/JsonLd";
 
 const inter = Inter({ subsets: ["latin"] });
+const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair", display: "swap", preload: false });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#6366F1",
+};
 
 export const metadata: Metadata = {
   title: {
@@ -30,9 +37,9 @@ export const metadata: Metadata = {
     images: [
       {
         url: "/opengraph-image",
-        width: 1200,
-        height: 630,
-        alt: "LeadSpotter - Google Maps Lead Extraction Tool",
+        width: 1920,
+        height: 1080,
+        alt: "LeadSpotter — Turn Google Maps into your Lead Machine",
       },
     ],
   },
@@ -73,7 +80,7 @@ export const metadata: Metadata = {
   },
   manifest: "/favicon/site.webmanifest",
   verification: {
-    google: "google-site-verification-code", // User to replace
+    google: "googleb9ce8135773393a8", 
   },
   category: "Business",
   classification: "SaaS",
@@ -88,26 +95,22 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <JsonLd />
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
       </head>
-      <body className={`antialiased min-h-screen ${inter.className}`}>
+      <body className={`antialiased min-h-screen ${inter.className} ${playfair.variable}`}>
         <GoogleAnalytics />
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
+        
           <QueryProvider>
             <AutomationProvider>
               <SidebarProvider>
-                <div className="flex-1 w-full min-h-screen h-screen">
+                <main className="flex-1 w-full min-h-screen h-screen">
                   {children}
-                </div>
+                </main>
                 <Toaster />
               </SidebarProvider>
             </AutomationProvider>
           </QueryProvider>
-        </ThemeProvider>
+
       </body>
     </html>
   );

@@ -44,7 +44,6 @@ import {
   BreadcrumbList,
   BreadcrumbPage
 } from "@/components/ui/breadcrumb"
-import { ThemeToggle } from "@/components/ThemeToggle"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -221,7 +220,6 @@ export default function AdminDashboard() {
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        <ThemeToggle />
       </header>
 
       <main className={`flex-1 transition-all ease-in-out duration-300 ${open ? 'md:ml-[250px]' : 'md:ml-[30px]'} overflow-y-auto p-4 md:p-8 pt-6`}>

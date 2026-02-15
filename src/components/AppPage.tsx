@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
 import { SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
-import { ThemeToggle } from "@/components/ThemeToggle"
 
 type Crumb = {
   label: string
@@ -66,7 +65,6 @@ export function AppPage({
         </div>
         <div className="flex items-center gap-2">
           {actions}
-          <ThemeToggle />
         </div>
       </header>
 

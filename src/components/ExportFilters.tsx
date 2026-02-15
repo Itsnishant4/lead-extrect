@@ -52,8 +52,8 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2 h-9 transition-all" disabled={disabled || isLoading}>
-          <DownloadSimple className="h-4 w-4 text-primary" />
+        <Button variant="outline"  className="w-8 rounded-md h-8 px-2 py-2 transition-all" disabled={disabled || isLoading}>
+          <DownloadSimple size={20} className="text-primary" />
           {/* <span className="font-medium text-blue-700 dark:text-blue-300">Download</span> */}
 
         </Button>
@@ -98,7 +98,7 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
               onCheckedChange={() => toggleFilter('hasWebsite')}
             />
 
-            <FilterItem
+            {/* <FilterItem
               id="hasSocials"
               label="Has Socials"
               description="Leads with FB, IG, LinkedIn, etc."
@@ -123,7 +123,7 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
               icon={<Globe className="h-4 w-4 text-primary" />}
               checked={filters.hasAddress}
               onCheckedChange={() => toggleFilter('hasAddress')}
-            />
+            /> */}
 
           </div>
         </div>

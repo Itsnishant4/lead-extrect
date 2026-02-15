@@ -52,7 +52,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator
 } from "@/components/ui/breadcrumb"
-import { ThemeToggle } from "@/components/ThemeToggle"
 import { useSidebar } from "@/components/ui/sidebar"
 
 export default function AdminUsersPage() {
@@ -165,7 +164,6 @@ export default function AdminUsersPage() {
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        <ThemeToggle />
       </header>
 
       <main className={`flex-1 overflow-y-auto p-4 md:p-8 pt-6 ${open ? 'md:ml-[250px]' : 'md:ml-[30px]'}`}>
