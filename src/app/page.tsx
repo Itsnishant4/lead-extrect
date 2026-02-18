@@ -32,7 +32,7 @@ const testimonials = [
 
 const howItWorks = [
   { step: "01", Icon: Search, title: "Generate Keywords", description: "Combine niches and locations to create thousands of targeted search combinations in a single click." },
-  { step: "02", Icon: CloudCog, title: "Extract in the Cloud", description: "Our servers process your keywords 24/7, scraping Google Maps and enriching every lead automatically." },
+  { step: "02", Icon: CloudCog, title: "Extract in the Cloud", description: "Our servers process your keywords 24/7, extracting business data and enriching every lead automatically." },
   { step: "03", Icon: Download, title: "Export & Close", description: "Download CRM-ready CSV files with verified emails, phone numbers, and social profiles." },
 ];
 
@@ -53,15 +53,15 @@ const comparisonRows = [
 ];
 
 const faqs = [
-  { q: "What data can LeadSpotter extract?", a: "LeadSpotter extracts business names, addresses, phone numbers, emails, websites, ratings, reviews, social media profiles, and operating hours from Google Maps listings. We also enrich data by scraping business websites for additional contact information." },
-  { q: "Is this legal to use?", a: "Yes. LeadSpotter only collects publicly available data from Google Maps and business websites. We are fully GDPR and CCPA compliant. All extracted data is information that businesses have voluntarily published online." },
+  { q: "What data can LeadSpotter extract?", a: "LeadSpotter extracts business names, addresses, phone numbers, emails, websites, ratings, reviews, social media profiles, and operating hours from business listings. We also enrich data by scraping business websites for additional contact information." },
+  { q: "Is this legal to use?", a: "Yes. LeadSpotter only collects publicly available data from maps and business websites. We are fully GDPR and CCPA compliant. All extracted data is information that businesses have voluntarily published online." },
   { q: "How does cloud processing work?", a: "When you start an extraction task, it runs on our cloud servers. You can close your browser and come back later — your task continues processing in the background. You'll receive a notification when your leads are ready to download." },
   { q: "Can I cancel or upgrade my plan anytime?", a: "Absolutely. All plans are month-to-month with no long-term contracts. You can upgrade, downgrade, or cancel at any time from your dashboard." },
-  { q: "What's the difference between the Starter and Pro plan?", a: "The Starter plan gives you 500 leads per month with basic Google Maps extraction. The Pro plan unlocks 5,000 leads, bulk keyword generation, social media enrichment, and priority support." },
+  { q: "What's the difference between the Starter and Pro plan?", a: "The Starter plan gives you 500 leads per month with basic extraction. The Pro plan unlocks 5,000 leads, bulk keyword generation, social media enrichment, and priority support." },
 ];
 
 const pricingPlans = [
-  { name: "Starter", price: "₹0", period: "/month", features: ["500 Leads per month", "Localized search", "Google Maps data scraper"], cta: "Get Started", href: "/signup", popular: false },
+  { name: "Starter", price: "₹0", period: "/month", features: ["500 Leads per month", "Localized search", "Business data scraper"], cta: "Get Started", href: "/signup", popular: false },
   { name: "Pro", price: "₹2,000", period: "/month", features: ["5,000 Leads per month", "Social media enrichment", "Bulk keyword generation", "CSV/JSON data exports", "Priority email support"], cta: "Upgrade to Pro", href: "/signup", popular: true },
   { name: "Premium", price: "Custom", period: "", features: ["Unlimited leads", "Full API access", "Dedicated account manager", "Custom scrapers & workflow", "SLA & On-prem options"], cta: "Contact Sales", href: "mailto:sales@leadspotter.io", popular: false },
 ];
@@ -76,7 +76,7 @@ const mockLeads = [
   { name: "Greenfield Consulting", city: "Chicago, IL", email: "team@greenfieldco.com", phone: "+1 (312) 555-0391", rating: 4.7, reviews: 56, website: "greenfieldco.com" },
   { name: "Nova Marketing Group", city: "Austin, TX", email: "contact@novamarketing.co", phone: "+1 (512) 555-0462", rating: 4.6, reviews: 203, website: "novamarketing.co" },
   { name: "Bright Path Solutions", city: "Seattle, WA", email: "info@brightpath.dev", phone: "+1 (206) 555-0518", rating: 5.0, reviews: 67, website: "brightpath.dev" },
-  { name :"Omnetra Infotech", city:"Rajkot", email:"omnetrainfotech@gmail.com", phone: "+919773005701",rating: 5.0, reviews: 67, website: "omntrainfotech.com"  },
+  { name: "Omnetra Infotech", city: "Rajkot", email: "omnetrainfotech@gmail.com", phone: "+919773005701", rating: 5.0, reviews: 67, website: "omntrainfotech.com" },
   { name: "Nova Marketing Group", city: "Austin, TX", email: "contact@novamarketing.co", phone: "+1 (512) 555-0462", rating: 4.6, reviews: 203, website: "novamarketing.co" },
 
 ];
@@ -189,11 +189,10 @@ function DashboardMockup() {
           ].map((nav) => (
             <div
               key={nav.label}
-              className={`flex items-center gap-1.5 text-xs font-medium pb-0.5 ${
-                nav.active
+              className={`flex items-center gap-1.5 text-xs font-medium pb-0.5 ${nav.active
                   ? "text-indigo-600 border-b-2 border-indigo-600"
                   : "text-slate-400"
-              }`}
+                }`}
             >
               <nav.Icon size={16} />
               {nav.label}
@@ -275,7 +274,7 @@ function DashboardMockup() {
                   <span key={badge} className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                     <CheckCircle size={12} className="text-indigo-400 fill-indigo-400" />
                     <p className="truncate w-[70px] md:w-full">
-                    {badge}
+                      {badge}
                     </p>
                   </span>
                 ))}
@@ -574,7 +573,7 @@ export default function Home() {
               <h1
                 className="font-sans text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6 hero-fade-in-heading"
               >
-                <span className="text-gray-900">Turn Google Maps</span>
+                <span className="text-gray-900">Turn Maps</span>
                 <br />
                 <span className="text-gray-900">into your </span>
                 <FlipWords words={flipWords} className="text-indigo-600" />
@@ -584,7 +583,7 @@ export default function Home() {
               <p
                 className="max-w-2xl mx-auto mb-10 text-base font-normal text-gray-500 leading-snug tracking-wide hero-fade-in-sub"
               >
-                Extract verified leads from Google Maps while you focus on closing deals.
+                Extract verified leads from maps while you focus on closing deals.
               </p>
 
               {/* CTAs */}
@@ -647,7 +646,7 @@ export default function Home() {
             className="flex flex-wrap justify-center items-center gap-8 md:gap-16 py-8 border-y border-gray-100"
           >
             {[
-              { content: <>{[1,2,3,4,5].map((i)=><Star key={i} size={18} className="text-amber-400 fill-amber-400" />)}<span className="text-sm font-bold text-gray-500 ml-1">4.9/5 on G2</span></> },
+              { content: <>{[1, 2, 3, 4, 5].map((i) => <Star key={i} size={18} className="text-amber-400 fill-amber-400" />)}<span className="text-sm font-bold text-gray-500 ml-1">4.9/5 on G2</span></> },
               { content: <><ShieldCheck size={20} className="text-indigo-500" /><span className="text-sm font-bold text-gray-500">GDPR &amp; CCPA Compliant</span></> },
               { content: <><TrendingUp size={20} className="text-indigo-500" /><span className="text-sm font-bold text-gray-500">1M+ Leads Extracted Daily</span></> },
             ].map((item, i) => (
@@ -878,11 +877,10 @@ export default function Home() {
                 variants={fadeUp}
                 custom={i}
                 whileHover={{ y: plan.popular ? -12 : -6, transition: { duration: 0.25 } }}
-                className={`relative flex flex-col p-8 rounded-2xl border transition-colors ${
-                  plan.popular
+                className={`relative flex flex-col p-8 rounded-2xl border transition-colors ${plan.popular
                     ? "border-indigo-300 bg-gradient-to-b from-indigo-50/80 to-white shadow-xl shadow-indigo-500/8 md:-translate-y-4"
                     : "border-gray-200 bg-white hover:border-indigo-200 hover:shadow-lg"
-                }`}
+                  }`}
               >
                 {plan.popular && (
                   <motion.div

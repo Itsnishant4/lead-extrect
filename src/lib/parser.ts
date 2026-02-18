@@ -34,7 +34,7 @@ export interface Lead {
   website_phone?: string | null;
 }
 
-export function parseGoogleMapsResponse(data: any): Lead[] {
+export function parseMapResponse(data: any): Lead[] {
   const leads: Lead[] = [];
 
   try {
@@ -57,7 +57,7 @@ export function parseGoogleMapsResponse(data: any): Lead[] {
       const reviewsCount = bizData[4] ? bizData[4][8] : null;
       const category = bizData[13] ? bizData[13][0] : null;
       const placeId = bizData[78];
-      
+
       const coords = bizData[9];
       const lat = coords ? coords[2] : null;
       const lng = coords ? coords[3] : null;
@@ -74,19 +74,19 @@ export function parseGoogleMapsResponse(data: any): Lead[] {
           // If the last part is 'State Pincode', the city is 1 step back.
           const lastPart = parts[parts.length - 1];
           const secondLast = parts[parts.length - 2];
-          
+
           if (lastPart.toLowerCase() === 'india') {
             city = parts[parts.length - 3] || secondLast;
           } else {
             city = secondLast;
           }
-          
+
           // Clean up if city still contains numbers (likely an area with zip)
           if (city && /\d/.test(city) && parts.length > 2) {
-             const possibleCity = parts[parts.length - 3];
-             if (possibleCity && !/\d/.test(possibleCity)) {
-               city = possibleCity;
-             }
+            const possibleCity = parts[parts.length - 3];
+            if (possibleCity && !/\d/.test(possibleCity)) {
+              city = possibleCity;
+            }
           }
         }
       }
@@ -110,7 +110,7 @@ export function parseGoogleMapsResponse(data: any): Lead[] {
       // Sometimes links are in bizData[12] or bizData[100]+
       const socials: any = {};
       let email = null;
-      
+
       if (bizData[12] && Array.isArray(bizData[12])) {
         bizData[12].forEach((linkObj: any) => {
           const url = linkObj?.[0];
@@ -146,7 +146,7 @@ export function parseGoogleMapsResponse(data: any): Lead[] {
       }
     }
   } catch (error) {
-    console.error('Error parsing Google Maps response:', error);
+    console.error('Error parsing map response:', error);
   }
 
   return leads;

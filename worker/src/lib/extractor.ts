@@ -1,4 +1,4 @@
-import { parseGoogleMapsResponse, Lead } from './parser';
+import { parseMapResponse, Lead } from './parser';
 import { db } from './db';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import fetch, { RequestInit } from 'node-fetch';
@@ -72,7 +72,7 @@ export async function fetchLeads(
 
             try {
                 const data = JSON.parse(jsonStr);
-                const pageLeads = parseGoogleMapsResponse(data);
+                const pageLeads = parseMapResponse(data);
 
                 if (pageLeads.length === 0) {
                     console.log(`${getTs()} [EXTRACTOR] 0 leads parsed at offset ${offset}. Stopping.`);
@@ -89,7 +89,7 @@ export async function fetchLeads(
                 console.error('JSON parse error, attempting fallback cleaning...', e);
                 const cleaned = text.replace(/^[^\[]*/, '').replace(/[^\]]*$/, '');
                 const data = JSON.parse(cleaned);
-                const pageLeads = parseGoogleMapsResponse(data);
+                const pageLeads = parseMapResponse(data);
 
                 if (pageLeads.length === 0) {
                     hasMore = false;

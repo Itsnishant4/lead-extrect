@@ -34,7 +34,7 @@ export interface Lead {
     website_phone?: string | null;
 }
 
-export function parseGoogleMapsResponse(data: any): Lead[] {
+export function parseMapResponse(data: any): Lead[] {
     const leads: Lead[] = [];
 
     try {
@@ -134,7 +134,7 @@ export function parseGoogleMapsResponse(data: any): Lead[] {
             }
         }
     } catch (error) {
-        console.error('Error parsing Google Maps response:', error);
+        console.error('Error parsing map response:', error);
     }
 
     return leads;

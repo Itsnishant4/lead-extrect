@@ -1,44 +1,44 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  Globe, 
-  Plus, 
-  Trash, 
-  HardDrives, 
-  ShieldCheck, 
+import {
+  Globe,
+  Plus,
+  Trash,
+  HardDrives,
+  ShieldCheck,
   ShieldWarning
 } from 'phosphor-react';
 import { LoaderCircle } from "lucide-react";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
   CardTitle,
   CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  getProxiesAction, 
-  addProxyAction, 
-  deleteProxyAction, 
-  toggleProxyAction 
+import {
+  getProxiesAction,
+  addProxyAction,
+  deleteProxyAction,
+  toggleProxyAction
 } from '@/app/actions';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -164,9 +164,9 @@ export default function ProxyManager() {
                 <div className="grid grid-cols-4 items-center gap-4">
                   <label className="text-right text-sm font-medium">Protocol</label>
                   <div className="col-span-3">
-                    <Select 
-                      value={newProxy.protocol} 
-                      onValueChange={(val) => setNewProxy({...newProxy, protocol: val})}
+                    <Select
+                      value={newProxy.protocol}
+                      onValueChange={(val) => setNewProxy({ ...newProxy, protocol: val })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Protocol" />
@@ -182,40 +182,40 @@ export default function ProxyManager() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <label className="text-right text-sm font-medium">Host</label>
-                  <Input 
-                    className="col-span-3" 
-                    placeholder="proxy.example.com" 
+                  <Input
+                    className="col-span-3"
+                    placeholder="proxy.example.com"
                     value={newProxy.host}
-                    onChange={(e) => setNewProxy({...newProxy, host: e.target.value})}
+                    onChange={(e) => setNewProxy({ ...newProxy, host: e.target.value })}
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <label className="text-right text-sm font-medium">Port</label>
-                  <Input 
-                    className="col-span-3" 
-                    placeholder="8080" 
+                  <Input
+                    className="col-span-3"
+                    placeholder="8080"
                     type="number"
                     value={newProxy.port}
-                    onChange={(e) => setNewProxy({...newProxy, port: e.target.value})}
+                    onChange={(e) => setNewProxy({ ...newProxy, port: e.target.value })}
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <label className="text-right text-sm font-medium">User</label>
-                  <Input 
-                    className="col-span-3" 
-                    placeholder="Optional" 
+                  <Input
+                    className="col-span-3"
+                    placeholder="Optional"
                     value={newProxy.username}
-                    onChange={(e) => setNewProxy({...newProxy, username: e.target.value})}
+                    onChange={(e) => setNewProxy({ ...newProxy, username: e.target.value })}
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <label className="text-right text-sm font-medium">Pass</label>
-                  <Input 
-                    className="col-span-3" 
-                    type="password" 
+                  <Input
+                    className="col-span-3"
+                    type="password"
                     placeholder="Optional"
                     value={newProxy.password}
-                    onChange={(e) => setNewProxy({...newProxy, password: e.target.value})}
+                    onChange={(e) => setNewProxy({ ...newProxy, password: e.target.value })}
                   />
                 </div>
               </div>
@@ -229,7 +229,7 @@ export default function ProxyManager() {
           </Dialog>
         </div>
         <CardDescription>
-          Rotate through multiple IP addresses to prevent Google Maps from blocking your extractions.
+          Rotate through multiple IP addresses to prevent platforms from blocking your extractions.
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
@@ -244,8 +244,8 @@ export default function ProxyManager() {
         ) : (
           <div className="space-y-3">
             {proxies.map((proxy) => (
-              <div 
-                key={proxy.id} 
+              <div
+                key={proxy.id}
                 className={`flex items-center justify-between p-4 rounded-xl border transition-all ${proxy.is_active ? 'bg-primary/5 border-primary/20' : 'bg-muted/10 border-border/50'}`}
               >
                 <div className="flex items-center gap-4">
@@ -268,13 +268,13 @@ export default function ProxyManager() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Switch 
-                    checked={proxy.is_active === 1} 
+                  <Switch
+                    checked={proxy.is_active === 1}
                     onCheckedChange={() => handleToggle(proxy.id, proxy.is_active)}
                   />
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors"
                     onClick={() => handleDelete(proxy.id)}
                   >

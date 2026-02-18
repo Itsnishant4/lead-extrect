@@ -16,11 +16,11 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "LeadSpotter | Google Maps Scraper & B2B Lead Generation",
+    default: "LeadSpotter | Lead Extraction Tool & B2B Lead Generation",
     template: "%s | LeadSpotter",
   },
-  description: "Extract verified business leads from Google Maps in bulk. Automate your prospecting with our powerful, cloud-based scraping tool.",
-  keywords: ["google maps scraper", "lead generation", "b2b leads", "email extractor", "business data", "growth hacking", "sales prospecting"],
+  description: "Extract verified business leads in bulk. Automate your prospecting with our powerful, cloud-based extraction tool.",
+  keywords: ["business scraper", "lead generation", "b2b leads", "email extractor", "business data", "growth hacking", "sales prospecting"],
   authors: [{ name: "LeadSpotter Team" }],
   creator: "LeadSpotter",
   openGraph: {
@@ -28,21 +28,21 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://leadspotter.in",
     siteName: "LeadSpotter",
-    title: "LeadSpotter | Turn Google Maps into your Lead Machine",
-    description: "Extract verified business leads from Google Maps in bulk. Automate your prospecting with our powerful, cloud-based scraping tool.",
+    title: "LeadSpotter | Turn Maps into your Lead Machine",
+    description: "Extract verified business leads in bulk. Automate your prospecting with our powerful, cloud-based extraction tool.",
     images: [
       {
         url: "/opengraph-image",
         width: 1920,
         height: 1080,
-        alt: "LeadSpotter — Turn Google Maps into your Lead Machine",
+        alt: "LeadSpotter — Turn Maps into your Lead Machine",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "LeadSpotter | Google Maps Scraper",
-    description: "Extract verified business leads from Google Maps in bulk. Start for free today.",
+    title: "LeadSpotter | Lead Extraction Tool",
+    description: "Extract verified business leads in bulk. Start for free today.",
     images: ["/opengraph-image"],
     creator: "@LeadSpotter",
   },
@@ -76,7 +76,7 @@ export const metadata: Metadata = {
   },
   manifest: "/favicon/site.webmanifest",
   verification: {
-    google: "googleb9ce8135773393a8", 
+    google: "googleb9ce8135773393a8",
   },
   category: "Business",
   classification: "SaaS",
@@ -98,17 +98,17 @@ export default function RootLayout({
       </head>
       <body className="antialiased min-h-screen">
         <GoogleAnalytics />
-        
-          <QueryProvider>
-            <AutomationProvider>
-              <SidebarProvider>
-                <main className="flex-1 w-full min-h-screen h-screen">
-                  {children}
-                </main>
-                <Toaster />
-              </SidebarProvider>
-            </AutomationProvider>
-          </QueryProvider>
+
+        <QueryProvider>
+          <AutomationProvider>
+            <SidebarProvider>
+              <main className="flex-1 w-full min-h-screen h-screen">
+                {children}
+              </main>
+              <Toaster />
+            </SidebarProvider>
+          </AutomationProvider>
+        </QueryProvider>
 
       </body>
     </html>
