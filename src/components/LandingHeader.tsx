@@ -7,9 +7,10 @@ import { FloatingNav } from "@/components/ui/floating-navbar";
 
 export function LandingHeader() {
   const navItems = [
-    { name: "Features", link: "/#features" },
-    { name: "Why Us", link: "/#how-it-works" },
+    { name: "Features", link: "/features" },
+    { name: "Use Cases", link: "/use-cases" },
     { name: "Pricing", link: "/#pricing" },
+    { name: "Blog", link: "/blog" },
     { name: "Company", link: "/company" },
   ];
 
@@ -26,21 +27,13 @@ export function LandingHeader() {
         </Link>
       }
       rightContent={
-        <div className="flex items-center gap-2">
-          <Link
-            href="/login"
-            className="hidden sm:block text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors px-3 py-1.5"
+        <Link href="/signup">
+          <button className="text-white  px-5 py-2 rounded-full text-sm font-bold shadow-md shadow-indigo-200/50 active:scale-95 transition-colors"
+            style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #3B82F6 100%)" }}
           >
-            Login
-          </Link>
-          <Link href="/signup">
-            <button className="text-white  px-5 py-2 rounded-full text-sm font-bold shadow-md shadow-indigo-200/50 active:scale-95 transition-colors"
-              style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #3B82F6 100%)" }}
-            >
-              Start Free
-            </button>
-          </Link>
-        </div>
+            Start Free
+          </button>
+        </Link>
       }
     />
   );

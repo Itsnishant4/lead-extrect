@@ -67,7 +67,10 @@ export default function SavedListsPage() {
     queryKey: ["saved-lists"],
     queryFn: async () => {
       const res = await getSavedListsAction();
-      return res.success ? (res.data || []) : [];
+      if (res.success && 'data' in res) {
+        return (res.data as any[]) || [];
+      }
+      return [];
     },
   });
 
@@ -75,7 +78,10 @@ export default function SavedListsPage() {
     queryKey: ["export-templates"],
     queryFn: async () => {
       const res = await getExportTemplatesAction();
-      return res.success ? (res.data || []) : [];
+      if (res.success && 'data' in res) {
+        return (res.data as any[]) || [];
+      }
+      return [];
     },
   });
 
@@ -84,7 +90,10 @@ export default function SavedListsPage() {
     enabled: !!activeListId,
     queryFn: async () => {
       const res = await getSavedListLeadsAction(activeListId as number);
-      return res.success ? (res.data || []) : [];
+      if (res.success && 'data' in res) {
+        return (res.data as any[]) || [];
+      }
+      return [];
     },
   });
 
@@ -109,7 +118,11 @@ export default function SavedListsPage() {
     const rows = listLeads.map((lead: any) => columns.map((c: string) => lead[c] ?? ""));
 
     const csvContent = [headers, ...rows]
-      .map((row: any[]) => row.map((s) => `"${String(s).replace(/"/g, '""')}"`).join(","))
+      .map((row: any[]) => row.map((s) => {
+        let str = String(s);
+        if (/^[=+\-@]/.test(str)) str = "'" + str;
+        return `"${str.replace(/"/g, '""')}"`;
+      }).join(","))
       .join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -140,7 +153,7 @@ export default function SavedListsPage() {
       setTemplateName("");
       queryClient.invalidateQueries({ queryKey: ["export-templates"] });
     } else {
-      toast.error(res.error || "Failed to create template");
+      toast.error((res as any).error || "Failed to create template");
     }
     setSavingTemplate(false);
   };
@@ -272,15 +285,18 @@ export default function SavedListsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {listLeads.map((lead: any) => (
-                      <TableRow key={lead.id}>
-                        <TableCell className="font-medium">{lead.name}</TableCell>
-                        <TableCell>{lead.category || "-"}</TableCell>
-                        <TableCell>{lead.city || "-"}</TableCell>
-                        <TableCell>{lead.rating || "-"}</TableCell>
-                        <TableCell>{lead.lead_score ?? "-"}</TableCell>
-                      </TableRow>
-                    ))}
+                    {listLeads.map((item: any) => {
+                      const lead = item.lead || item;
+                      return (
+                        <TableRow key={lead.id}>
+                          <TableCell className="font-medium">{lead.name}</TableCell>
+                          <TableCell>{lead.category || "-"}</TableCell>
+                          <TableCell>{lead.city || "-"}</TableCell>
+                          <TableCell>{lead.rating || "-"}</TableCell>
+                          <TableCell>{lead.leadScore ?? lead.lead_score ?? "-"}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {listLeads.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-muted-foreground">

@@ -12,8 +12,6 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Users,
-  MagnifyingGlass,
-  Stack,
   Activity,
   TrendUp,
   FileText,
@@ -84,8 +82,8 @@ export default function AdminDashboard() {
     queryKey: ['admin-stats'],
     queryFn: async () => {
       const res = await getAdminDashboardStatsAction();
-      if (!res.success) throw new Error(res.error);
-      return res.data;
+      if (!res.success) throw new Error((res as any).error);
+      return (res as any).data;
     }
   });
 
@@ -93,8 +91,8 @@ export default function AdminDashboard() {
     queryKey: ['admin-charts'],
     queryFn: async () => {
       const res = await getAdminChartDataAction();
-      if (!res.success) throw new Error(res.error);
-      return res.data;
+      if (!res.success) throw new Error((res as any).error);
+      return (res as any).data;
     }
   });
 
@@ -102,8 +100,8 @@ export default function AdminDashboard() {
     queryKey: ['admin-insights'],
     queryFn: async () => {
       const res = await getAdminInsightsAction();
-      if (!res.success) throw new Error(res.error);
-      return res.data;
+      if (!res.success) throw new Error((res as any).error);
+      return (res as any).data;
     }
   });
 
@@ -113,7 +111,7 @@ export default function AdminDashboard() {
     queryKey: ['admin-tasks'],
     queryFn: async () => {
       const res = await getAdminTasksAction();
-      return res.success ? (res.data || []) : [];
+      return res.success ? ((res as any).data || []) : [];
     },
     refetchInterval: 10000,
   });
@@ -121,7 +119,7 @@ export default function AdminDashboard() {
   const taskStatusMutation = useMutation({
     mutationFn: async ({ taskId, status }: { taskId: number; status: string }) => {
       const res = await updateTaskStatusAdminAction(taskId, status);
-      if (!res.success) throw new Error(res.error || "Failed to update task");
+      if (!res.success) throw new Error((res as any).error || "Failed to update task");
       return res;
     },
     onSuccess: () => {
@@ -130,9 +128,9 @@ export default function AdminDashboard() {
   });
 
   const bulkTaskMutation = useMutation({
-    mutationFn: async (mode: "pause_running" | "resume_paused") => {
+    mutationFn: async (mode: string) => {
       const res = await bulkUpdateTasksAdminAction(mode);
-      if (!res.success) throw new Error(res.error || "Failed to update tasks");
+      if (!res.success) throw new Error((res as any).error || "Failed to update tasks");
       return res;
     },
     onSuccess: () => {
@@ -144,7 +142,7 @@ export default function AdminDashboard() {
   const planMutation = useMutation({
     mutationFn: async ({ userId, plan }: { userId: number; plan: string }) => {
       const res = await updateUserPlanAction(userId, plan);
-      if (!res.success) throw new Error(res.error || "Failed to update plan");
+      if (!res.success) throw new Error((res as any).error || "Failed to update plan");
       return res;
     },
     onSuccess: () => {
@@ -152,7 +150,7 @@ export default function AdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ['admin-insights'] });
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(`Failed to update plan: ${error.message}`);
     }
   });
@@ -177,7 +175,7 @@ export default function AdminDashboard() {
     {
       title: "Total Leads",
       value: stats?.stats?.leads?.toLocaleString() || 0,
-      icon: MagnifyingGlass,
+      icon: Activity,
       description: "Leads extracted across all users",
       color: "text-green-500",
       bg: "bg-green-500/10"
@@ -193,7 +191,7 @@ export default function AdminDashboard() {
     {
       title: "Active Tasks",
       value: stats?.stats?.tasks || 0,
-      icon: Stack,
+      icon: ListBullets,
       description: "Automation tasks created",
       color: "text-purple-500",
       bg: "bg-purple-500/10"
@@ -371,9 +369,6 @@ export default function AdminDashboard() {
                       <Badge variant="secondary" className="tabular-nums">{plan.count}</Badge>
                     </div>
                   ))}
-                  {insights?.planBreakdown?.length === 0 && (
-                    <div className="text-xs text-muted-foreground">No plan data yet.</div>
-                  )}
                 </CardContent>
               </Card>
 
@@ -414,9 +409,6 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                     ))}
-                    {insights?.topUsers?.length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground text-xs">No data yet.</div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -438,9 +430,6 @@ export default function AdminDashboard() {
                       <Badge variant="secondary" className="tabular-nums">{row.count}</Badge>
                     </div>
                   ))}
-                  {insights?.taskStatusBreakdown?.length === 0 && (
-                    <div className="text-xs text-muted-foreground">No task data yet.</div>
-                  )}
                 </CardContent>
               </Card>
 
@@ -451,7 +440,7 @@ export default function AdminDashboard() {
                     Recent Signups
                   </CardTitle>
                   <CardDescription className="text-muted-foreground text-xs font-medium tracking-tight">
-                    Latest users joining the platform
+                    Latest users
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -463,29 +452,12 @@ export default function AdminDashboard() {
                           <div className="text-muted-foreground">{user.email}</div>
                         </div>
                         <div className="text-right">
-                          <Select
-                            defaultValue={user.plan_type}
-                            onValueChange={(val) => planMutation.mutate({ userId: user.id, plan: val })}
-                            disabled={planMutation.isPending}
-                          >
-                            <SelectTrigger className="h-7 w-[100px] text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="free">Free</SelectItem>
-                              <SelectItem value="pro">Pro</SelectItem>
-                              <SelectItem value="premium">Premium</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <div className="text-[10px] text-muted-foreground mt-1">
-                            {format(new Date(user.created_at), 'MMM dd')}
+                          <div className="text-[10px] text-muted-foreground">
+                            {user.created_at ? format(new Date(user.created_at), 'MMM dd') : ''}
                           </div>
                         </div>
                       </div>
                     ))}
-                    {insights?.recentSignups?.length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground text-xs">No signups yet.</div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -497,9 +469,6 @@ export default function AdminDashboard() {
                   <Activity className="h-4 w-4 text-primary" />
                   Admin Controls
                 </CardTitle>
-                <CardDescription className="text-muted-foreground text-xs font-medium tracking-tight">
-                  Bulk actions across the system
-                </CardDescription>
               </CardHeader>
               <CardContent className="p-4">
                 <div className="flex flex-wrap gap-3">
@@ -522,9 +491,6 @@ export default function AdminDashboard() {
                     Resume Eligible Tasks
                   </Button>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-3">
-                  Resume respects suspended accounts and credit limits.
-                </p>
               </CardContent>
             </Card>
 
@@ -534,66 +500,32 @@ export default function AdminDashboard() {
                   <Activity className="h-4 w-4 text-primary" />
                   Task Monitor
                 </CardTitle>
-                <CardDescription className="text-muted-foreground text-xs font-medium tracking-tight">
-                  Live tasks across all users
-                </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Task</TableHead>
-                        <TableHead>User</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Progress</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Task</TableHead>
+                      <TableHead>User</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {adminTasks.map((task: any) => (
+                      <TableRow key={task.id}>
+                        <TableCell className="font-medium">{task.name}</TableCell>
+                        <TableCell>{task.user_name}</TableCell>
+                        <TableCell><Badge variant="outline">{task.status}</Badge></TableCell>
+                        <TableCell className="text-right">
+                          <Button size="sm" variant="ghost" onClick={() => taskStatusMutation.mutate({ taskId: task.id, status: task.status === 'running' ? 'paused' : 'running' })}>
+                            {task.status === 'running' ? <Pause size={14} /> : <Play size={14} />}
+                          </Button>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {adminTasks.map((task: any) => {
-                        const pct = task.total_keywords > 0
-                          ? Math.round((task.current_keyword_index / task.total_keywords) * 100)
-                          : 0;
-                        return (
-                          <TableRow key={task.id}>
-                            <TableCell className="font-medium">{task.name}</TableCell>
-                            <TableCell className="text-muted-foreground">{task.user_name} • {task.user_email}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="capitalize">{task.status}</Badge>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">{pct}%</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => taskStatusMutation.mutate({ taskId: task.id, status: "paused" })}
-                                >
-                                  Pause
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => taskStatusMutation.mutate({ taskId: task.id, status: "running" })}
-                                >
-                                  Resume
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      {adminTasks.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                            No tasks found.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
 
@@ -603,7 +535,6 @@ export default function AdminDashboard() {
                   <FileText className="h-4 w-4 text-primary" />
                   Recent Logs
                 </CardTitle>
-                <CardDescription className="text-muted-foreground text-xs font-medium tracking-tight">Real-time system audit streaming</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-border/50">
@@ -615,22 +546,15 @@ export default function AdminDashboard() {
                           log.status === 'success' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.2)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.2)]'
                         )} />
                         <div>
-                          <div className="font-bold text-sm text-foreground capitalize flex items-center gap-2">
-                            {log.action.replace('_', ' ')}
-                            <span className="text-[10px] font-black text-muted-foreground  px-1 border rounded">Log</span>
-                          </div>
-                          <div className="text-xs font-medium text-muted-foreground">{log.user_name} • <span className="opacity-50">{log.user_email}</span></div>
+                          <div className="font-bold text-sm text-foreground capitalize">{log.action?.replace('_', ' ')}</div>
+                          <div className="text-xs font-medium text-muted-foreground">{log.userName} • {log.userEmail}</div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-bold text-foreground tabular-nums">{format(new Date(log.created_at), 'HH:mm:ss')}</div>
-                        <div className="text-[10px] font-bold text-muted-foreground">{format(new Date(log.created_at), 'MMM dd')}</div>
+                        <div className="text-sm font-bold text-foreground tabular-nums">{log.createdAt ? format(new Date(log.createdAt), 'HH:mm:ss') : ''}</div>
                       </div>
                     </div>
                   ))}
-                  {stats?.recentLogs?.length === 0 && (
-                    <div className="text-center py-12 text-muted-foreground font-bold">No active logs</div>
-                  )}
                 </div>
               </CardContent>
             </Card>

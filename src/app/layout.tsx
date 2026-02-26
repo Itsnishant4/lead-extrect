@@ -20,7 +20,28 @@ export const metadata: Metadata = {
     template: "%s | LeadSpotter",
   },
   description: "Extract verified business leads in bulk. Automate your prospecting with our powerful, cloud-based extraction tool.",
-  keywords: ["business scraper", "lead generation", "b2b leads", "email extractor", "business data", "growth hacking", "sales prospecting"],
+  keywords: [
+    "lead generation tool",
+    "b2b lead generation",
+    "google maps scraper",
+    "google maps lead extractor",
+    "business email extractor",
+    "bulk lead extraction",
+    "sales prospecting tool",
+    "local business scraper",
+    "business data extraction",
+    "email finder tool",
+    "phone number extractor",
+    "lead generation software",
+    "cold outreach tool",
+    "google maps data scraper",
+    "extract business leads",
+    "b2b prospecting",
+    "lead scraper",
+    "maps lead generation",
+    "business contact finder",
+    "growth hacking tools",
+  ],
   authors: [{ name: "LeadSpotter Team" }],
   creator: "LeadSpotter",
   openGraph: {
@@ -60,9 +81,6 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://leadspotter.in"),
   alternates: {
     canonical: "/",
-    languages: {
-      "en-US": "/en-US",
-    },
   },
   icons: {
     icon: [
@@ -90,7 +108,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <JsonLd />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" />
@@ -105,7 +122,7 @@ export default function RootLayout({
               <main className="flex-1 w-full min-h-screen h-screen">
                 {children}
               </main>
-              <Toaster />
+              <Toaster position="top-right" />
             </SidebarProvider>
           </AutomationProvider>
         </QueryProvider>

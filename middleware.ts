@@ -22,7 +22,7 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // 1. Guest-only paths: Logged-in users should NOT see these (redirect to /leads)
-  const guestOnlyPaths = ['/login', '/signup'];
+  const guestOnlyPaths = ['/login', '/signup', '/forgot-password'];
   const isGuestOnlyPath = guestOnlyPaths.some(p => path.startsWith(p));
 
   // 2. Public paths: Everyone can see these (no redirect)
@@ -32,11 +32,15 @@ export async function middleware(request: NextRequest) {
     '/company',
     '/privacy',
     '/terms',
+    '/features',
+    '/use-cases',
+    '/blog',
     '/robots.txt',
     '/sitemap.xml',
     '/googleb9ce8135773393a8.html'
   ];
-  const isPublicPath = publicPaths.includes(path) || path.startsWith('/favicon/'); // Allow favicon folder
+  const isPublicPrefix = ['/blog/'];
+  const isPublicPath = publicPaths.includes(path) || path.startsWith('/favicon/') || isPublicPrefix.some(p => path.startsWith(p));
 
   // LOGIC:
 

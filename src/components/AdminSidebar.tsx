@@ -54,8 +54,13 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
       url: '/admin/users',
     },
     {
-      title: 'System Logs',
+      title: 'Blog Management',
       icon: FileText,
+      url: '/admin/blog',
+    },
+    {
+      title: 'System Logs',
+      icon: Layout, // Changed icon for Logs since FileText is better for Blog
       url: '/admin/logs',
     },
   ];

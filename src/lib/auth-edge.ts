@@ -1,5 +1,8 @@
 import { SignJWT, jwtVerify } from 'jose';
 
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET must be defined in production environment');
+}
 const SECRET_KEY = process.env.JWT_SECRET || 'dev-secret-key-change-in-prod';
 const key = new TextEncoder().encode(SECRET_KEY);
 

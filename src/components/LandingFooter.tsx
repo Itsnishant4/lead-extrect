@@ -80,8 +80,8 @@ export function LandingFooter() {
           <div>
             <h3 className="font-bold text-indigo-950 mb-6 text-sm uppercase tracking-wider">Product</h3>
             <ul className="space-y-3 text-sm text-slate-500">
-              <li><Link className="hover:text-indigo-600 transition-colors" href="/#features">Features</Link></li>
-              <li><Link className="hover:text-indigo-600 transition-colors" href="#">Bulk Tool</Link></li>
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/features">Features</Link></li>
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/use-cases">Use Cases</Link></li>
               <li><Link className="hover:text-indigo-600 transition-colors" href="/#pricing">Pricing</Link></li>
             </ul>
           </div>
@@ -89,6 +89,7 @@ export function LandingFooter() {
             <h3 className="font-bold text-indigo-950 mb-6 text-sm uppercase tracking-wider">Company</h3>
             <ul className="space-y-3 text-sm text-slate-500">
               <li><Link className="hover:text-indigo-600 transition-colors" href="/company">About Us</Link></li>
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/blog">Blog</Link></li>
               <li><Link className="hover:text-indigo-600 transition-colors" href="/company">Contact</Link></li>
             </ul>
           </div>

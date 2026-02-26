@@ -62,15 +62,15 @@ export default function AdminUsersPage() {
     queryKey: ['admin-users'],
     queryFn: async () => {
       const res = await getAllUsersAdminAction();
-      if (!res.success) throw new Error(res.error);
-      return res.data || [];
+      if (!res.success) throw new Error((res as any).error);
+      return (res as any).data || [];
     }
   });
 
   const toggleAdminMutation = useMutation({
     mutationFn: async ({ userId, currentStatus }: { userId: number, currentStatus: boolean }) => {
       const res = await toggleUserAdminAction(userId, !currentStatus);
-      if (!res.success) throw new Error(res.error || "Failed to update status");
+      if (!res.success) throw new Error((res as any).error || "Failed to update status");
       return res;
     },
     onSuccess: () => {
@@ -93,7 +93,7 @@ export default function AdminUsersPage() {
   const updateCreditsMutation = useMutation({
     mutationFn: async ({ userId, amount }: { userId: number, amount: number }) => {
       const res = await updateUserCreditsAction(userId, amount);
-      if (!res.success) throw new Error(res.error || "Failed to update credits");
+      if (!res.success) throw new Error((res as any).error || "Failed to update credits");
       return res;
     },
     onSuccess: () => {
@@ -110,7 +110,7 @@ export default function AdminUsersPage() {
   const suspendMutation = useMutation({
     mutationFn: async ({ userId, isSuspended }: { userId: number; isSuspended: boolean }) => {
       const res = await suspendUserAction(userId, isSuspended);
-      if (!res.success) throw new Error(res.error || "Failed to update suspension");
+      if (!res.success) throw new Error((res as any).error || "Failed to update suspension");
       return res;
     },
     onSuccess: () => {
@@ -131,20 +131,18 @@ export default function AdminUsersPage() {
     setIsCreditDialogOpen(true);
   }
 
-  const filteredUsers = users.filter((user) => {
+  const filteredUsers = users.filter((user: any) => {
     const matchesSearch = !searchTerm
       || user.name?.toLowerCase().includes(searchTerm.toLowerCase())
       || user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPlan = planFilter === "all" || user.plan_type === planFilter;
+    const matchesPlan = planFilter === "all" || user.planType === planFilter;
     const matchesStatus = statusFilter === "all"
-      || (statusFilter === "suspended" ? user.is_suspended : !user.is_suspended);
+      || (statusFilter === "suspended" ? user.isSuspended : !user.isSuspended);
     const matchesRole = roleFilter === "all"
-      || (roleFilter === "admin" ? user.is_admin : !user.is_admin);
+      || (roleFilter === "admin" ? user.isAdmin : !user.isAdmin);
 
     return matchesSearch && matchesPlan && matchesStatus && matchesRole;
   });
-
-
 
   return (
     <>
@@ -237,37 +235,37 @@ export default function AdminUsersPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map((user) => (
+                    {filteredUsers.map((user: any) => (
                       <TableRow key={user.id} className="hover:bg-muted/30 transition-colors">
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             {user.name}
-                            {user.is_admin && <Badge variant="secondary">Admin</Badge>}
-                            {user.is_suspended && <Badge variant="destructive">Suspended</Badge>}
+                            {user.isAdmin && <Badge variant="secondary">Admin</Badge>}
+                            {user.isSuspended && <Badge variant="destructive">Suspended</Badge>}
                           </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{user.email}</TableCell>
                         <TableCell>
                           <Badge
-                            variant={user.plan_type === 'premium' ? 'default' : user.plan_type === 'pro' ? 'secondary' : 'outline'}
+                            variant={user.planType === 'premium' ? 'default' : user.planType === 'pro' ? 'secondary' : 'outline'}
                             className="capitalize"
                           >
-                            {user.plan_type}
+                            {user.planType}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary" className="gap-1">
                             <Coins className="h-3 w-3" />
-                            {user.bonus_credits || 0}
+                            {user.bonusCredits || 0}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
                             <span className="text-xs font-bold">
-                              {user.leads_extracted?.toLocaleString() || 0} / {((user.plan_type === 'pro' ? 5000 : user.plan_type === 'premium' ? 9999999 : 500) + (user.bonus_credits || 0)).toLocaleString()}
+                              {user.leadsExtracted?.toLocaleString() || 0} / {((user.planType === 'pro' ? 5000 : user.planType === 'premium' ? 9999999 : 500) + (user.bonusCredits || 0)).toLocaleString()}
                             </span>
                             <Progress
-                              value={user.plan_type === 'premium' ? 0 : Math.min(((user.leads_extracted || 0) / ((user.plan_type === 'pro' ? 5000 : 500) + (user.bonus_credits || 0))) * 100, 100)}
+                              value={user.planType === 'premium' ? 0 : Math.min(((user.leadsExtracted || 0) / ((user.planType === 'pro' ? 5000 : 500) + (user.bonusCredits || 0))) * 100, 100)}
                               className="h-1.5 w-24"
                             />
                           </div>
@@ -275,7 +273,7 @@ export default function AdminUsersPage() {
                         <TableCell className="text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {format(new Date(user.created_at), 'MMM dd, yyyy')}
+                            {user.createdAt ? format(new Date(user.createdAt), 'MMM dd, yyyy') : 'N/A'}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
@@ -283,18 +281,18 @@ export default function AdminUsersPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleToggleAdmin(user.id, user.is_admin)}
-                              title={user.is_admin ? "Remove Admin" : "Make Admin"}
+                              onClick={() => handleToggleAdmin(user.id, user.isAdmin)}
+                              title={user.isAdmin ? "Remove Admin" : "Make Admin"}
                             >
-                              {user.is_admin ? <ShieldSlash className="h-4 w-4 text-red-500" /> : <Shield className="h-4 w-4 text-blue-500" />}
+                              {user.isAdmin ? <ShieldSlash className="h-4 w-4 text-red-500" /> : <Shield className="h-4 w-4 text-blue-500" />}
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => suspendMutation.mutate({ userId: user.id, isSuspended: !user.is_suspended })}
-                              title={user.is_suspended ? "Unsuspend user" : "Suspend user"}
+                              onClick={() => suspendMutation.mutate({ userId: user.id, isSuspended: !user.isSuspended })}
+                              title={user.isSuspended ? "Unsuspend user" : "Suspend user"}
                             >
-                              <Shield className={`h-4 w-4 ${user.is_suspended ? "text-red-500" : "text-muted-foreground"}`} />
+                              <Shield className={`h-4 w-4 ${user.isSuspended ? "text-red-500" : "text-muted-foreground"}`} />
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => openCreditDialog(user)} title="Manage Credits">
                               <Coins className="h-4 w-4 text-yellow-500" />
@@ -330,7 +328,7 @@ export default function AdminUsersPage() {
             <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-dashed text-xs">
               <div className="space-y-1">
                 <p className="text-muted-foreground uppercase font-black">Current Bonus</p>
-                <p className="text-xl font-bold text-foreground">{selectedUser?.bonus_credits || 0} Credits</p>
+                <p className="text-xl font-bold text-foreground">{selectedUser?.bonusCredits || 0} Credits</p>
               </div>
               <Coins className="h-8 w-8 text-yellow-500 opacity-20" />
             </div>

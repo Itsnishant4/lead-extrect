@@ -11,17 +11,14 @@ import {
   deleteTaskAction,
   searchLeadsAction,
   uploadTaskExportChunkAction,
-  sendTaskExportToTelegramAction,
-  getLeadsAction,
   getSettingsAction,
   getUserAction,
-  generateKeywordsAction,
   triggerTaskAutomationAction,
   updateSettingAction,
   startAllPendingTasksAction
 } from '@/app/actions';
 import { toast } from 'sonner';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface Task {
   id: number;
@@ -32,6 +29,7 @@ interface Task {
   total_leads: number;
   keywords: string;
   created_at: string;
+  updatedAt: string;
 }
 
 interface AutomationContextType {
@@ -64,7 +62,6 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     fastMode: true,
     telegramExportEnabled: true,
   });
-  const isRunningTask = useRef(false);
   const exportQueueRef = useRef<Promise<void>>(Promise.resolve());
   const exportStateRef = useRef<{ taskId: number | null; buffer: string; chunkIndex: number; taskName: string }>({
     taskId: null,
@@ -72,47 +69,39 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     chunkIndex: 0,
     taskName: '',
   });
-  const exportSeenRef = useRef<Set<string>>(new Set());
-  const taskLeadCountsRef = useRef<Map<number, number>>(new Map());
 
-  // User Query
   const { data: user, isLoading: isLoadingUser, refetch: refreshUser } = useQuery({
     queryKey: ['user'],
     queryFn: async () => {
       const res = await getUserAction();
       if (!res.success) return null;
-      return res.data;
+      return (res as any).data;
     },
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 30 * 1000,
   });
 
-  // Tasks Query
   const { data: tasks = [], isLoading: isLoadingTasks, refetch: loadTasks } = useQuery({
     queryKey: ['tasks'],
     queryFn: async () => {
       const res = await getTasksAction();
       if (!res.success) return [];
-      return (res.data || []) as unknown as Task[];
+      return ((res as any).data || []) as unknown as Task[];
     },
     refetchInterval: (query) => {
       const data = query.state.data as Task[];
-      // Increase polling interval to save requests (10s for running, 30s for others)
-      return (data && data.some(t => t.status === 'running')) ? 10000 : 30000;
+      // Polling every 4 seconds when tasks are running, 15 seconds otherwise
+      return (data && data.some(t => t.status === 'running')) ? 4000 : 15000;
     },
   });
 
-  // Settings Query
   const { data: serverSettings } = useQuery({
     queryKey: ['settings'],
     queryFn: async () => {
       const res = await getSettingsAction();
       if (!res.success) return { exportCityWise: false, fastMode: true, telegramExportEnabled: true };
-      return res.data;
-    },
-    onSuccess: (data: any) => {
-      if (data) setSettings(prev => ({ ...prev, ...data }));
+      return (res as any).data;
     }
-  } as any);
+  });
 
   useEffect(() => {
     if (serverSettings) setSettings(prev => ({ ...prev, ...serverSettings }));
@@ -140,79 +129,8 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     return res;
   };
 
-  const serializeLeads = (leads: any[]) => {
-    const headers = [
-      'Name', 'Category', 'City', 'Rating', 'Reviews', 'Phone', 'Website Phone',
-      'Email', 'Website Email', 'Website', 'Address', 'DirectionUrl',
-      'Latitude', 'Longitude', 'Monday Hours', 'Tuesday Hours', 'Wednesday Hours',
-      'Thursday Hours', 'Friday Hours', 'Saturday Hours', 'Sunday Hours',
-      'Facebook', 'Instagram', 'LinkedIn', 'Twitter', 'YouTube', 'Pinterest', 'TikTok'
-    ];
-    const rows = leads.map((l: any) => [
-      l.name, l.category, l.city, l.rating, l.reviewsCount ?? l.reviews_count, l.phone, l.website_phone,
-      l.email, l.website_email, l.website, l.address, l.directionUrl ?? l.direction_url,
-      l.latitude, l.longitude, l.monday_hours, l.tuesday_hours, l.wednesday_hours,
-      l.thursday_hours, l.friday_hours, l.saturday_hours, l.sunday_hours,
-      l.facebook, l.instagram, l.linkedin, l.twitter, l.youtube, l.pinterest, l.tiktok
-    ]);
-    const csvRows = rows.map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','));
-    return { headers, csvRows };
-  };
-
   const enqueueExport = (fn: () => Promise<void>) => {
     exportQueueRef.current = exportQueueRef.current.then(fn).catch(() => { });
-  };
-
-  const handleFastModeLeads = (taskId: number, taskName: string, leads: any[]) => {
-    if (!settings.fastMode || leads.length === 0) return;
-    enqueueExport(async () => {
-      const state = exportStateRef.current;
-      if (state.taskId !== taskId) {
-        exportStateRef.current = { taskId, buffer: '', chunkIndex: 0, taskName };
-        exportSeenRef.current = new Set();
-        taskLeadCountsRef.current.set(taskId, 0);
-      }
-
-      const dedupedLeads = leads.filter((lead) => {
-        const key = lead.placeId || lead.place_id;
-        if (!key) return true;
-        if (exportSeenRef.current.has(key)) return false;
-        exportSeenRef.current.add(key);
-        return true;
-      });
-
-      if (dedupedLeads.length === 0) {
-        return;
-      }
-
-      const prevCount = taskLeadCountsRef.current.get(taskId) || 0;
-      const nextCount = prevCount + dedupedLeads.length;
-      taskLeadCountsRef.current.set(taskId, nextCount);
-      await updateTaskLeadCountAction(taskId, nextCount);
-      loadTasks();
-
-      if (!settings.telegramExportEnabled) {
-        return;
-      }
-
-      const { headers, csvRows } = serializeLeads(dedupedLeads);
-      const includeHeader = exportStateRef.current.chunkIndex === 0 && exportStateRef.current.buffer.length === 0;
-      const prefix = includeHeader ? `${headers.join(',')}\n` : '';
-      exportStateRef.current.buffer += prefix + csvRows.join('\n') + '\n';
-
-      const maxBytes = 4 * 1024 * 1024;
-      const bufferBytes = new Blob([exportStateRef.current.buffer]).size;
-      if (bufferBytes >= maxBytes) {
-        await uploadTaskExportChunkAction(
-          taskId,
-          exportStateRef.current.taskName,
-          exportStateRef.current.buffer,
-          exportStateRef.current.chunkIndex
-        );
-        exportStateRef.current.buffer = '';
-        exportStateRef.current.chunkIndex += 1;
-      }
-    });
   };
 
   const flushTelegramExport = (taskId: number, taskName: string) => {
@@ -232,12 +150,12 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     if (keywords.length > largeListThreshold) {
       toast.info("Large keyword list detected. Starting task now and uploading keywords in background.");
       const createRes = await createTaskShellAction(name, keywords.length);
-      if (!createRes.success || !createRes.taskId) {
-        toast.error(`Failed to create task: ${createRes.error}`);
+      if (!createRes.success || !(createRes as any).taskId) {
+        toast.error((createRes as any).error || "Failed to create task");
         return;
       }
 
-      const taskId = Number(createRes.taskId);
+      const taskId = Number((createRes as any).taskId);
       const chunkSize = 2000;
 
       const uploadKeywordsInBackground = async () => {
@@ -245,11 +163,10 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
           const chunk = keywords.slice(i, i + chunkSize);
           const appendRes = await appendTaskKeywordsAction(taskId, chunk);
           if (!appendRes.success) {
-            toast.error(`Keyword upload paused: ${appendRes.error}`);
+            toast.error((appendRes as any).error || "Keyword upload failed");
             return;
           }
         }
-        // Once keywords are uploaded, trigger the runner
         await triggerTaskAutomationAction(taskId);
       };
 
@@ -260,12 +177,12 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     }
 
     const res = await createTaskAction(name, keywords);
-    if (res.success && res.taskId) {
+    if (res.success && 'taskId' in res) {
       toast.success(`Automation task "${name}" started`);
       await triggerTaskAutomationAction(Number(res.taskId));
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     } else {
-      toast.error(`Failed to create task: ${res.error}`);
+      toast.error((res as any).error || "Failed to create task");
     }
   };
 
@@ -286,15 +203,13 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       pro: 5000,
       premium: Infinity
     };
-    const baseLimit = limits[user?.plan_type || 'free'] ?? 500;
-    const bonus = (user as any)?.bonus_credits || 0;
+    const baseLimit = limits[user?.planType || 'free'] ?? 500;
+    const bonus = user?.bonusCredits || 0;
     const currentLimit = baseLimit === Infinity ? Infinity : baseLimit + bonus;
-    const used = user?.leads_extracted || 0;
+    const used = user?.leadsExtracted || 0;
     const exhausted = currentLimit !== Infinity && used >= currentLimit;
     if (exhausted) {
-      toast.info("Credits exhausted. Task cannot be resumed.", {
-        description: "Add credits or upgrade to continue this campaign."
-      });
+      toast.info("Credits exhausted. Task cannot be resumed.");
       return;
     }
 
@@ -309,13 +224,8 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     if (res.success) {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     }
-    return res;
+    return res as any;
   };
-
-  // Auto-resume logic removed - handled by server
-  useEffect(() => {
-    // We can still use polling to keep UI updated
-  }, []);
 
   const loadKeywordSession = (name: string, niche: string, keywords: string[]) => {
     setLoadedSession({ name, niche, keywords });
@@ -327,8 +237,8 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
 
   const startAllPendingTasks = async () => {
     const res = await startAllPendingTasksAction();
-    if (res.success && res.count && res.count > 0) {
-      toast.success(`Auto-started ${res.count} pending tasks`);
+    if (res.success && (res as any).count && (res as any).count > 0) {
+      toast.success(`Auto-started ${(res as any).count} pending tasks`);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     }
   };

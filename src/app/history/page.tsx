@@ -35,15 +35,15 @@ export default function HistoryPage() {
     queryKey: ['keyword-history'],
     queryFn: async () => {
       const res = await getKeywordHistoryAction();
-      if (!res.success) throw new Error(res.error);
-      return res.data || [];
+      if (!res.success) throw new Error((res as any).error);
+      return (res as any).data || [];
     }
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await deleteKeywordHistoryAction(id);
-      if (!res.success) throw new Error(res.error);
+      if (!res.success) throw new Error((res as any).error);
       return res;
     },
     onSuccess: () => {
@@ -89,9 +89,9 @@ export default function HistoryPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {history.map((item) => {
+                    {history.map((item: any) => {
                       const storedKeywords = JSON.parse(item.keywords);
-                      const keywordCount = item.total_keywords ?? storedKeywords.length;
+                      const keywordCount = item.totalKeywords ?? storedKeywords.length;
                       return (
                         <TableRow key={item.id} className="hover:bg-accent/30 transition-colors">
                           <TableCell className="py-4">
@@ -115,14 +115,14 @@ export default function HistoryPage() {
                           <TableCell className="text-center">
                             <div className="flex flex-col items-center gap-1">
                               <span className="text-sm font-medium">{keywordCount}</span>
-                              {item.keywords_truncated && (
+                              {item.keywordsTruncated && (
                                 <Badge variant="outline" className="text-[10px]">Truncated</Badge>
                               )}
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
                             <span className="text-xs text-muted-foreground flex items-center justify-center gap-1.5 opacity-70">
-                              <Calendar className="h-3.5 w-3.5" /> {new Date(item.created_at).toLocaleDateString()}
+                              <Calendar className="h-3.5 w-3.5" /> {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A'}
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
@@ -133,7 +133,7 @@ export default function HistoryPage() {
                                 className="h-8 pr-3 pl-2 gap-1.5 text-xs font-semibold"
                                 onClick={() => {
                                   loadKeywordSession(item.name, item.niche || '', storedKeywords);
-                                  if (item.keywords_truncated) {
+                                  if (item.keywordsTruncated) {
                                     toast.info("Loaded preview keywords only.", {
                                       description: "Regenerate to get the full list."
                                     });

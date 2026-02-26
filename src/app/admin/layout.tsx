@@ -16,15 +16,16 @@ export default function AdminLayout({
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
 
   useEffect(() => {
-    async function checkAdmin() {
-      const res = await getUserAction()
-      if (res.success && res.data?.is_admin) {
-        setIsAdmin(true)
-      } else {
-        setIsAdmin(false)
-        router.push("/")
+      async function checkAdmin() {
+        const res = await getUserAction()
+        if (res.success && (res.data as any)?.isAdmin) {
+          setIsAdmin(true)
+        } else {
+          setIsAdmin(false)
+          router.push("/")
+        }
       }
-    }
+
     checkAdmin()
   }, [router])
 

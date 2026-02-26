@@ -1,9 +1,15 @@
 
 import { NextResponse } from 'next/server';
+import { checkRateLimit } from '@/lib/security/ratelimit';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const city = searchParams.get('city');
+
+    const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+    if (!(await checkRateLimit(`pincodes:${ip}`, 30, 60000))) { // 30 requests per minute
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    }
 
     if (!city) {
         return NextResponse.json({ error: 'City is required' }, { status: 400 });

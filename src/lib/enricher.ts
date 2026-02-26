@@ -3,7 +3,27 @@
  * Finds emails and social links on a business website by crawling the homepage.
  */
 import { db } from '@/lib/db/index';
+import { proxies } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import dns from 'dns';
+import { promisify } from 'util';
+
+const resolve4 = promisify(dns.resolve4);
+
+let cachedProxies: any[] | null = null;
+let lastProxyFetch = 0;
+
+async function getActiveProxies(): Promise<any[]> {
+  const now = Date.now();
+  if (cachedProxies && now - lastProxyFetch < 60000) {
+    return cachedProxies;
+  }
+  const proxyRows = await db.select().from(proxies).where(eq(proxies.isActive, 1));
+  cachedProxies = Array.from(proxyRows);
+  lastProxyFetch = now;
+  return cachedProxies;
+}
 
 export interface EnrichmentData {
   emails: string[];
@@ -20,8 +40,8 @@ export interface EnrichmentData {
 }
 
 const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-// Improved phone regex to catch mobile and landline formats
-const PHONE_REGEX = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{4,6}/g;
+// Simplified regex to prevent ReDoS, validation happens later
+const PHONE_REGEX = /\+?[\d\s\-\.()]{10,20}/g;
 
 export async function enrichLead(websiteUrl: string | null): Promise<EnrichmentData> {
   const result: EnrichmentData = {
@@ -35,11 +55,42 @@ export async function enrichLead(websiteUrl: string | null): Promise<EnrichmentD
   }
 
   try {
+    const urlObj = new URL(websiteUrl);
+    const hostname = urlObj.hostname.toLowerCase();
+    
+    const ips = await resolve4(hostname).catch(() => []);
+    
+    // SSRF Protection: Block localhost, loopback, and cloud metadata IPs
+    const checkIp = (ip: string) => (
+      ip === '127.0.0.1' ||
+      ip === '::1' ||
+      ip.startsWith('169.254.') || // Cloud Metadata
+      ip.startsWith('10.') ||      // Private network
+      ip.match(/^192\.168\.\d+\.\d+$/) || // Private network
+      ip.match(/^172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+$/) // Private network
+    );
+
+    if (
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname.endsWith('.local') ||
+      hostname.match(/^127\.\d+\.\d+\.\d+$/) ||
+      ips.some(checkIp)
+    ) {
+      console.warn(`SSRF Blocked: Attempt to fetch private IP/hostname: ${hostname}`);
+      return result;
+    }
+  } catch (e) {
+    // Invalid URL
+    return result;
+  }
+
+  try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000); // 8 second timeout
 
     // Get active proxies for rotation
-    const activeProxies = await db`SELECT * FROM proxies WHERE is_active = 1`;
+    const activeProxies = await getActiveProxies();
     let fetchOptions: RequestInit = {
       signal: controller.signal,
       headers: {
@@ -64,7 +115,11 @@ export async function enrichLead(websiteUrl: string | null): Promise<EnrichmentD
 
     if (!response.ok) return result;
 
-    const html = await response.text();
+    let html = await response.text();
+    
+    // Prevent ReDoS and Memory issues by stripping large script/style tags and limiting size
+    html = html.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, '');
+    if (html.length > 500000) html = html.slice(0, 500000);
     
     // 1. Extract Emails
     const emails = html.match(EMAIL_REGEX);

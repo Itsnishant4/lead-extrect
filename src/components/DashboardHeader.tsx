@@ -233,7 +233,7 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
         {/* Account links */}
         <div className="px-3 py-3 flex-1">
           <p className="px-3 mb-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-            Account
+            Loading...
           </p>
           {user ? (
             <>

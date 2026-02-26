@@ -3,6 +3,7 @@
 import { useAutomation } from '@/context/AutomationContext';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import {
   Loader2, User, Award, Diamond, Check, CheckCircle, Zap, MessageCircle, ShieldCheck,
 } from 'lucide-react';
@@ -73,7 +74,14 @@ export default function SubscriptionPage() {
         '_blank'
       );
     } else if (plan.id === 'pro') {
-      alert('Redirecting to payment gateway for Pro Plan (₹2,000)...');
+      toast.info('Payment gateway integration is being finalized. Our team will contact you shortly to activate your Pro features!', {
+        description: 'You can also reach out via WhatsApp for instant activation.',
+        action: {
+          label: 'WhatsApp Support',
+          onClick: () => window.open('https://wa.me/919773005701?text=Hi, I want to upgrade to Pro plan.', '_blank')
+        },
+        duration: 10000,
+      });
     }
   };
 

@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { getAdminDashboardStatsAction } from "@/app/actions"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { FileText, MagnifyingGlass, Funnel } from "phosphor-react"
 import { LoaderCircle } from "lucide-react"
 import { format } from "date-fns"
@@ -29,17 +29,16 @@ export default function AdminLogsPage() {
     queryKey: ['admin-logs'],
     queryFn: async () => {
       const res = await getAdminDashboardStatsAction();
-      if (!res.success) throw new Error(res.error);
-      return res.data?.recentLogs || [];
+      if (!res.success) throw new Error((res as any).error);
+      return (res as any).data?.recentLogs || [];
     }
   });
 
   const filteredLogs = logs.filter((log: any) =>
-    log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    log.user_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    log.user_email.toLowerCase().includes(searchQuery.toLowerCase())
+    (log.action?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
+    (log.userName?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
+    (log.userEmail?.toLowerCase().includes(searchQuery.toLowerCase()) || false)
   )
-
 
   return (
     <>
@@ -62,10 +61,11 @@ export default function AdminLogsPage() {
       </header>
 
       <main className={`flex-1 overflow-y-auto p-4 md:p-8 pt-6 ${open ? 'md:ml-[250px]' : 'md:ml-[60px]'}`}>
-        {isLoading ? (<div className="flex h-[80vh] items-center justify-center">
-          <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-        </div>) : (
-
+        {isLoading ? (
+          <div className="flex h-[80vh] items-center justify-center">
+            <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
           <div className="w-full space-y-8 animate-in fade-in duration-700 pb-12">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
@@ -102,7 +102,7 @@ export default function AdminLogsPage() {
                         )} />
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-lg text-foreground capitalize">{log.action.replace(/_/g, ' ')}</span>
+                            <span className="font-bold text-lg text-foreground capitalize">{log.action?.replace(/_/g, ' ')}</span>
                             {log.status === 'success' ? (
                               <div className="bg-emerald-500/10 text-emerald-500 text-[10px] font-bold px-2 py-0.5 rounded-full ">Success</div>
                             ) : (
@@ -111,18 +111,18 @@ export default function AdminLogsPage() {
                           </div>
                           <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
                             <span className="text-muted-foreground/60">By</span>
-                            <span className="text-foreground/80">{log.user_name}</span>
+                            <span className="text-foreground/80">{log.userName || 'System'}</span>
                             <span className="text-muted-foreground/40">•</span>
-                            <span className="text-muted-foreground/60">{log.user_email}</span>
+                            <span className="text-muted-foreground/60">{log.userEmail || 'N/A'}</span>
                           </div>
                         </div>
                       </div>
                       <div className="mt-4 md:mt-0 flex flex-col items-end gap-1">
                         <div className="text-base font-bold text-foreground tabular-nums">
-                          {format(new Date(log.created_at), 'HH:mm:ss')}
+                          {log.createdAt ? format(new Date(log.createdAt), 'HH:mm:ss') : '--:--:--'}
                         </div>
                         <div className="text-xs font-bold text-muted-foreground">
-                          {format(new Date(log.created_at), 'MMM dd, yyyy')}
+                          {log.createdAt ? format(new Date(log.createdAt), 'MMM dd, yyyy') : 'N/A'}
                         </div>
                       </div>
                     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Globe,
   Plus,
@@ -50,7 +50,6 @@ import {
 
 export default function ProxyManager() {
   const queryClient = useQueryClient();
-  const [isAdding, setIsAdding] = useState(false);
   const [newProxy, setNewProxy] = useState({
     host: '',
     port: '',
@@ -63,15 +62,15 @@ export default function ProxyManager() {
     queryKey: ['proxies'],
     queryFn: async () => {
       const res = await getProxiesAction();
-      if (!res.success) throw new Error(res.error);
-      return res.data || [];
+      if (!res.success) throw new Error((res as any).error);
+      return (res as any).data || [];
     }
   });
 
   const addMutation = useMutation({
     mutationFn: async (proxyData: any) => {
       const res = await addProxyAction(proxyData);
-      if (!res.success) throw new Error(res.error);
+      if (!res.success) throw new Error((res as any).error);
       return res;
     },
     onSuccess: () => {
@@ -93,29 +92,29 @@ export default function ProxyManager() {
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await deleteProxyAction(id);
-      if (!res.success) throw new Error(res.error);
+      if (!res.success) throw new Error((res as any).error);
       return res;
     },
     onSuccess: () => {
       toast.success("Proxy deleted");
       queryClient.invalidateQueries({ queryKey: ['proxies'] });
     },
-    onError: () => {
-      toast.error("Failed to delete proxy");
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to delete proxy");
     }
   });
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, newStatus }: { id: number, newStatus: boolean }) => {
       const res = await toggleProxyAction(id, newStatus);
-      if (!res.success) throw new Error(res.error);
+      if (!res.success) throw new Error((res as any).error);
       return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proxies'] });
     },
-    onError: () => {
-      toast.error("Failed to toggle proxy");
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to toggle proxy");
     }
   });
 
@@ -243,13 +242,13 @@ export default function ProxyManager() {
           </div>
         ) : (
           <div className="space-y-3">
-            {proxies.map((proxy) => (
+            {proxies.map((proxy: any) => (
               <div
                 key={proxy.id}
-                className={`flex items-center justify-between p-4 rounded-xl border transition-all ${proxy.is_active ? 'bg-primary/5 border-primary/20' : 'bg-muted/10 border-border/50'}`}
+                className={`flex items-center justify-between p-4 rounded-xl border transition-all ${proxy.isActive ? 'bg-primary/5 border-primary/20' : 'bg-muted/10 border-border/50'}`}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-lg ${proxy.is_active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                  <div className={`p-2 rounded-lg ${proxy.isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
                     <HardDrives className="h-4 w-4" />
                   </div>
                   <div>
@@ -263,14 +262,14 @@ export default function ProxyManager() {
                       )}
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Added {new Date(proxy.created_at).toLocaleDateString()}
+                      Added {proxy.createdAt ? new Date(proxy.createdAt).toLocaleDateString() : 'N/A'}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Switch
-                    checked={proxy.is_active === 1}
-                    onCheckedChange={() => handleToggle(proxy.id, proxy.is_active)}
+                    checked={proxy.isActive === 1}
+                    onCheckedChange={(val) => toggleMutation.mutate({ id: proxy.id, newStatus: val })}
                   />
                   <Button
                     variant="ghost"

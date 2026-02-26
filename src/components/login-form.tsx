@@ -38,7 +38,7 @@ export function LoginForm({
         router.push("/leads")
         router.refresh()
       } else {
-        toast.error(result.error || "Invalid credentials")
+        toast.error((result as any).error || "Invalid credentials")
       }
     } catch (error) {
       toast.error("An unexpected error occurred")
@@ -78,7 +78,7 @@ export function LoginForm({
                 <div className="flex items-center">
                   <FieldLabel htmlFor="password">Password</FieldLabel>
                   <a
-                    href="#"
+                    href="/forgot-password"
                     className="ml-auto text-sm underline-offset-2 hover:underline text-primary"
                   >
                     Forgot your password?
@@ -89,6 +89,7 @@ export function LoginForm({
                     id="password"
                     type={showPassword ? "text" : "password"}
                     required
+                    placeholder="********"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isLoading}
@@ -136,30 +137,23 @@ export function LoginForm({
             </div>
             <div className="space-y-4 text-sm">
               <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/60 p-3">
-                <Lightning className="h-5 w-5 text-primary" />
+                <Lightning className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium">Instant results</p>
-                  <p className="text-muted-foreground">Extract leads and export CSV files in seconds.</p>
+                  <p className="text-muted-foreground text-xs">Extract leads and export CSV files in seconds.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/60 p-3">
-                <ShieldCheck className="h-5 w-5 text-primary" />
+                <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium">Secure by default</p>
-                  <p className="text-muted-foreground">Your data stays private and encrypted.</p>
+                  <p className="text-muted-foreground text-xs">Your data stays private and encrypted.</p>
                 </div>
               </div>
-            </div>
-            <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 p-4 text-xs text-muted-foreground">
-              Tip: Use keyword automation to scale outreach across multiple cities.
             </div>
           </div>
         </CardContent>
       </Card>
-      <div className="px-6 text-center text-xs text-muted-foreground">
-        By clicking continue, you agree to our <a href="/terms" className="hover:text-primary underline underline-offset-4">Terms of Service</a>{" "}
-        and <a href="/privacy" className="hover:text-primary underline underline-offset-4">Privacy Policy</a>.
-      </div>
     </div>
   )
 }
