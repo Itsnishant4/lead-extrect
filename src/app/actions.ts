@@ -243,8 +243,8 @@ export async function getTasksAction() {
     if (stalledTasks.length > 0) {
       console.log(`[ACTIONS] Found ${stalledTasks.length} stalled tasks for user ${session.id}. Recovering...`);
       for (const task of stalledTasks) {
-        // Trigger recovery via the automation run endpoint
-        void triggerTaskAutomationAction(task.id);
+        // Trigger recovery via the standardized runTask method
+        void TaskService.runTask(task.id, session.id);
       }
     }
 
@@ -828,29 +828,8 @@ export async function triggerTaskAutomationAction(taskId: number) {
       await TaskService.updateStatus(session.id, taskId, 'running');
     }
 
-    // Trigger via internal API to ensure background processing
-    const { signToken } = await import('@/lib/auth');
-    const serverToken = await signToken({ taskId, userId: session.id, internal: true });
-    
-    const headerList = await headers();
-    const host = headerList.get('host') || '127.0.0.1:3000';
-    const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
-    
-    // Try both localhost and 127.0.0.1 if host is localhost to be safe
-    const runUrl = `${protocol}://${host}/api/automation/run`;
-    console.log(`[ACTIONS] Triggering run via fetch: ${runUrl}`);
-
-    fetch(runUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serverToken}` },
-      body: JSON.stringify({ taskId, userId: session.id }),
-    }).then(async (res) => {
-      console.log(`[ACTIONS] Internal trigger response: ${res.status}`);
-      if (!res.ok) {
-        const text = await res.text();
-        console.error(`[ACTIONS] Internal trigger failed: ${text}`);
-      }
-    }).catch(e => console.error('[ACTIONS] Initial trigger fetch error:', e));
+    // Use the standardized runTask service method
+    await TaskService.runTask(taskId, session.id);
 
     return { success: true };
   } catch (error: any) {

@@ -23,7 +23,7 @@ export class TaskRunnerService {
     for (const task of stalledTasks) {
       console.log(`[TASK RUNNER] Resuming task ${task.id} for user ${task.userId}`);
       if (task.userId) {
-        await TaskService.processTaskStep(task.id, task.userId);
+        await TaskService.runTask(task.id, task.userId);
       }
     }
   }

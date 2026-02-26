@@ -161,6 +161,27 @@ export class TaskService {
     }
   }
 
+  static async runTask(taskId: number, userId: number) {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://127.0.0.1:3000';
+    const nextUrl = `${baseUrl}/api/automation/run`;
+    
+    try {
+      const serverToken = await signToken({ taskId, userId, internal: true });
+
+      await fetch(nextUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serverToken}` },
+        body: JSON.stringify({ taskId, userId }),
+      });
+      return { success: true };
+    } catch (e) {
+      console.error('[TASK SERVICE] runTask trigger failed:', e);
+      // Fallback to direct call if fetch fails
+      void this.processTaskStep(taskId, userId);
+      return { success: true, fallback: true };
+    }
+  }
+
   private static async triggerNextStep(taskId: number, userId: number) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://127.0.0.1:3000';
     const nextUrl = `${baseUrl}/api/automation/run`;
