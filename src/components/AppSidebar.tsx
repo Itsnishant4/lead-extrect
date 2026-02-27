@@ -138,28 +138,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <span className="text-xs font-medium text-muted-foreground  tracking-wider">Usage</span>
               {(() => {
                 const limits: Record<string, number> = { 'free': 500, 'pro': 5000, 'premium': Infinity };
-                const baseLimit = limits[user.plan_type || 'free'] || 500;
-                const bonus = (user as any).bonus_credits || 0;
+                const baseLimit = limits[user.planType || 'free'] || 500;
+                const bonus = (user as any).bonusCredits || 0;
                 const total = baseLimit === Infinity ? Infinity : baseLimit + bonus;
                 
                 return (
                   <span className="text-xs font-bold text-primary">
-                    {user.leads_extracted?.toLocaleString() || 0} / {total === Infinity ? '∞' : total.toLocaleString()}
+                    {user.leadsExtracted?.toLocaleString() || 0} / {total === Infinity ? '∞' : total.toLocaleString()}
                   </span>
                 );
               })()}
             </div>
             {(() => {
                 const limits: Record<string, number> = { 'free': 500, 'pro': 5000, 'premium': Infinity };
-                const baseLimit = limits[user.plan_type || 'free'] || 500;
-                const bonus = (user as any).bonus_credits || 0;
+                const baseLimit = limits[user.planType || 'free'] || 500;
+                const bonus = (user as any).bonusCredits || 0;
                 const total = baseLimit === Infinity ? Infinity : baseLimit + bonus;
-                const percent = total === Infinity ? 0 : Math.min(((user.leads_extracted || 0) / total) * 100, 100);
+                const percent = total === Infinity ? 0 : Math.min(((user.leadsExtracted || 0) / total) * 100, 100);
                 
                 return <Progress value={percent} className="h-1.5" />;
             })()}
             <p className="text-[10px] text-muted-foreground mt-2 text-center italic">
-              Plan: <span className="font-bold capitalize">{user.plan_type}</span>
+              Plan: <span className="font-bold capitalize">{user.planType}</span>
             </p>
           </div>
         )}

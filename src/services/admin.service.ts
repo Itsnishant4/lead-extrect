@@ -12,7 +12,7 @@ export class AdminService {
     const totalUsersRes = await db.select({ count: sql<number>`count(*)` }).from(users);
     const suspendedCountRes = await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.isSuspended, true));
     const runningTasksRes = await db.select({ count: sql<number>`count(*)` }).from(tasks).where(eq(tasks.status, 'running'));
-    const leadsSumRes = await db.select({ sum: sql<number>`sum(leads_extracted)` }).from(users);
+    const leadsSumRes = await db.select({ sum: sql<number>`sum(leadsExtracted)` }).from(users);
     const tasksCountRes = await db.select({ count: sql<number>`count(*)` }).from(tasks);
     const searchesCountRes = await db.select({ count: sql<number>`count(*)` }).from(searches);
 
@@ -77,7 +77,7 @@ export class AdminService {
 
   static async getInsights() {
     const planBreakdown = await db.select({
-      plan_type: users.planType,
+      planType: users.planType,
       count: sql<number>`count(*)`
     }).from(users).groupBy(users.planType);
 
@@ -90,9 +90,9 @@ export class AdminService {
       id: users.id,
       name: users.name,
       email: users.email,
-      plan_type: users.planType,
-      leads_extracted: users.leadsExtracted,
-      bonus_credits: users.bonusCredits
+      planType: users.planType,
+      leadsExtracted: users.leadsExtracted,
+      bonusCredits: users.bonusCredits
     })
     .from(users)
     .orderBy(desc(users.leadsExtracted))
@@ -102,7 +102,7 @@ export class AdminService {
       id: users.id,
       name: users.name,
       email: users.email,
-      plan_type: users.planType,
+      planType: users.planType,
       created_at: users.createdAt
     })
     .from(users)
@@ -149,10 +149,10 @@ export class AdminService {
   static async updateUser(userId: number, data: any) {
     const updateData: any = {};
     if (data.name) updateData.name = data.name;
-    if (data.plan_type) updateData.planType = data.plan_type;
+    if (data.planType) updateData.planType = data.planType;
     if (data.is_admin !== undefined) updateData.isAdmin = data.is_admin;
     if (data.is_suspended !== undefined) updateData.isSuspended = data.is_suspended;
-    if (data.bonus_credits !== undefined) updateData.bonusCredits = data.bonus_credits;
+    if (data.bonusCredits !== undefined) updateData.bonusCredits = data.bonusCredits;
     if (data.subscription_expiry) updateData.subscriptionExpiry = new Date(data.subscription_expiry);
 
     await db.update(users).set(updateData).where(eq(users.id, userId));
@@ -165,7 +165,7 @@ export class AdminService {
 
   static async updateUserCredits(userId: number, amount: number) {
     await db.update(users).set({ 
-      bonusCredits: sql`bonus_credits + ${amount}` 
+      bonusCredits: sql`bonusCredits + ${amount}` 
     }).where(eq(users.id, userId));
   }
 }

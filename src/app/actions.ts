@@ -379,7 +379,7 @@ export async function updateUserPlanAction(targetUserId: number, newPlan: string
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
     await AdminService.checkAdmin(session.id);
-    await AdminService.updateUser(targetUserId, { plan_type: newPlan });
+    await AdminService.updateUser(targetUserId, { planType: newPlan });
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);

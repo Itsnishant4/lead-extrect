@@ -106,7 +106,7 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
                 {user ? (
                   <div className="text-left">
                     <p className="text-xs font-bold truncate w-[70px] text-slate-800 dark:text-slate-200 leading-none">{user.name}</p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium capitalize">{user.plan_type || 'Free'} Plan</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium capitalize">{user.planType || 'Free'} Plan</p>
                   </div>
                 ) : (
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Account</span>
@@ -291,7 +291,7 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
             </div>
             <div className="mt-2.5">
               <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
-                {user.plan_type || 'Free'} Plan
+                {user.planType || 'Free'} Plan
               </span>
             </div>
           </div>

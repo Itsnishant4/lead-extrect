@@ -85,10 +85,10 @@ export default function SubscriptionPage() {
     }
   };
 
-  const currentPlan = PLANS.find((p) => p.id === (user?.plan_type || 'free'));
-  const usedLeads = user?.leads_extracted || 0;
+  const currentPlan = PLANS.find((p) => p.id === (user?.planType || 'free'));
+  const usedLeads = user?.leadsExtracted || 0;
   const baseLimit = currentPlan?.limit || 500;
-  const bonusCredits = user?.bonus_credits || 0;
+  const bonusCredits = user?.bonusCredits || 0;
   const limit = baseLimit === Infinity ? Infinity : baseLimit + bonusCredits;
   const remaining = limit === Infinity ? Infinity : Math.max(limit - usedLeads, 0);
   const usagePercent = limit === Infinity ? 0 : Math.min((usedLeads / limit) * 100, 100);
@@ -124,7 +124,7 @@ export default function SubscriptionPage() {
                     {usedLeads.toLocaleString()} / {limit === Infinity ? 'Unlimited' : limit.toLocaleString()} leads
                   </h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                    Plan: <span className="font-bold capitalize text-indigo-600 dark:text-indigo-400">{user.plan_type}</span>
+                    Plan: <span className="font-bold capitalize text-indigo-600 dark:text-indigo-400">{user.planType}</span>
                   </p>
                 </div>
                 <div className="flex-1 max-w-md w-full">
@@ -151,7 +151,7 @@ export default function SubscriptionPage() {
             {/* Plan cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {PLANS.map((plan) => {
-                const isCurrent = user?.plan_type === plan.id;
+                const isCurrent = user?.planType === plan.id;
 
                 return (
                   <div

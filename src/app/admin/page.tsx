@@ -364,8 +364,8 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent className="p-4 space-y-3">
                   {insights?.planBreakdown?.map((plan: any) => (
-                    <div key={plan.plan_type} className="flex items-center justify-between text-xs font-semibold">
-                      <span className="capitalize text-muted-foreground">{plan.plan_type}</span>
+                    <div key={plan.planType} className="flex items-center justify-between text-xs font-semibold">
+                      <span className="capitalize text-muted-foreground">{plan.planType}</span>
                       <Badge variant="secondary" className="tabular-nums">{plan.count}</Badge>
                     </div>
                   ))}
@@ -392,7 +392,7 @@ export default function AdminDashboard() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Select
-                            defaultValue={user.plan_type}
+                            defaultValue={user.planType}
                             onValueChange={(val) => planMutation.mutate({ userId: user.id, plan: val })}
                             disabled={planMutation.isPending}
                           >
@@ -405,7 +405,7 @@ export default function AdminDashboard() {
                               <SelectItem value="premium">Premium</SelectItem>
                             </SelectContent>
                           </Select>
-                          <Badge variant="outline" className="tabular-nums">{user.leads_extracted || 0}</Badge>
+                          <Badge variant="outline" className="tabular-nums">{user.leadsExtracted || 0}</Badge>
                         </div>
                       </div>
                     ))}

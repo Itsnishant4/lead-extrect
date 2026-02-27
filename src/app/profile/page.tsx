@@ -13,14 +13,14 @@ export default function ProfilePage() {
   const { user, isLoadingUser: isLoading } = useAutomation();
 
   const limits: Record<string, number> = { free: 500, pro: 5000, premium: Infinity };
-  const baseLimit = limits[user?.plan_type || 'free'];
-  const bonusCredits = (user as any)?.bonus_credits || 0;
+  const baseLimit = limits[user?.planType || 'free'];
+  const bonusCredits = (user as any)?.bonusCredits || 0;
   const currentLimit = baseLimit === Infinity ? Infinity : baseLimit + bonusCredits;
-  const usagePercent = currentLimit === Infinity ? 0 : Math.min(((user?.leads_extracted || 0) / currentLimit) * 100, 100);
+  const usagePercent = currentLimit === Infinity ? 0 : Math.min(((user?.leadsExtracted || 0) / currentLimit) * 100, 100);
 
   const getPlanIcon = () => {
-    if (user?.plan_type === 'premium') return <Diamond size={12} />;
-    if (user?.plan_type === 'pro') return <Award size={12} />;
+    if (user?.planType === 'premium') return <Diamond size={12} />;
+    if (user?.planType === 'pro') return <Award size={12} />;
     return <User size={12} />;
   };
 
@@ -59,14 +59,14 @@ export default function ProfilePage() {
 
                 {/* Plan badge */}
                 <div className="mt-4">
-                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border ${user?.plan_type === 'premium'
+                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border ${user?.planType === 'premium'
                       ? 'text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/50 border-amber-200/50 dark:border-amber-800/50'
-                      : user?.plan_type === 'pro'
+                      : user?.planType === 'pro'
                         ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/50 border-indigo-200/50 dark:border-indigo-800/50'
                         : 'text-slate-500 dark:text-slate-400 bg-slate-100/50 dark:bg-slate-800/50 border-slate-200/50 dark:border-slate-700/50'
                     }`}>
                     {getPlanIcon()}
-                    {user?.plan_type || 'Free'} Plan
+                    {user?.planType || 'Free'} Plan
                   </span>
                 </div>
 
@@ -120,13 +120,13 @@ export default function ProfilePage() {
                       </h3>
                       <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Details about your subscription.</p>
                     </div>
-                    <span className={`text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-full border ${user?.plan_type === 'premium'
+                    <span className={`text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-full border ${user?.planType === 'premium'
                         ? 'text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/50 border-amber-200/50 dark:border-amber-800/50'
-                        : user?.plan_type === 'pro'
+                        : user?.planType === 'pro'
                           ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/50 border-indigo-200/50 dark:border-indigo-800/50'
                           : 'text-slate-500 dark:text-slate-400 bg-slate-100/50 dark:bg-slate-800/50 border-slate-200/50 dark:border-slate-700/50'
                       }`}>
-                      {user?.plan_type || 'Free'}
+                      {user?.planType || 'Free'}
                     </span>
                   </div>
 
@@ -136,7 +136,7 @@ export default function ProfilePage() {
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Leads extracted</p>
                         <p className="text-2xl font-bold text-slate-900 dark:text-foreground mt-1">
-                          {user?.leads_extracted?.toLocaleString() || '0'}
+                          {user?.leadsExtracted?.toLocaleString() || '0'}
                         </p>
                       </div>
                       {bonusCredits > 0 && (
@@ -173,7 +173,7 @@ export default function ProfilePage() {
                         <span>
                           {currentLimit === Infinity
                             ? 'Unlimited plan'
-                            : `${(currentLimit - (user?.leads_extracted || 0)).toLocaleString()} remaining`}
+                            : `${(currentLimit - (user?.leadsExtracted || 0)).toLocaleString()} remaining`}
                         </span>
                       </div>
                     </div>
