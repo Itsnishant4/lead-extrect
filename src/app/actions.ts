@@ -825,13 +825,8 @@ export async function triggerTaskAutomationAction(taskId: number) {
     const task = await TaskService.getTask(session.id, taskId);
     if (!task) return { success: false, error: 'Task not found' };
 
-    // Update status to running if not already
-    if (task.status !== 'running') {
-      await TaskService.updateStatus(session.id, taskId, 'running');
-    }
-
-    // Use the standardized runTask service method
-    await TaskService.runTask(taskId, session.id);
+    // The worker picks up tasks that are marked as 'pending'
+    await TaskService.updateStatus(session.id, taskId, 'pending');
 
     return { success: true };
   } catch (error: any) {
