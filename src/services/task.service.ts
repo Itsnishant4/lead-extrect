@@ -162,17 +162,29 @@ export class TaskService {
   }
 
   private static getBaseUrl() {
-    if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
-    if (process.env.NODE_ENV === 'production') {
-      return `https://${process.env.VERCEL_URL || 'leadspotter.in'}`;
+    if (process.env.NEXT_PUBLIC_BASE_URL) {
+      return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, '');
     }
+    
+    if (process.env.NODE_ENV === 'production') {
+      // Prefer the production domain if available
+      if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+        return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+      }
+      // Fallback to deployment URL
+      if (process.env.VERCEL_URL) {
+        return `https://${process.env.VERCEL_URL}`;
+      }
+      return 'https://leadspotter.in';
+    }
+    
     return 'http://127.0.0.1:3000';
   }
 
   static async runTask(taskId: number, userId: number) {
     const baseUrl = this.getBaseUrl();
     const nextUrl = `${baseUrl}/api/automation/run`;
-    console.log(`[TASK SERVICE] runTask: Triggering via ${nextUrl}`);
+    console.log(`[TASK SERVICE] runTask: Triggering via ${nextUrl} for task ${taskId}`);
     
     try {
       const serverToken = await signToken({ taskId, userId, internal: true });
@@ -181,7 +193,8 @@ export class TaskService {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${serverToken}` 
+          'Authorization': `Bearer ${serverToken}`,
+          'x-internal-token': serverToken
         },
         body: JSON.stringify({ taskId, userId }),
       });
@@ -189,12 +202,18 @@ export class TaskService {
       if (!res.ok) {
         const text = await res.text();
         console.error(`[TASK SERVICE] runTask: Trigger failed with status ${res.status}: ${text}`);
+        
+        // Fallback to direct call if trigger failed
+        console.log('[TASK SERVICE] Falling back to direct processTaskStep call due to non-ok response...');
+        void this.processTaskStep(taskId, userId);
+        return { success: true, fallback: true };
       }
 
       return { success: true };
     } catch (e) {
       console.error('[TASK SERVICE] runTask trigger failed:', e);
       // Fallback to direct call if fetch fails
+      console.log('[TASK SERVICE] Falling back to direct processTaskStep call due to fetch error...');
       void this.processTaskStep(taskId, userId);
       return { success: true, fallback: true };
     }
@@ -203,7 +222,7 @@ export class TaskService {
   private static async triggerNextStep(taskId: number, userId: number) {
     const baseUrl = this.getBaseUrl();
     const nextUrl = `${baseUrl}/api/automation/run`;
-    console.log(`[TASK SERVICE] Triggering next step via: ${nextUrl}`);
+    console.log(`[TASK SERVICE] Triggering next step via: ${nextUrl} for task ${taskId}`);
     
     try {
       const serverToken = await signToken({ taskId, userId, internal: true });
@@ -213,7 +232,8 @@ export class TaskService {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${serverToken}` 
+          'Authorization': `Bearer ${serverToken}`,
+          'x-internal-token': serverToken
         },
         body: JSON.stringify({ taskId, userId }),
       }).then(async (res) => {
@@ -226,6 +246,8 @@ export class TaskService {
           setTimeout(() => {
             this.processTaskStep(taskId, userId).catch(e => console.error('[TASK SERVICE] Direct fallback failed:', e));
           }, 1000);
+        } else {
+          console.log(`[TASK SERVICE] Next step trigger successful for task ${taskId}`);
         }
       }).catch(e => {
         console.error('[TASK SERVICE] Next step trigger fetch failed:', e);
@@ -237,6 +259,10 @@ export class TaskService {
       });
     } catch (tokenErr) {
       console.error('[TASK SERVICE] Failed to sign token for next step:', tokenErr);
+      // Fallback even if token signing fails
+      setTimeout(() => {
+        this.processTaskStep(taskId, userId).catch(err => console.error('[TASK SERVICE] Direct fallback error after token failure:', err));
+      }, 1000);
     }
   }
 

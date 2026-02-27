@@ -5,7 +5,11 @@ import { verifyToken } from '@/lib/auth-edge';
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
-    console.log('API [automation/run] Received request. Auth Header:', authHeader ? 'Present (length: ' + authHeader.length + ')' : 'Missing');
+    const xInternalToken = req.headers.get('x-internal-token');
+    
+    console.log(`API [automation/run] Received request. 
+      Auth Header: ${authHeader ? 'Present (length: ' + authHeader.length + ')' : 'Missing'},
+      X-Internal-Token: ${xInternalToken ? 'Present' : 'Missing'}`);
 
     const body = await req.json();
     const taskId = Number(body.taskId);
@@ -16,13 +20,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing taskId or userId' }, { status: 400 });
     }
 
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+    let token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+    
+    // Fallback to custom header if Authorization is missing or malformed
+    if (!token && xInternalToken) {
+      console.log('API [automation/run] Using x-internal-token fallback');
+      token = xInternalToken;
+    }
+
     if (!token) {
-      console.error('API [automation/run] Missing or malformed token in header:', authHeader);
+      console.error('API [automation/run] Missing or malformed token in header. AuthHeader:', authHeader, 'xInternalToken:', xInternalToken ? 'Present' : 'Missing');
       return NextResponse.json({ 
         success: false, 
         error: 'Unauthorized', 
-        debug: { headerFound: !!authHeader, headerValue: authHeader ? authHeader.substring(0, 15) + '...' : null } 
+        debug: { 
+          headerFound: !!authHeader, 
+          headerValue: authHeader ? authHeader.substring(0, 15) + '...' : null,
+          xInternalTokenFound: !!xInternalToken
+        } 
       }, { status: 401 });
     }
 

@@ -4,17 +4,25 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { 
-  ArrowRight, PlayCircle, Plus, Search, Star, MapPin, Mail, Phone, ExternalLink, MoreVertical, Store, CheckCircle, Download, BookmarkPlus
+  ArrowRight, PlayCircle, Plus,  Star,  Mail, Phone, ExternalLink, MoreVertical, Store, CheckCircle,  BookmarkPlus
 } from "lucide-react";
 import { FlipWords } from "@/components/ui/flip-words";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
+import { Search, CloudCog, Download, Layers, MapPin, Cloud, Database } from "lucide-react";
 
 const InfiniteMovingCards = dynamic(() => import("@/components/ui/infinite-moving-cards").then(mod => ({ default: mod.InfiniteMovingCards })), { ssr: false });
 
 const flipWords = ["Lead Machine", "Sales Engine", "Growth Pipeline", "Revenue Source"];
 
+const testimonials = [
+  { quote: "LeadSpotter cut our prospecting time by 80%. We went from 2 hours of manual scraping to getting 5,000 verified leads in minutes.", name: "Rahul Mehta", title: "Founder, GrowthForce Agency" },
+  { quote: "The bulk keyword feature is insane. We generated 10,000 keyword combinations and launched campaigns overnight. Game changer.", name: "Priya Sharma", title: "Head of Sales, MapLeads India" },
+  { quote: "Finally a tool that actually delivers verified emails and phone numbers. Our cold outreach response rate jumped from 3% to 12%.", name: "Aman Gupta", title: "CEO, ReachLocal" },
+  { quote: "We've tried every scraper out there. LeadSpotter is the only one that handles cloud processing properly — set it and forget it.", name: "Sarah Chen", title: "VP Sales, DataDriven Co." },
+  { quote: "The campaign management dashboard is beautifully designed and the export options are exactly what our CRM needs.", name: "Vikram Patel", title: "Sales Manager, TechBridge" },
+];
 const mockLeads = [
   { name: "Skyline Digital Agency", city: "New York, NY", email: "hello@skylinedigital.com", phone: "+1 (212) 555-0147", rating: 4.8, reviews: 124, website: "skylinedigital.com" },
   { name: "Peak Performance Studio", city: "Los Angeles, CA", email: "info@peakstudio.io", phone: "+1 (310) 555-0283", rating: 4.9, reviews: 89, website: "peakstudio.io" },
@@ -22,6 +30,25 @@ const mockLeads = [
   { name: "Nova Marketing Group", city: "Austin, TX", email: "contact@novamarketing.co", phone: "+1 (512) 555-0462", rating: 4.6, reviews: 203, website: "novamarketing.co" },
   { name: "Bright Path Solutions", city: "Seattle, WA", email: "info@brightpath.dev", phone: "+1 (206) 555-0518", rating: 5.0, reviews: 67, website: "brightpath.dev" },
   { name: "Omnetra Infotech", city: "Rajkot", email: "omnetrainfotech@gmail.com", phone: "+919773005701", rating: 5.0, reviews: 67, website: "omntrainfotech.com" },
+];
+
+const howItWorks = [
+  { step: "01", Icon: Search, title: "Generate Keywords", description: "Combine niches and locations to create thousands of targeted search combinations in a single click." },
+  { step: "02", Icon: CloudCog, title: "Extract in the Cloud", description: "Our servers process your keywords 24/7, extracting business data and enriching every lead automatically." },
+  { step: "03", Icon: Download, title: "Export & Close", description: "Download CRM-ready CSV files with verified emails, phone numbers, and social profiles." },
+];
+
+const benefits = [
+  { Icon: Layers, title: "Bulk Keyword Generation", slug: "bulk-keyword-generator", description: "Combine hundreds of niches and locations in one click. Generate 5,000+ keyword combinations for massive search coverage." },
+  { Icon: MapPin, title: "Localized Area Search", description: "Pinpoint businesses with surgical precision using zip-code and neighborhood targeting." },
+  { Icon: Cloud, title: "24/7 Cloud Processing", description: "Start your task and walk away. Our servers handle extraction in the background while you sleep." },
+  { Icon: Database, title: "Deep Data Enrichment", slug: "email-enrichment", description: "Go beyond basic Maps info. We scrape websites to find hidden emails and social profiles." },
+];
+
+const faqs = [
+  { q: "What data can LeadSpotter extract?", a: "LeadSpotter extracts business names, addresses, phone numbers, emails, websites, ratings, reviews, social media profiles, and operating hours." },
+  { q: "Is this legal to use?", a: "Yes. LeadSpotter only collects publicly available data. We are fully GDPR and CCPA compliant." },
+  { q: "How does cloud processing work?", a: "When you start a task, it runs on our servers. You can close your browser and come back later." },
 ];
 
 function DashboardMockup() {
@@ -144,7 +171,7 @@ function FaqItem({ item, isOpen, toggle }: { item: any; isOpen: boolean; toggle:
   );
 }
 
-export function HomeClient({ flipWords, testimonials, faqs }: any) {
+export function HomeClient() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
@@ -184,9 +211,52 @@ export function HomeClient({ flipWords, testimonials, faqs }: any) {
         </div>
       </section>
 
-      <section className="py-16 md:py-32">
+      <section className="py-16 md:py-32" id="how-it-works">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <p className="text-indigo-600 font-bold uppercase tracking-widest text-sm mb-4">Process</p>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">From keywords to closed deals</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {howItWorks.map((item: any) => (
+              <div key={item.step} className="p-8 rounded-2xl border border-gray-100 bg-white">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 bg-indigo-100">
+                  <item.Icon size={28} className="text-indigo-600" />
+                </div>
+                <h3 className="text-xl font-bold mb-3">{item.title}</h3>
+                <p className="text-gray-500">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+       <section className="py-16 md:py-32" id="features">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <p className="text-indigo-600 font-bold uppercase tracking-widest text-sm mb-4">Features</p>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">Features that you never expected</h2>
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            {benefits.map((item: any) => (
+              <div key={item.title} className="p-8 rounded-2xl border border-gray-200 bg-white shadow-sm hover:border-indigo-300 transition-colors">
+                <item.Icon size={24} className="text-indigo-600 mb-4" />
+                <h3 className="text-lg font-bold mb-2">{item.title}</h3>
+                <p className="text-gray-500 text-sm mb-4">{item.description}</p>
+                {item.slug && (
+                  <Link href={`/features/${item.slug}`} className="text-xs font-bold text-indigo-600 hover:underline">
+                    Learn more about {item.title} →
+                  </Link>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 md:py-32 ">
         <div className="max-w-6xl mx-auto px-6 text-center mb-12">
-          <h2 className="font-sans text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">Loved by sales teams everywhere</h2>
+          <h2 className="font-sans  text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">Loved by sales teams everywhere</h2>
         </div>
         <InfiniteMovingCards items={testimonials} direction="left" speed="slow" />
       </section>
