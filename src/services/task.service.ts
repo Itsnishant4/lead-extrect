@@ -182,88 +182,16 @@ export class TaskService {
   }
 
   static async runTask(taskId: number, userId: number) {
-    const baseUrl = this.getBaseUrl();
-    const nextUrl = `${baseUrl}/api/automation/run`;
-    console.log(`[TASK SERVICE] runTask: Triggering via ${nextUrl} for task ${taskId}`);
-    
-    try {
-      const serverToken = await signToken({ taskId, userId, internal: true });
-
-      const res = await fetch(nextUrl, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${serverToken}`,
-          'x-internal-token': serverToken
-        },
-        body: JSON.stringify({ taskId, userId }),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        console.error(`[TASK SERVICE] runTask: Trigger failed with status ${res.status}: ${text}`);
-        
-        // Fallback to direct call if trigger failed
-        console.log('[TASK SERVICE] Falling back to direct processTaskStep call due to non-ok response...');
-        void this.processTaskStep(taskId, userId);
-        return { success: true, fallback: true };
-      }
-
-      return { success: true };
-    } catch (e) {
-      console.error('[TASK SERVICE] runTask trigger failed:', e);
-      // Fallback to direct call if fetch fails
-      console.log('[TASK SERVICE] Falling back to direct processTaskStep call due to fetch error...');
-      void this.processTaskStep(taskId, userId);
-      return { success: true, fallback: true };
-    }
+    console.log(`[TASK SERVICE] runTask called for task ${taskId}. Updating status to pending for worker to pick up.`);
+    await TaskRepository.update(taskId, userId, { status: 'pending' });
+    return { success: true };
   }
 
   private static async triggerNextStep(taskId: number, userId: number) {
-    const baseUrl = this.getBaseUrl();
-    const nextUrl = `${baseUrl}/api/automation/run`;
-    console.log(`[TASK SERVICE] Triggering next step via: ${nextUrl} for task ${taskId}`);
-    
-    try {
-      const serverToken = await signToken({ taskId, userId, internal: true });
-
-      // Non-blocking trigger to allow current process to finish
-      fetch(nextUrl, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${serverToken}`,
-          'x-internal-token': serverToken
-        },
-        body: JSON.stringify({ taskId, userId }),
-      }).then(async (res) => {
-        if (!res.ok) {
-          const text = await res.text();
-          console.error(`[TASK SERVICE] Next step trigger returned status: ${res.status} - ${text}`);
-          
-          // CRITICAL FALLBACK: If API fetch fails, try to call processTaskStep directly
-          console.log('[TASK SERVICE] Falling back to direct processTaskStep call...');
-          setTimeout(() => {
-            this.processTaskStep(taskId, userId).catch(e => console.error('[TASK SERVICE] Direct fallback failed:', e));
-          }, 1000);
-        } else {
-          console.log(`[TASK SERVICE] Next step trigger successful for task ${taskId}`);
-        }
-      }).catch(e => {
-        console.error('[TASK SERVICE] Next step trigger fetch failed:', e);
-        // CRITICAL FALLBACK
-        console.log('[TASK SERVICE] Falling back to direct processTaskStep call due to fetch error...');
-        setTimeout(() => {
-          this.processTaskStep(taskId, userId).catch(err => console.error('[TASK SERVICE] Direct fallback error:', err));
-        }, 1000);
-      });
-    } catch (tokenErr) {
-      console.error('[TASK SERVICE] Failed to sign token for next step:', tokenErr);
-      // Fallback even if token signing fails
-      setTimeout(() => {
-        this.processTaskStep(taskId, userId).catch(err => console.error('[TASK SERVICE] Direct fallback error after token failure:', err));
-      }, 1000);
-    }
+    // The worker now handles sequential processing inherently, so this doesn't need to do anything
+    // However, if the processTaskStep is called manually via UI, we might still want it to continue.
+    // The worker is designed to poll, so returning success is fine.
+    return { success: true };
   }
 
   static async sendLogsToTelegram(taskId: number, userId?: number) {
