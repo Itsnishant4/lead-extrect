@@ -4,6 +4,9 @@ import { verifyToken } from '@/lib/auth-edge';
 
 export async function POST(req: NextRequest) {
   try {
+    const authHeader = req.headers.get('authorization');
+    console.log('API [automation/run] Received request. Auth Header:', authHeader ? 'Present (length: ' + authHeader.length + ')' : 'Missing');
+
     const body = await req.json();
     const taskId = Number(body.taskId);
     const userId = Number(body.userId);
@@ -13,11 +16,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing taskId or userId' }, { status: 400 });
     }
 
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.split(' ')[1];
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
     if (!token) {
-      console.error('API [automation/run] Missing token');
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      console.error('API [automation/run] Missing or malformed token in header:', authHeader);
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Unauthorized', 
+        debug: { headerFound: !!authHeader, headerValue: authHeader ? authHeader.substring(0, 15) + '...' : null } 
+      }, { status: 401 });
     }
 
     const payload = await verifyToken(token);

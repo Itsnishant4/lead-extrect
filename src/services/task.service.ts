@@ -161,18 +161,36 @@ export class TaskService {
     }
   }
 
+  private static getBaseUrl() {
+    if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+    if (process.env.NODE_ENV === 'production') {
+      return `https://${process.env.VERCEL_URL || 'leadspotter.in'}`;
+    }
+    return 'http://127.0.0.1:3000';
+  }
+
   static async runTask(taskId: number, userId: number) {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://127.0.0.1:3000';
+    const baseUrl = this.getBaseUrl();
     const nextUrl = `${baseUrl}/api/automation/run`;
+    console.log(`[TASK SERVICE] runTask: Triggering via ${nextUrl}`);
     
     try {
       const serverToken = await signToken({ taskId, userId, internal: true });
 
-      await fetch(nextUrl, {
+      const res = await fetch(nextUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serverToken}` },
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${serverToken}` 
+        },
         body: JSON.stringify({ taskId, userId }),
       });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error(`[TASK SERVICE] runTask: Trigger failed with status ${res.status}: ${text}`);
+      }
+
       return { success: true };
     } catch (e) {
       console.error('[TASK SERVICE] runTask trigger failed:', e);
@@ -183,15 +201,7 @@ export class TaskService {
   }
 
   private static async triggerNextStep(taskId: number, userId: number) {
-    // In production, use the actual domain. In local, 127.0.0.1 is better.
-    let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-    
-    if (!baseUrl) {
-      baseUrl = process.env.NODE_ENV === 'production' 
-        ? `https://${process.env.VERCEL_URL || 'leadspotter.in'}` 
-        : 'http://127.0.0.1:3000';
-    }
-    
+    const baseUrl = this.getBaseUrl();
     const nextUrl = `${baseUrl}/api/automation/run`;
     console.log(`[TASK SERVICE] Triggering next step via: ${nextUrl}`);
     
@@ -201,7 +211,10 @@ export class TaskService {
       // Non-blocking trigger to allow current process to finish
       fetch(nextUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serverToken}` },
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${serverToken}` 
+        },
         body: JSON.stringify({ taskId, userId }),
       }).then(async (res) => {
         if (!res.ok) {
@@ -209,7 +222,6 @@ export class TaskService {
           console.error(`[TASK SERVICE] Next step trigger returned status: ${res.status} - ${text}`);
           
           // CRITICAL FALLBACK: If API fetch fails, try to call processTaskStep directly
-          // but with a slight delay to avoid stack overflow
           console.log('[TASK SERVICE] Falling back to direct processTaskStep call...');
           setTimeout(() => {
             this.processTaskStep(taskId, userId).catch(e => console.error('[TASK SERVICE] Direct fallback failed:', e));
