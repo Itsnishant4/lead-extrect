@@ -970,3 +970,39 @@ export async function getPaymentHistoryAction() {
     return handleActionError(error);
   }
 }
+
+export async function getAllPaymentsAdminAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    const data = await SubscriptionService.getAllPaymentsAdmin();
+    return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function acceptPaymentAdminAction(transactionId: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    await SubscriptionService.acceptPayment(transactionId);
+    return { success: true };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function rejectPaymentAdminAction(transactionId: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    await SubscriptionService.rejectPayment(transactionId);
+    return { success: true };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}

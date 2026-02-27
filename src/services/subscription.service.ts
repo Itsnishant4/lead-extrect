@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { transactions, users, plans } from '@/lib/db/schema';
-import { eq, sql, desc } from 'drizzle-orm';
+import { eq, sql, desc, ne } from 'drizzle-orm';
 import crypto from 'crypto';
 
 export class SubscriptionService {
@@ -104,5 +104,64 @@ export class SubscriptionService {
       .orderBy(desc(transactions.createdAt));
 
     return rows;
+  }
+
+  static async getAllPaymentsAdmin() {
+    return await db
+      .select({
+        id: transactions.id,
+        amount: transactions.amount,
+        status: transactions.status,
+        gatewayOrderId: transactions.gatewayOrderId,
+        utr: transactions.utr,
+        createdAt: transactions.createdAt,
+        updatedAt: transactions.updatedAt,
+        userId: transactions.userId,
+        planId: transactions.planId,
+        userName: users.name,
+        userEmail: users.email,
+        planName: plans.name,
+        planPeriod: plans.period,
+        planCredits: plans.leadsCredits,
+      })
+      .from(transactions)
+      .leftJoin(users, eq(transactions.userId, users.id))
+      .leftJoin(plans, eq(transactions.planId, plans.id))
+      .orderBy(desc(transactions.createdAt));
+  }
+
+  static async acceptPayment(transactionId: number) {
+    const tx = await db.select().from(transactions).where(eq(transactions.id, transactionId)).limit(1).then(r => r[0]);
+    if (!tx) throw new Error('Transaction not found');
+    if (tx.status === 'paid') throw new Error('Transaction already paid');
+
+    const plan = await db.select().from(plans).where(eq(plans.id, tx.planId!)).limit(1).then(r => r[0]);
+    if (!plan) throw new Error('Plan not found');
+
+    // Mark transaction as paid
+    await db.update(transactions).set({
+      status: 'paid',
+      updatedAt: new Date(),
+    }).where(eq(transactions.id, transactionId));
+
+    // Update user credits and plan
+    await db.update(users).set({
+      planType: plan.name.toLowerCase(),
+      bonusCredits: sql`COALESCE(bonus_credits, 0) + ${plan.leadsCredits}`,
+      subscriptionExpiry: plan.period === 'month'
+        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        : null,
+    }).where(eq(users.id, tx.userId!));
+  }
+
+  static async rejectPayment(transactionId: number) {
+    const tx = await db.select().from(transactions).where(eq(transactions.id, transactionId)).limit(1).then(r => r[0]);
+    if (!tx) throw new Error('Transaction not found');
+    if (tx.status === 'paid') throw new Error('Cannot reject a paid transaction');
+
+    await db.update(transactions).set({
+      status: 'rejected',
+      updatedAt: new Date(),
+    }).where(eq(transactions.id, transactionId));
   }
 }
