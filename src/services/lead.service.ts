@@ -185,7 +185,7 @@ export class LeadService {
       const lSources = cachedLeadsRes.map(l => ({ leadId: l.id, searchId, taskId: taskId || null }));
       await tx.insert(leadSources).values(lSources).onConflictDoNothing();
 
-      await tx.update(users).set({ leadsExtracted: sql`leadsExtracted + ${count}` }).where(eq(users.id, userId));
+      await tx.update(users).set({ leadsExtracted: sql`leads_extracted + ${count}` }).where(eq(users.id, userId));
       return { success: true, count, searchId, cached: true, leads: [] };
     });
   }
@@ -270,7 +270,7 @@ export class LeadService {
         }
       }
 
-      await tx.update(users).set({ leadsExtracted: sql`leadsExtracted + ${leadsToInsert.length}` }).where(eq(users.id, userId));
+      await tx.update(users).set({ leadsExtracted: sql`leads_extracted + ${leadsToInsert.length}` }).where(eq(users.id, userId));
 
       return {
         success: true,

@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/index';
-import { users, leads, tasks, searches, auditLogs, serverLogs } from '@/lib/db/schema';
+import { users, leads, tasks, searches, auditLogs, serverLogs, transactions, plans } from '@/lib/db/schema';
 import { eq, sql, desc, and, gt } from 'drizzle-orm';
 
 export class AdminService {
@@ -12,7 +12,7 @@ export class AdminService {
     const totalUsersRes = await db.select({ count: sql<number>`count(*)` }).from(users);
     const suspendedCountRes = await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.isSuspended, true));
     const runningTasksRes = await db.select({ count: sql<number>`count(*)` }).from(tasks).where(eq(tasks.status, 'running'));
-    const leadsSumRes = await db.select({ sum: sql<number>`sum(leadsExtracted)` }).from(users);
+    const leadsSumRes = await db.select({ sum: sql<number>`sum(leads_extracted)` }).from(users);
     const tasksCountRes = await db.select({ count: sql<number>`count(*)` }).from(tasks);
     const searchesCountRes = await db.select({ count: sql<number>`count(*)` }).from(searches);
 
@@ -165,7 +165,58 @@ export class AdminService {
 
   static async updateUserCredits(userId: number, amount: number) {
     await db.update(users).set({ 
-      bonusCredits: sql`bonusCredits + ${amount}` 
+      bonusCredits: sql`bonus_credits + ${amount}` 
     }).where(eq(users.id, userId));
+  }
+
+  static async getUserHistory(userId: number) {
+    const user = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      planType: users.planType,
+      leadsExtracted: users.leadsExtracted,
+      bonusCredits: users.bonusCredits,
+      subscriptionExpiry: users.subscriptionExpiry,
+      createdAt: users.createdAt,
+    }).from(users).where(eq(users.id, userId)).limit(1);
+
+    if (!user[0]) throw new Error('User not found');
+
+    const userTransactions = await db.select({
+      id: transactions.id,
+      amount: transactions.amount,
+      status: transactions.status,
+      gatewayOrderId: transactions.gatewayOrderId,
+      utr: transactions.utr,
+      createdAt: transactions.createdAt,
+      planName: plans.name,
+      planPrice: plans.price,
+      planPeriod: plans.period,
+      planCredits: plans.leadsCredits,
+    })
+    .from(transactions)
+    .leftJoin(plans, eq(transactions.planId, plans.id))
+    .where(eq(transactions.userId, userId))
+    .orderBy(desc(transactions.createdAt))
+    .limit(50);
+
+    const userAuditLogs = await db.select({
+      id: auditLogs.id,
+      action: auditLogs.action,
+      status: auditLogs.status,
+      metadata: auditLogs.metadata,
+      createdAt: auditLogs.createdAt,
+    })
+    .from(auditLogs)
+    .where(eq(auditLogs.userId, userId))
+    .orderBy(desc(auditLogs.createdAt))
+    .limit(50);
+
+    return {
+      user: user[0],
+      transactions: userTransactions,
+      auditLogs: userAuditLogs,
+    };
   }
 }

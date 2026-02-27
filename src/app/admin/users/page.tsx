@@ -5,7 +5,8 @@ import {
   getAllUsersAdminAction,
   toggleUserAdminAction,
   updateUserCreditsAction,
-  suspendUserAction
+  suspendUserAction,
+  getUserHistoryAdminAction
 } from "@/app/actions"
 import {
   Table,
@@ -18,7 +19,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Shield, ShieldSlash, Calendar, Coins, Plus, Minus } from "phosphor-react"
+import { Shield, ShieldSlash, Calendar, Coins, Plus, Minus, ClockCounterClockwise } from "phosphor-react"
 import { LoaderCircle } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -85,10 +86,29 @@ export default function AdminUsersPage() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [creditAmount, setCreditAmount] = useState<string>("100");
   const [isCreditDialogOpen, setIsCreditDialogOpen] = useState(false);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [historyUserId, setHistoryUserId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [planFilter, setPlanFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
+
+  const { data: historyData, isLoading: isHistoryLoading } = useQuery({
+    queryKey: ['admin-user-history', historyUserId],
+    queryFn: async () => {
+      if (!historyUserId) return null;
+      const res = await getUserHistoryAdminAction(historyUserId);
+      if (!res.success) throw new Error((res as any).error);
+      return (res as any).data;
+    },
+    enabled: !!historyUserId && isHistoryDialogOpen,
+  });
+
+  const openHistoryDialog = (user: any) => {
+    setHistoryUserId(user.id);
+    setSelectedUser(user);
+    setIsHistoryDialogOpen(true);
+  };
 
   const updateCreditsMutation = useMutation({
     mutationFn: async ({ userId, amount }: { userId: number, amount: number }) => {
@@ -297,6 +317,9 @@ export default function AdminUsersPage() {
                             <Button variant="ghost" size="sm" onClick={() => openCreditDialog(user)} title="Manage Credits">
                               <Coins className="h-4 w-4 text-yellow-500" />
                             </Button>
+                            <Button variant="ghost" size="sm" onClick={() => openHistoryDialog(user)} title="View History">
+                              <ClockCounterClockwise className="h-4 w-4 text-indigo-500" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -371,6 +394,117 @@ export default function AdminUsersPage() {
               <Plus className="h-4 w-4" /> {updateCreditsMutation.isPending ? "Updating..." : "Add Credits"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isHistoryDialogOpen} onOpenChange={(open) => { setIsHistoryDialogOpen(open); if (!open) setHistoryUserId(null); }}>
+        <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>User History</DialogTitle>
+            <DialogDescription>
+              Subscription, payment, and activity history for <b>{selectedUser?.name}</b> ({selectedUser?.email})
+            </DialogDescription>
+          </DialogHeader>
+
+          {isHistoryLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : historyData ? (
+            <div className="flex-1 overflow-y-auto space-y-6 pr-1">
+              {/* User Summary */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-3 bg-muted/50 rounded-xl border border-dashed text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase font-black">Plan</p>
+                  <p className="text-sm font-bold text-foreground capitalize mt-1">{historyData.user.planType}</p>
+                </div>
+                <div className="p-3 bg-muted/50 rounded-xl border border-dashed text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase font-black">Leads Used</p>
+                  <p className="text-sm font-bold text-foreground mt-1">{historyData.user.leadsExtracted?.toLocaleString() || 0}</p>
+                </div>
+                <div className="p-3 bg-muted/50 rounded-xl border border-dashed text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase font-black">Bonus Credits</p>
+                  <p className="text-sm font-bold text-foreground mt-1">{historyData.user.bonusCredits || 0}</p>
+                </div>
+                <div className="p-3 bg-muted/50 rounded-xl border border-dashed text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase font-black">Sub. Expiry</p>
+                  <p className="text-sm font-bold text-foreground mt-1">
+                    {historyData.user.subscriptionExpiry
+                      ? format(new Date(historyData.user.subscriptionExpiry), 'MMM dd, yyyy')
+                      : 'N/A'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Payment Transactions */}
+              <div>
+                <h4 className="text-sm font-bold text-foreground mb-3">Payment Transactions</h4>
+                {historyData.transactions.length === 0 ? (
+                  <div className="text-center py-8 bg-muted/20 border border-dashed rounded-xl">
+                    <p className="text-muted-foreground text-sm">No payment transactions found.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {historyData.transactions.map((tx: any) => (
+                      <div key={tx.id} className="flex items-center justify-between p-3 bg-card border rounded-xl hover:bg-muted/30 transition-colors">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm text-foreground">{tx.planName || 'Unknown Plan'}</span>
+                            <Badge
+                              variant={tx.status === 'completed' ? 'default' : tx.status === 'failed' ? 'destructive' : 'secondary'}
+                              className="text-[10px] capitalize"
+                            >
+                              {tx.status}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                            {tx.gatewayOrderId && <span>Order: {tx.gatewayOrderId}</span>}
+                            {tx.utr && <span>UTR: {tx.utr}</span>}
+                            {tx.planCredits && <span>{tx.planCredits.toLocaleString()} credits</span>}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-sm tabular-nums">Rs. {Number(tx.amount).toLocaleString()}</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {tx.createdAt ? format(new Date(tx.createdAt), 'MMM dd, yyyy HH:mm') : 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Audit Logs */}
+              <div>
+                <h4 className="text-sm font-bold text-foreground mb-3">Activity Log</h4>
+                {historyData.auditLogs.length === 0 ? (
+                  <div className="text-center py-8 bg-muted/20 border border-dashed rounded-xl">
+                    <p className="text-muted-foreground text-sm">No activity logs found.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {historyData.auditLogs.map((log: any) => (
+                      <div key={log.id} className="flex items-center justify-between p-2.5 bg-card border rounded-lg hover:bg-muted/30 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-1 h-6 rounded-full ${log.status === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                          <div>
+                            <span className="font-medium text-xs text-foreground capitalize">{log.action?.replace(/_/g, ' ')}</span>
+                            {log.metadata && (
+                              <p className="text-[10px] text-muted-foreground truncate max-w-[300px]">{log.metadata}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
+                          {log.createdAt ? format(new Date(log.createdAt), 'MMM dd HH:mm') : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
     </>

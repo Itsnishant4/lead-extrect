@@ -442,6 +442,18 @@ export async function updateUserCreditsAction(userId: number, amount: number) {
   }
 }
 
+export async function getUserHistoryAdminAction(userId: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    const data = await AdminService.getUserHistory(userId);
+    return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
 // --- Blog Actions ---
 
 export async function getAllBlogPostsAdminAction() {
