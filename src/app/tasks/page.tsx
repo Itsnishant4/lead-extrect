@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
-import { Progress } from 'radix-ui';
+import { ExportFilters, FilterSettings } from '@/components/ExportFilters';
 
 export default function TasksPage() {
   const queryClient = useQueryClient();
@@ -65,37 +65,34 @@ export default function TasksPage() {
     }
   });
 
-  const handleExport = async (taskId: number, taskName: string) => {
+  const handleExport = async (taskId: number, taskName: string, filters: FilterSettings) => {
     toast.info('Exporting leads...');
     try {
-      const res = await getTaskLeadsAction(taskId);
-      if (res.success && 'data' in res) {
-        const leads = (res.data as any[]) || [];
-        if (leads.length === 0) {
-          toast.error('No leads found for this task');
-          return;
-        }
-        
-        const headers = ['Name', 'Phone', 'Email', 'Website', 'Address'];
-        const csv = [
-          headers.join(','),
-          ...leads.map(l => [
-            `"${(l.name || '').replace(/"/g, '""')}"`,
-            `"${l.phone || ''}"`,
-            `"${l.email || ''}"`,
-            `"${l.website || ''}"`,
-            `"${(l.address || '').replace(/"/g, '""')}"`
-          ].join(','))
-        ].join('\n');
+      const params = new URLSearchParams();
+      if (filters.hasEmail) params.append('hasEmail', '1');
+      if (filters.hasPhone) params.append('hasPhone', '1');
+      if (filters.hasWebsite) params.append('hasWebsite', '1');
+      if (filters.hasSocials) params.append('hasSocials', '1');
+      if (filters.hasRating) params.append('hasRating', '1');
+      if (filters.hasAddress) params.append('hasAddress', '1');
 
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${taskName.replace(/\s+/g, '_')}_leads.csv`;
-        a.click();
-        toast.success('Export complete');
+      const url = `/api/task-export/${taskId}?${params.toString()}`;
+      
+      const res = await fetch(url);
+      if (!res.ok) {
+        toast.error('Export failed or no leads match criteria');
+        return;
       }
+      
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `${taskName.replace(/\s+/g, '_')}_leads.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success('Export complete');
     } catch (e) {
       toast.error('Export failed');
     }
@@ -177,9 +174,7 @@ export default function TasksPage() {
                         <Play size={14} className="mr-2" /> Resume
                       </Button>
                     )}
-                    <Button size="sm" variant="outline" onClick={() => handleExport(task.id, task.name)}>
-                      <Download size={14} className="mr-2" /> CSV
-                    </Button>
+                    <ExportFilters onExport={(filters) => handleExport(task.id, task.name, filters)} />
                     <Button size="sm" variant="ghost" className="text-rose-500 hover:bg-rose-50" onClick={() => deleteMutation.mutate(task.id)}>
                       <Trash2 size={14} />
                     </Button>

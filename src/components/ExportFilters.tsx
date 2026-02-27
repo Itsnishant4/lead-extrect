@@ -98,7 +98,7 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
               onCheckedChange={() => toggleFilter('hasWebsite')}
             />
 
-            {/* <FilterItem
+            <FilterItem
               id="hasSocials"
               label="Has Socials"
               description="Leads with FB, IG, LinkedIn, etc."
@@ -123,7 +123,7 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
               icon={<Globe className="h-4 w-4 text-primary" />}
               checked={filters.hasAddress}
               onCheckedChange={() => toggleFilter('hasAddress')}
-            /> */}
+            />
 
           </div>
         </div>

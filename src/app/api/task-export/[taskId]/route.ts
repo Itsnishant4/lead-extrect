@@ -34,12 +34,20 @@ export async function GET(
 
   const task = taskRows[0];
 
-  // --- TELEGRAM EXPORT MERGE LOGIC ---
-  const hasFilters = url.searchParams.has('hasEmail') || url.searchParams.has('hasPhone');
+  // 2. Parse Filters
+  const hasEmail = url.searchParams.get('hasEmail') === '1';
+  const hasPhone = url.searchParams.get('hasPhone') === '1';
+  const hasWebsite = url.searchParams.get('hasWebsite') === '1';
+  const hasSocials = url.searchParams.get('hasSocials') === '1';
+  const hasRating = url.searchParams.get('hasRating') === '1';
+  const hasAddress = url.searchParams.get('hasAddress') === '1';
+  const hasFilters = hasEmail || hasPhone || hasWebsite || hasSocials || hasRating || hasAddress;
+
+  // --- TELEGRAM EXPORT MERGE & FILTER LOGIC ---
   const fileIds = task.exportFileIds ? JSON.parse(task.exportFileIds) : [];
   const token = process.env.TELEGRAM_BOT_TOKEN;
 
-  if (!hasFilters && fileIds.length > 0 && token) {
+  if (fileIds.length > 0 && token) {
     try {
       const files: string[] = [];
       for (const fileId of fileIds) {
@@ -54,15 +62,58 @@ export async function GET(
       }
 
       if (files.length > 0) {
-        const merged = files
-          .map((content, index) => {
-            if (index === 0) return content;
-            const lines = content.split('\n');
-            return lines.slice(1).join('\n');
-          })
-          .join('');
+        let mergedLines: string[] = [];
+        let headerLine = "";
+        
+        files.forEach((content, index) => {
+          const lines = content.split('\n').filter(line => line.trim().length > 0);
+          if (lines.length === 0) return;
+          
+          if (index === 0) {
+            headerLine = lines[0];
+            mergedLines.push(...lines.slice(1));
+          } else {
+            mergedLines.push(...lines.slice(1));
+          }
+        });
 
-        let output = merged.replace(/\n\s*\n/g, '\n');
+        // Parse CSV Row helper
+        const parseCsvRow = (text: string) => {
+          let p = '', row = [''], i = 0, s = !0, l;
+          for (l of text) {
+            if ('"' === l) {
+              if (s && l === p) row[i] += l;
+              s = !s;
+            } else if (',' === l && s) l = row[++i] = '';
+            else row[i] += l;
+            p = l;
+          }
+          return row;
+        };
+
+        if (hasFilters) {
+          mergedLines = mergedLines.filter(line => {
+            const cols = parseCsvRow(line);
+            // Expected indices based on worker CSV structure:
+            // 2: Rating, 4: Phone, 5: WebPhone, 6: Email, 7: WebEmail, 8: Website, 9: Address, 14-20: Socials
+            if (hasEmail && !cols[6] && !cols[7]) return false;
+            if (hasPhone && !cols[4] && !cols[5]) return false;
+            if (hasWebsite && !cols[8]) return false;
+            if (hasAddress && (!cols[9] || cols[9].length < 5)) return false;
+            if (hasRating && (!cols[2] || Number(cols[2]) <= 0)) return false;
+            if (hasSocials) {
+              const hasAnySocial = cols.slice(14, 21).some(s => s && s.trim().length > 0);
+              if (!hasAnySocial) return false;
+            }
+            return true;
+          });
+        }
+
+        if (mergedLines.length === 0) {
+          return NextResponse.json({ error: 'No leads match filters in the downloaded file' }, { status: 404 });
+        }
+
+        let output = [headerLine, ...mergedLines].join('\n');
         output = output
           .replace(/(^|,)"([=+\-@])/gm, '$1"\'$2')
           .replace(/(^|,)([=+\-@])/gm, "$1'$2");
@@ -76,17 +127,9 @@ export async function GET(
         });
       }
     } catch (e) {
-      console.error('Failed to merge telegram files, falling back to DB', e);
+      console.error('Failed to merge/filter telegram files, falling back to DB', e);
     }
   }
-
-  // 2. Parse Filters
-  const hasEmail = url.searchParams.get('hasEmail') === '1';
-  const hasPhone = url.searchParams.get('hasPhone') === '1';
-  const hasWebsite = url.searchParams.get('hasWebsite') === '1';
-  const hasSocials = url.searchParams.get('hasSocials') === '1';
-  const hasRating = url.searchParams.get('hasRating') === '1';
-  const hasAddress = url.searchParams.get('hasAddress') === '1';
 
   // 3. Build SQL Query
   const leadsRes = await db.select()
