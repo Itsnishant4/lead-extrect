@@ -159,9 +159,14 @@ export default function TasksPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    {task.status === 'pending' && (
+                    {task.status === 'pending' && task.totalKeywords > 0 && task.currentKeywordIndex === 0 && (
                       <Button size="sm" className="bg-indigo-600" onClick={() => runMutation.mutate(task.id)}>
                         <Play size={14} className="mr-2" /> Start
+                      </Button>
+                    )}
+                    {task.status === 'pending' && task.currentKeywordIndex > 0 && (
+                      <Button size="sm" variant="outline" disabled>
+                        <Loader2 size={14} className="mr-2 animate-spin" /> Starting...
                       </Button>
                     )}
                     {task.status === 'running' && (
@@ -170,7 +175,7 @@ export default function TasksPage() {
                       </Button>
                     )}
                     {task.status === 'paused' && (
-                      <Button size="sm" variant="outline" onClick={() => statusMutation.mutate({ taskId: task.id, status: 'running' })}>
+                      <Button size="sm" variant="outline" onClick={() => statusMutation.mutate({ taskId: task.id, status: 'pending' })}>
                         <Play size={14} className="mr-2" /> Resume
                       </Button>
                     )}
