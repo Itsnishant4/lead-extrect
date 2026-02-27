@@ -27,6 +27,7 @@ export class SubscriptionService {
       body: JSON.stringify({
         amount: plan.price.toString(),
         webhook_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhook/autopay`,
+        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/success`,
         order_id: orderId,
       }),
     });

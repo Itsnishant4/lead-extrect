@@ -367,27 +367,28 @@ export default function SubscriptionPage() {
         )}
       </main>
 
-      {/* Payment iframe overlay */}
+      {/* Payment iframe overlay - full screen */}
       {paymentUrl && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="relative w-full max-w-lg h-[85vh] max-h-[700px] bg-white rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-            <button
-              onClick={() => { setPaymentUrl(null); setIsCheckingOut(null); }}
-              className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-white/90 shadow-md flex items-center justify-center hover:bg-gray-100 transition-colors"
-            >
-              <X size={16} className="text-gray-600" />
-            </button>
-            <div className="px-6 py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white">
+        <div className="fixed inset-0 z-[100] bg-white dark:bg-background animate-in fade-in duration-200">
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-indigo-600 to-violet-600 text-white">
+            <div>
               <p className="text-sm font-bold">Complete Your Payment</p>
               <p className="text-xs text-indigo-200 mt-0.5">Scan the QR code with any UPI app to pay</p>
             </div>
-            <iframe
-              ref={iframeRef}
-              src={paymentUrl}
-              className="w-full h-[calc(100%-72px)] border-none"
-              allow="payment"
-            />
+            <button
+              onClick={() => { setPaymentUrl(null); setIsCheckingOut(null); }}
+              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+            >
+              <X size={18} className="text-white" />
+            </button>
           </div>
+          <iframe
+            ref={iframeRef}
+            src={paymentUrl}
+            className="w-full border-none"
+            style={{ height: 'calc(100vh - 56px)' }}
+            allow="payment"
+          />
         </div>
       )}
 
