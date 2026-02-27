@@ -2,6 +2,7 @@
 
 import { getSession } from '@/lib/auth';
 import { headers } from 'next/headers';
+import { revalidatePath } from 'next/cache';
 import { checkRateLimit } from '@/lib/security/ratelimit';
 import { AuthService } from '@/services/auth.service';
 import { LeadService } from '@/services/lead.service';
@@ -9,6 +10,8 @@ import { TaskService } from '@/services/task.service';
 import { UserService } from '@/services/user.service';
 import { AdminService } from '@/services/admin.service';
 import { BlogService } from '@/services/blog.service';
+import { PlanService } from '@/services/plan.service';
+import { SubscriptionService } from '@/services/subscription.service';
 import { ProxyService } from '@/services/proxy.service';
 import { SettingsService } from '@/services/settings.service';
 import { AuditService } from '@/services/audit.service';
@@ -459,6 +462,8 @@ export async function createBlogPostAction(data: any) {
   try {
     await AdminService.checkAdmin(session.id);
     const id = await BlogService.createPost(data);
+    revalidatePath('/blog');
+    if (data.slug) revalidatePath(`/blog/${data.slug}`);
     return { success: true, id };
   } catch (error: any) {
     return handleActionError(error);
@@ -471,6 +476,8 @@ export async function updateBlogPostAction(id: number, data: any) {
   try {
     await AdminService.checkAdmin(session.id);
     await BlogService.updatePost(id, data);
+    revalidatePath('/blog');
+    if (data.slug) revalidatePath(`/blog/${data.slug}`);
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);
@@ -483,6 +490,7 @@ export async function deleteBlogPostAction(id: number) {
   try {
     await AdminService.checkAdmin(session.id);
     await BlogService.deletePost(id);
+    revalidatePath('/blog');
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);
@@ -868,4 +876,85 @@ export async function sendTaskExportToTelegramAction(taskId: number) {
 
 export async function processTaskStepAction(taskId: number, userId: number) {
   return await TaskService.processTaskStep(taskId, userId);
+}
+
+// --- Plan & Subscription Actions ---
+
+export async function getPlansAction() {
+  try {
+    const data = await PlanService.getAllPlans();
+    return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function getAllPlansAdminAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    const data = await PlanService.getAllPlansAdmin();
+    return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function createPlanAction(data: any) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    const id = await PlanService.createPlan(data);
+    return { success: true, id };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function updatePlanAction(id: number, data: any) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    await PlanService.updatePlan(id, data);
+    return { success: true };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function deletePlanAction(id: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    await PlanService.deletePlan(id);
+    return { success: true };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function createCheckoutSessionAction(planId: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    const result = await SubscriptionService.createOrder(session.id, planId);
+    return { success: true, data: result };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function getPaymentHistoryAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    const data = await SubscriptionService.getPaymentHistory(session.id);
+    return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
 }

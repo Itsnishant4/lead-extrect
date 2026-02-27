@@ -9,7 +9,7 @@ import { Logo } from '@/components/Logo';
 import {
   Search, Zap, Rocket, ChevronDown, User, CreditCard,
   LogOut, LogIn, UserPlus, X,
-  Menu,
+  Menu, Receipt,
 } from 'lucide-react';
 
 interface DashboardHeaderProps {
@@ -23,7 +23,7 @@ const navIcons = {
 } as const;
 
 export function DashboardHeader({ activePage }: DashboardHeaderProps) {
-  const { user } = useAutomation();
+  const { user, isLoadingUser } = useAutomation();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -97,13 +97,16 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
           <div className="hidden md:flex items-center gap-2 shrink-0">
             <div className="relative" ref={dropdownRef}>
               <button
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-3 p-1 pr-3 rounded-full border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 transition-colors"
+                onClick={() => !isLoadingUser && setShowDropdown(!showDropdown)}
+                disabled={isLoadingUser}
+                className={`flex items-center gap-3 p-1 pr-3 rounded-full border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-white/5 transition-colors ${isLoadingUser ? 'opacity-70 cursor-not-allowed' : 'hover:bg-white dark:hover:bg-white/10'}`}
               >
                 <div className="w-8 h-8 rounded-full border-2 border-white dark:border-slate-700 shadow-sm bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-bold text-sm">
-                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                  {isLoadingUser ? '...' : (user?.name?.charAt(0)?.toUpperCase() || 'U')}
                 </div>
-                {user ? (
+                {isLoadingUser ? (
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Loading...</span>
+                ) : user ? (
                   <div className="text-left">
                     <p className="text-xs font-bold truncate w-[70px] text-slate-800 dark:text-slate-200 leading-none">{user.name}</p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium capitalize">{user.planType || 'Free'} Plan</p>
@@ -137,6 +140,14 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
                       >
                         <CreditCard size={18} />
                         Subscription
+                      </Link>
+                      <Link
+                        href="/payment/history"
+                        onClick={() => setShowDropdown(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                      >
+                        <Receipt size={18} />
+                        Payment History
                       </Link>
                       <div className="border-t border-slate-100 dark:border-slate-800">
                         <button
@@ -233,9 +244,13 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
         {/* Account links */}
         <div className="px-3 py-3 flex-1">
           <p className="px-3 mb-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-            Loading...
+            Account
           </p>
-          {user ? (
+          {isLoadingUser ? (
+            <div className="px-3 py-2.5 text-sm font-medium text-slate-400 dark:text-slate-500">
+              Loading...
+            </div>
+          ) : user ? (
             <>
               <Link
                 href="/profile"
@@ -252,6 +267,14 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
               >
                 <CreditCard size={18} />
                 Subscription
+              </Link>
+              <Link
+                href="/payment/history"
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-foreground transition-colors mb-0.5"
+              >
+                <Receipt size={18} />
+                Payment History
               </Link>
             </>
           ) : (

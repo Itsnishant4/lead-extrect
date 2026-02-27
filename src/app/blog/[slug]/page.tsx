@@ -8,6 +8,8 @@ import { format } from 'date-fns';
 import { notFound } from 'next/navigation';
 import JsonLdBlog from '@/components/JsonLdBlog';
 
+export const dynamicParams = true;
+
 type Params = Promise<{ slug: string }>;
 
 export async function generateStaticParams() {

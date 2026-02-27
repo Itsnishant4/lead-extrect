@@ -12,7 +12,8 @@ import {
   User,
   CaretUp,
   SignOut,
-  ShieldCheck
+  ShieldCheck,
+  CreditCard
 } from 'phosphor-react';
 import { logoutAction } from '@/app/actions';
 import { toast } from 'sonner';
@@ -57,6 +58,11 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
       title: 'Blog Management',
       icon: FileText,
       url: '/admin/blog',
+    },
+    {
+      title: 'Plans & Pricing',
+      icon: CreditCard,
+      url: '/admin/plans',
     },
     {
       title: 'System Logs',

@@ -239,3 +239,31 @@ export const rateLimits = pgTable('rate_limits', {
   count: integer('count').default(1),
   resetAt: timestamp('reset_at').notNull(),
 });
+
+export const plans = pgTable('plans', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  price: integer('price').notNull(), // Amount in INR (0 for free)
+  period: text('period').notNull(), // 'month', 'one-time', 'free', 'custom'
+  leadsCredits: integer('leads_credits').notNull(),
+  features: jsonb('features').$type<string[]>(),
+  unavailableFeatures: jsonb('unavailable_features').$type<string[]>(),
+  whatsappUrl: text('whatsapp_url'),
+  badge: text('badge'),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const transactions = pgTable('transactions', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id),
+  planId: integer('plan_id').references(() => plans.id),
+  amount: text('amount').notNull(),
+  status: text('status').default('pending'),
+  gatewayOrderId: text('gateway_order_id'),
+  utr: text('utr'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
