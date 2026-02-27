@@ -4,22 +4,56 @@ import { verifyToken } from '@/lib/auth-edge';
 
 export async function POST(req: NextRequest) {
   try {
-    const { taskId, userId } = await req.json();
+    const body = await req.json();
+    const taskId = Number(body.taskId);
+    const userId = Number(body.userId);
 
     if (!taskId || !userId) {
+      console.error('API [automation/run] Missing taskId or userId:', body);
       return NextResponse.json({ success: false, error: 'Missing taskId or userId' }, { status: 400 });
     }
 
     const authHeader = req.headers.get('authorization');
     const token = authHeader?.split(' ')[1];
     if (!token) {
+      console.error('API [automation/run] Missing token');
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const payload = await verifyToken(token);
-    if (!payload || !payload.internal || payload.taskId !== taskId || payload.userId !== userId) {
-      console.error('API [automation/run] Unauthorized or invalid token:', { payload, taskId, userId });
-      return NextResponse.json({ success: false, error: 'Unauthorized or invalid token' }, { status: 401 });
+    
+    if (!payload) {
+      console.error('API [automation/run] Token verification failed');
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Invalid token',
+        debug: { hasToken: !!token }
+      }, { status: 401 });
+    }
+
+    const payloadInternal = payload.internal;
+    const payloadTaskId = Number(payload.taskId);
+    const payloadUserId = Number(payload.userId);
+
+    if (!payloadInternal || payloadTaskId !== taskId || payloadUserId !== userId) {
+      console.error('API [automation/run] Unauthorized token payload:', { 
+        payload, 
+        expectedTaskId: taskId, 
+        expectedUserId: userId 
+      });
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Unauthorized token payload',
+        debug: {
+          isInternal: !!payloadInternal,
+          taskIdMatch: payloadTaskId === taskId,
+          userIdMatch: payloadUserId === userId,
+          payloadTaskId,
+          payloadUserId,
+          receivedTaskId: taskId,
+          receivedUserId: userId
+        }
+      }, { status: 401 });
     }
 
     console.log(`API [automation/run] Triggering task ${taskId} for user ${userId}`);

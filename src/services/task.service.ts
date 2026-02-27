@@ -183,7 +183,15 @@ export class TaskService {
   }
 
   private static async triggerNextStep(taskId: number, userId: number) {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://127.0.0.1:3000';
+    // In production, use the actual domain. In local, 127.0.0.1 is better.
+    let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    
+    if (!baseUrl) {
+      baseUrl = process.env.NODE_ENV === 'production' 
+        ? `https://${process.env.VERCEL_URL || 'leadspotter.in'}` 
+        : 'http://127.0.0.1:3000';
+    }
+    
     const nextUrl = `${baseUrl}/api/automation/run`;
     console.log(`[TASK SERVICE] Triggering next step via: ${nextUrl}`);
     

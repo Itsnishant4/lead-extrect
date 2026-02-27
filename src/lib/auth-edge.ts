@@ -20,7 +20,8 @@ export async function verifyToken(token: string): Promise<any> {
             algorithms: ['HS256'],
         });
         return payload;
-    } catch (error) {
+    } catch (error: any) {
+        console.error('[Auth-Edge] Token verification failed:', error.message);
         return null;
     }
 }

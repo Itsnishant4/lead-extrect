@@ -45,7 +45,12 @@ export default function TasksPage() {
 
   const statusMutation = useMutation({
     mutationFn: async ({ taskId, status }: { taskId: number, status: string }) => {
-      return await updateTaskStatusAction(taskId, status);
+      const res = await updateTaskStatusAction(taskId, status);
+      if (res.success && status === 'running') {
+        // Automatically trigger automation when resumed
+        await triggerTaskAutomationAction(taskId);
+      }
+      return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -142,8 +147,10 @@ export default function TasksPage() {
                         <Badge variant="secondary" className={cn(
                           "capitalize text-[10px] font-black px-2 py-0.5 rounded-full border-none",
                           task.status === 'completed' ? "bg-emerald-500/10 text-emerald-600" :
-                          task.status === 'running' ? "bg-indigo-500/10 text-indigo-600" :
-                          task.status === 'failed' ? "bg-rose-500/10 text-rose-600" : "bg-slate-500/10 text-slate-500"
+                          task.status === 'running' ? "bg-indigo-500/10 text-indigo-600 shadow-[0_0_8px_rgba(79,70,229,0.1)]" :
+                          task.status === 'failed' ? "bg-rose-500/10 text-rose-600" : 
+                          task.status === 'paused' ? "bg-amber-500/10 text-amber-600" :
+                          "bg-slate-500/10 text-slate-500"
                         )}>
                           {task.status} {task.totalKeywords > 0 ? `• ${Math.round((task.currentKeywordIndex / task.totalKeywords) * 100)}%` : ''}
                         </Badge>

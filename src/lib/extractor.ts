@@ -55,12 +55,19 @@ export async function fetchLeads(
     }
 
     try {
+      console.log(`[EXTRACTOR] Fetching page offset ${offset} for query "${query}"`);
       const response = await fetch(url, fetchOptions);
-      if (!response.ok) return [];
+      if (!response.ok) {
+        console.error(`[EXTRACTOR] HTTP error! status: ${response.status} for offset ${offset}`);
+        return [];
+      }
 
       const text = await response.text();
       const startIdx = text.indexOf('[[');
-      if (startIdx === -1) return [];
+      if (startIdx === -1) {
+        console.log(`[EXTRACTOR] No data markers found in response for offset ${offset}`);
+        return [];
+      }
 
       let jsonStr = text.substring(startIdx);
       const endIdx = jsonStr.lastIndexOf(']');
