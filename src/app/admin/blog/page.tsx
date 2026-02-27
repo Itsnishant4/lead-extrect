@@ -27,7 +27,8 @@ import {
   CheckCircle, 
   XCircle,
   Tag,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Code
 } from "phosphor-react"
 import { LoaderCircle, Search } from "lucide-react"
 import { toast } from "sonner"
@@ -64,7 +65,7 @@ export default function AdminBlogPage() {
   const queryClient = useQueryClient();
   const { open } = useSidebar();
 
-  const { data: posts = [], isLoading } = useQuery({
+  const { data: posts = [], isLoading, isError, error } = useQuery({
     queryKey: ['admin-blog-posts'],
     queryFn: async () => {
       const res = await getAllBlogPostsAdminAction();
@@ -73,9 +74,52 @@ export default function AdminBlogPage() {
     }
   });
 
+  if (isError) {
+    toast.error(`Failed to load posts: ${(error as Error).message}`);
+  }
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isJsonDialogOpen, setIsJsonDialogOpen] = useState(false);
+  const [jsonInput, setJsonInput] = useState("");
+
+  const dummyJson = {
+    title: "Understanding Lead Generation in 2026",
+    slug: "lead-generation-guide-2026",
+    description: "A comprehensive guide to modern lead generation techniques.",
+    content: "## Introduction\nLead generation has evolved...\n\n### Strategies\n1. Content Marketing\n2. Paid Ads",
+    author: "LeadSpotter Team",
+    category: "Guides",
+    read_time: "8 min read",
+    image_url: "https://leadspotter.in/og-image.png",
+    meta_title: "Lead Generation Guide 2026 | LeadSpotter",
+    meta_description: "Learn how to scale your business with these lead gen tips.",
+    is_published: true,
+    published_at: new Date().toISOString()
+  };
+
+  const handleJsonSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const data = JSON.parse(jsonInput);
+      if (!data.title || !data.slug || !data.content) {
+        toast.error("JSON must include title, slug, and content");
+        return;
+      }
+      // Ensure all fields expected by createMutation are present
+      const formattedData = {
+        ...formData, // Default values
+        ...data,
+        is_published: data.is_published ?? true
+      };
+      createMutation.mutate(formattedData);
+      setIsJsonDialogOpen(false);
+      setJsonInput("");
+    } catch (err) {
+      toast.error("Invalid JSON format");
+    }
+  };
 
   // Form State
   const [formData, setFormData] = useState({
@@ -201,10 +245,16 @@ export default function AdminBlogPage() {
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        <Button size="sm" className="gap-2" onClick={() => { resetForm(); setIsDialogOpen(true); }}>
-          <Plus size={16} />
-          New Post
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsJsonDialogOpen(true)}>
+            <Code size={16} />
+            Direct JSON
+          </Button>
+          <Button size="sm" className="gap-2" onClick={() => { resetForm(); setIsDialogOpen(true); }}>
+            <Plus size={16} />
+            New Post
+          </Button>
+        </div>
       </header>
 
       <main className={`flex-1 overflow-y-auto p-4 md:p-8 pt-6 ${open ? 'md:ml-[250px]' : 'md:ml-[30px]'}`}>
@@ -498,6 +548,52 @@ export default function AdminBlogPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isJsonDialogOpen} onOpenChange={setIsJsonDialogOpen}>
+        <DialogContent className="sm:max-w-[700px] border-none shadow-2xl bg-white">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Code size={20} className="text-indigo-600" />
+              Direct JSON Import
+            </DialogTitle>
+            <DialogDescription>
+              Paste your blog post in JSON format. Click the button below to see the required structure.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">JSON Payload</span>
+              <Button 
+                type="button"
+                variant="outline" 
+                size="sm" 
+                className="h-7 text-[10px] uppercase font-bold text-indigo-600 border-indigo-100 hover:bg-indigo-50"
+                onClick={() => setJsonInput(JSON.stringify(dummyJson, null, 2))}
+              >
+                Load Dummy Structure
+              </Button>
+            </div>
+            <div className="rounded-xl overflow-hidden border border-indigo-100 shadow-inner">
+              <Textarea 
+                className="min-h-[400px] font-mono text-[11px] bg-slate-50/50 border-none focus-visible:ring-0 leading-relaxed p-4" 
+                placeholder='{ "title": "My Post", "slug": "my-post", "content": "# Hello world" }'
+                value={jsonInput}
+                onChange={(e) => setJsonInput(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="bg-slate-50 p-6 rounded-b-lg border-t border-slate-100">
+            <Button variant="ghost" className="text-xs font-bold uppercase tracking-widest hover:bg-slate-200" onClick={() => setIsJsonDialogOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={handleJsonSubmit} 
+              className="bg-indigo-600 hover:bg-indigo-700 font-bold text-xs uppercase tracking-widest px-8 shadow-lg shadow-indigo-100"
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+              Create Article
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

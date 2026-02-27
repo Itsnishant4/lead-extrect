@@ -45,34 +45,51 @@ export default function BlogPageClient({ initialPosts }: { initialPosts: any[] }
       {/* Posts Grid */}
       <section className="pb-20 md:pb-32">
         <div className="max-w-6xl mx-auto px-6">
-          <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true }}
-            className="grid md:grid-cols-2 gap-8">
-            {posts.map((post, i) => (
-              <motion.article key={post.slug} variants={fadeUp} custom={i}>
-                <Link href={`/blog/${post.slug}`} className="group block">
-                  <div className="rounded-2xl border border-gray-200 bg-white p-6 md:p-8 hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-500/5 transition-all h-full flex flex-col">
-                    <div className="flex items-center gap-3 mb-4">
-                      <span className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold">{post.category}</span>
-                      <span className="flex items-center gap-1 text-xs text-gray-400"><Clock size={12} />{post.read_time}</span>
-                    </div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 group-hover:text-indigo-600 transition-colors leading-tight">{post.title}</h2>
-                    <p className="text-gray-500 text-sm leading-relaxed mb-6 flex-1">{post.description || post.excerpt}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-gray-400">
-                        <User size={14} />
-                        <span>{post.author}</span>
-                        <span className="text-gray-300">|</span>
-                        <span>{format(new Date(post.published_at || post.created_at), 'MMMM dd, yyyy')}</span>
+          {posts && posts.length > 0 ? (
+            <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true }}
+              className="grid md:grid-cols-2 gap-8">
+              {posts.map((post, i) => (
+                <motion.article key={post.slug} variants={fadeUp} custom={i}>
+                  <Link href={`/blog/${post.slug}`} className="group block">
+                    <div className="rounded-2xl border border-gray-200 bg-white p-6 md:p-8 hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-500/5 transition-all h-full flex flex-col">
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold">{post.category}</span>
+                        <span className="flex items-center gap-1 text-xs text-gray-400"><Clock size={12} />{post.readTime || post.read_time}</span>
                       </div>
-                      <span className="text-indigo-600 text-sm font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
-                        Read<ArrowRight size={14} />
-                      </span>
+                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 group-hover:text-indigo-600 transition-colors leading-tight">{post.title}</h2>
+                      <p className="text-gray-500 text-sm leading-relaxed mb-6 flex-1">{post.description || post.excerpt}</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                          <User size={14} />
+                          <span>{post.author}</span>
+                          <span className="text-gray-300">|</span>
+                          <span>{(() => {
+                            try {
+                              const date = post.publishedAt || post.published_at || post.createdAt || post.created_at;
+                              return date ? format(new Date(date), 'MMMM dd, yyyy') : 'Recently';
+                            } catch (e) {
+                              return 'Recently';
+                            }
+                          })()}</span>
+                        </div>
+                        <span className="text-indigo-600 text-sm font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
+                          Read<ArrowRight size={14} />
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              </motion.article>
-            ))}
-          </motion.div>
+                  </Link>
+                </motion.article>
+              ))}
+            </motion.div>
+          ) : (
+            <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+              <div className="bg-white w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-slate-100">
+                <Clock className="text-indigo-200" size={32} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">No articles yet</h3>
+              <p className="text-slate-500 max-w-xs mx-auto mt-2">Check back soon for insights on lead generation and growth.</p>
+            </div>
+          )}
         </div>
       </section>
 

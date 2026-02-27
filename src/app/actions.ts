@@ -492,8 +492,10 @@ export async function deleteBlogPostAction(id: number) {
 export async function getBlogPostsPublicAction() {
   try {
     const data = await BlogService.getPostsPublic();
+    console.log(`[ACTIONS] getBlogPostsPublicAction: Found ${data.length} published posts`);
     return { success: true, data };
   } catch (error: any) {
+    console.error('[ACTIONS] getBlogPostsPublicAction error:', error);
     return handleActionError(error);
   }
 }

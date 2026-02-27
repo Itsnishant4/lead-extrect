@@ -21,7 +21,7 @@ export class BlogService {
       metaTitle: data.meta_title,
       metaDescription: data.meta_description,
       isPublished: data.is_published,
-      publishedAt: data.is_published ? new Date() : null,
+      publishedAt: data.is_published ? (data.published_at ? new Date(data.published_at) : new Date()) : null,
     }).returning({ id: blogPosts.id });
 
     await AuditService.logAction('blog_post_created', 'success', { slug: data.slug });
