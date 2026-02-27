@@ -135,7 +135,7 @@ function DashboardMockup() {
                 </div>
               </div>
               <div className="space-y-2">
-                {mockLeads.slice(0, visibleRows).map((lead, i) => (
+                {mockLeads.slice(0, visibleRows)?.map((lead, i) => (
                   <motion.div key={lead.name} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/70 backdrop-blur-xl border border-white/40 shadow-sm">
                     <Store size={16} className="text-indigo-500" />
                     <div className="flex-1 min-w-0">
@@ -218,7 +218,7 @@ export function HomeClient() {
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">From keywords to closed deals</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            {howItWorks.map((item: any) => (
+            {howItWorks?.map((item: any) => (
               <div key={item.step} className="p-8 rounded-2xl border border-gray-100 bg-white">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 bg-indigo-100">
                   <item.Icon size={28} className="text-indigo-600" />
@@ -238,7 +238,7 @@ export function HomeClient() {
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">Features that you never expected</h2>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
-            {benefits.map((item: any) => (
+            {benefits?.map((item: any) => (
               <div key={item.title} className="p-8 rounded-2xl border border-gray-200 bg-white shadow-sm hover:border-indigo-300 transition-colors">
                 <item.Icon size={24} className="text-indigo-600 mb-4" />
                 <h3 className="text-lg font-bold mb-2">{item.title}</h3>
@@ -269,7 +269,7 @@ export function HomeClient() {
               <p className="text-gray-500 mb-6">Everything you need to know about LeadSpotter.</p>
             </div>
             <div>
-              {faqs.map((faq: any, i: number) => (
+              {faqs?.map((faq: any, i: number) => (
                 <FaqItem key={i} item={faq} isOpen={openFaq === i} toggle={() => setOpenFaq(openFaq === i ? null : i)} />
               ))}
             </div>
