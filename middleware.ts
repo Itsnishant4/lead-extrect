@@ -36,11 +36,22 @@ export async function middleware(request: NextRequest) {
     '/use-cases',
     '/blog',
     '/robots.txt',
-    '/sitemap.xml',
+    '/sitemap',
     '/googleb9ce8135773393a8.html'
   ];
-  const isPublicPrefix = ['/blog/'];
-  const isPublicPath = publicPaths.includes(path) || path.startsWith('/favicon/') || isPublicPrefix.some(p => path.startsWith(p));
+  
+  // Public prefix paths where anything starting with this is allowed
+  const isPublicPrefix = [
+    '/blog/', 
+    '/features/', 
+    '/leads/', 
+    '/compare/', 
+    '/sitemap/',
+    '/sitemap.xml',
+    '/favicon/'
+  ];
+  
+  const isPublicPath = publicPaths.includes(path) || isPublicPrefix.some(p => path.startsWith(p));
 
   // LOGIC:
 
