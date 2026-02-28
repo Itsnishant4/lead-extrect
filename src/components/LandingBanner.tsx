@@ -1,16 +1,35 @@
-import { SiteConfigService } from '@/services/siteconfig.service';
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { getBannerAction } from '@/app/actions';
 
-export async function LandingBanner() {
-  const banner = await SiteConfigService.getBanner();
+interface BannerData {
+  enabled: boolean;
+  text: string;
+  buttonText: string;
+  buttonUrl: string;
+  bgColor: string;
+}
 
-  if (!banner.enabled || !banner.text) return null;
+export function LandingBanner() {
+  const [banner, setBanner] = useState<BannerData | null>(null);
+
+  useEffect(() => {
+    getBannerAction().then((res) => {
+      if (res.success && (res as any).data) {
+        setBanner((res as any).data);
+      }
+    });
+  }, []);
+
+  if (!banner || !banner.enabled || !banner.text) return null;
 
   const isExternal = banner.buttonUrl?.startsWith('http');
 
   return (
     <div
-      className="w-full py-2.5 px-4 text-center text-white text-sm font-medium flex items-center justify-center gap-3 flex-wrap z-[60] relative"
+      className="w-full py-2.5 px-4 text-center text-white text-sm font-medium flex items-center justify-center gap-3 flex-wrap"
       style={{ backgroundColor: banner.bgColor }}
     >
       <span>{banner.text}</span>
