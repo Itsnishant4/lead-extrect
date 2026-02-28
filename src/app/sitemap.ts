@@ -8,7 +8,7 @@ export async function generateSitemaps() {
   try {
     const res = await db.execute(sql`
       SELECT COUNT(*) as count 
-      FROM (SELECT DISTINCT category, city FROM leads WHERE category IS NOT NULL AND city IS NOT NULL) as c
+      FROM seo_hub_registry
     `);
     const count = Number(res[0]?.count || 0);
     const limit = 25000;
@@ -80,10 +80,9 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
   const leadEntries: MetadataRoute.Sitemap = [];
   try {
     const data = await db.execute(sql`
-      SELECT DISTINCT category, city 
-      FROM leads 
-      WHERE category IS NOT NULL AND city IS NOT NULL
-      ORDER BY category ASC, city ASC
+      SELECT niche as category, city 
+      FROM seo_hub_registry 
+      ORDER BY niche ASC, city ASC
       LIMIT ${limit} OFFSET ${offset}
     `);
 

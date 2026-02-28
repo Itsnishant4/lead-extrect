@@ -275,3 +275,17 @@ export const siteConfig = pgTable('site_config', {
   value: text('value').notNull(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+export const seoHubRegistry = pgTable('seo_hub_registry', {
+  id: serial('id').primaryKey(),
+  niche: text('niche').notNull(),
+  city: text('city').notNull(),
+  totalLeads: integer('total_leads').default(0),
+  withEmail: integer('with_email').default(0),
+  withPhone: integer('with_phone').default(0),
+  withWebsite: integer('with_website').default(0),
+  avgRating: real('avg_rating').default(0),
+  lastUpdated: timestamp('last_updated').defaultNow(),
+}, (t) => ({
+  unqNicheCity: unique('unq_seo_niche_city').on(t.niche, t.city)
+}));

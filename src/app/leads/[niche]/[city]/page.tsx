@@ -45,22 +45,42 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
   try {
     const statsRes = await db.execute(sql`
       SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN website IS NOT NULL AND website != '' THEN 1 ELSE 0 END) as with_website,
-        SUM(CASE WHEN phone IS NOT NULL AND phone != '' THEN 1 ELSE 0 END) as with_phone,
-        SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) as with_email,
-        AVG(rating) as avg_rating
-      FROM leads 
-      WHERE category ILIKE ${'%' + searchNiche + '%'} 
+        SUM(total_leads) as total,
+        SUM(with_website) as with_website,
+        SUM(with_phone) as with_phone,
+        SUM(with_email) as with_email,
+        AVG(avg_rating) as avg_rating
+      FROM seo_hub_registry 
+      WHERE niche ILIKE ${'%' + searchNiche + '%'} 
         AND city ILIKE ${'%' + searchCity + '%'}
     `);
 
-    if (statsRes && statsRes[0]) {
+    if (statsRes && statsRes[0] && Number(statsRes[0].total || 0) > 0) {
       total = Number(statsRes[0].total || 0);
       withWebsite = Number(statsRes[0].with_website || 0);
       withPhone = Number(statsRes[0].with_phone || 0);
       withEmail = Number(statsRes[0].with_email || 0);
       avgRating = Number(statsRes[0].avg_rating || 0);
+    } else {
+      // Fallback to active leads if registry missed it
+      const fallbackRes = await db.execute(sql`
+        SELECT 
+          COUNT(*) as total,
+          SUM(CASE WHEN website IS NOT NULL AND website != '' THEN 1 ELSE 0 END) as with_website,
+          SUM(CASE WHEN phone IS NOT NULL AND phone != '' THEN 1 ELSE 0 END) as with_phone,
+          SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) as with_email,
+          AVG(rating) as avg_rating
+        FROM leads 
+        WHERE category ILIKE ${'%' + searchNiche + '%'} 
+          AND city ILIKE ${'%' + searchCity + '%'}
+      `);
+      if (fallbackRes && fallbackRes[0]) {
+        total = Number(fallbackRes[0].total || 0);
+        withWebsite = Number(fallbackRes[0].with_website || 0);
+        withPhone = Number(fallbackRes[0].with_phone || 0);
+        withEmail = Number(fallbackRes[0].with_email || 0);
+        avgRating = Number(fallbackRes[0].avg_rating || 0);
+      }
     }
 
     // Fetch up to 3 real sample leads

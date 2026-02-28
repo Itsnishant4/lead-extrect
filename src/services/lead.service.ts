@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/index';
-import { users, leads, searches, taskLeads, leadSources, pincodeCoords, settings, tasks, savedLists, savedListItems, auditLogs, keywordHistory, proxies, exportTemplates, serverLogs } from '@/lib/db/schema';
+import { users, leads, searches, taskLeads, leadSources, pincodeCoords, settings, tasks, savedLists, savedListItems, auditLogs, keywordHistory, proxies, exportTemplates, serverLogs, seoHubRegistry } from '@/lib/db/schema';
 import { eq, and, sql, desc, inArray, exists, notExists } from 'drizzle-orm';
 import { fetchLeads } from '@/lib/extractor';
 import { enrichLead } from '@/lib/enricher';
@@ -253,6 +253,60 @@ export class LeadService {
             leadScore: sql`EXCLUDED.lead_score`
           }
         });
+
+        // Update SEO Hub Registry
+        try {
+          const seoStats = new Map<string, any>();
+          
+          for (const lead of leadsToInsert) {
+            if (!lead.category || !lead.city) continue;
+            
+            // Basic normalization
+            const niche = String(lead.category).trim();
+            const city = String(lead.city).trim();
+            if (!niche || !city) continue;
+            
+            const key = `${niche}::${city}`;
+            if (!seoStats.has(key)) {
+              seoStats.set(key, { niche, city, count: 0, withEmail: 0, withPhone: 0, withWebsite: 0, totalRating: 0, ratingCount: 0 });
+            }
+            
+            const stat = seoStats.get(key);
+            stat.count += 1;
+            if (lead.email || lead.websiteEmail) stat.withEmail += 1;
+            if (lead.phone || lead.websitePhone) stat.withPhone += 1;
+            if (lead.website) stat.withWebsite += 1;
+            if (lead.rating) {
+              stat.totalRating += Number(lead.rating);
+              stat.ratingCount += 1;
+            }
+          }
+
+          if (seoStats.size > 0) {
+            const seoInsertData = Array.from(seoStats.values()).map(stat => ({
+              niche: stat.niche,
+              city: stat.city,
+              totalLeads: stat.count,
+              withEmail: stat.withEmail,
+              withPhone: stat.withPhone,
+              withWebsite: stat.withWebsite,
+              avgRating: stat.ratingCount > 0 ? (stat.totalRating / stat.ratingCount) : 0,
+            }));
+
+            await tx.insert(seoHubRegistry).values(seoInsertData).onConflictDoUpdate({
+              target: [seoHubRegistry.niche, seoHubRegistry.city],
+              set: {
+                totalLeads: sql`seo_hub_registry.total_leads + EXCLUDED.total_leads`,
+                withEmail: sql`seo_hub_registry.with_email + EXCLUDED.with_email`,
+                withPhone: sql`seo_hub_registry.with_phone + EXCLUDED.with_phone`,
+                withWebsite: sql`seo_hub_registry.with_website + EXCLUDED.with_website`,
+                lastUpdated: sql`NOW()`
+              }
+            });
+          }
+        } catch (seoErr) {
+          console.error('[LEAD SERVICE] Failed to update seo_hub_registry', seoErr);
+        }
 
         const inserted = await tx.select({ id: leads.id, placeId: leads.placeId }).from(leads).where(inArray(leads.placeId, leadsToInsert.map(l => l.placeId).filter(Boolean) as string[]));
         
