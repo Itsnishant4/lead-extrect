@@ -62,7 +62,7 @@ export default async function CityHubPage({ params }: { params: Params }) {
                 href={`/leads/${niche}/${city}`} 
                 className="flex items-center p-4 rounded-xl border border-gray-100 hover:border-indigo-200 hover:shadow-md transition-all group"
               >
-                <div className="bg-indigo-50 p-3 rounded-lg text-indigo-600 mr-4 group-hover:bg-indigo-100 transition-colors">
+                <div className="bg-indigo-50 p-3 mr-3 rounded-lg text-indigo-600 mr-4 group-hover:bg-indigo-100 transition-colors">
                   <Store size={20} />
                 </div>
                 <div>
