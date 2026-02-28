@@ -254,7 +254,7 @@ export default async function Image() {
                             letterSpacing: "-0.2px",
                         }}
                     >
-                        Start for Free — 500 Leads
+                        Start for Free 
                         <svg
                             width="24"
                             height="24"

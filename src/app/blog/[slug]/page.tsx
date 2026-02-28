@@ -111,7 +111,7 @@ export default async function BlogArticlePage({ params }: { params: Params }) {
 
           <div className="mt-16 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50/80 to-violet-50/50 p-8 text-center">
             <h3 className="text-xl font-bold text-gray-900 mb-3">Ready to Extract Your First Leads?</h3>
-            <p className="text-gray-500 mb-6">Start with 500 free leads from Google Maps. No credit card required.</p>
+            <p className="text-gray-500 mb-6">Start with free leads from Google Maps. No credit card required.</p>
             <Link href="/signup" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-indigo-700 transition-colors">
               Get Started Free<ArrowLeft size={16} className="rotate-180" />
             </Link>

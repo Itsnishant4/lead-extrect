@@ -91,7 +91,7 @@ export default async function FeaturePage({ params }: { params: Params }) {
 
           <div className="rounded-3xl bg-indigo-900 p-10 text-center text-white">
             <h2 className="text-2xl font-bold mb-4">Start using {feature.title} today</h2>
-            <p className="text-indigo-200 mb-8 max-w-lg mx-auto">Get 500 free leads every month with our starter plan. No credit card required.</p>
+            <p className="text-indigo-200 mb-8 max-w-lg mx-auto">Get free leads every month with our starter plan. No credit card required.</p>
             <Link href="/signup" className="inline-flex items-center gap-2 bg-white text-indigo-900 px-8 py-4 rounded-full font-bold hover:bg-indigo-50 transition-colors">
               Get Started for Free <ArrowRight size={20} />
             </Link>

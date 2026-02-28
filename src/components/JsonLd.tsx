@@ -17,7 +17,6 @@ export default function JsonLd({ type, data }: JsonLdProps) {
             "https://www.facebook.com/share/1Hr3qboz8F/",
             "https://x.com/leadspotter_in",
             "https://www.instagram.com/leadspotter.in/",
-            "https://linkedin.com/company/leadspotter",
             "https://linkedin.com/in/nishantpatel44",
         ],
         contactPoint: {
@@ -57,7 +56,7 @@ export default function JsonLd({ type, data }: JsonLdProps) {
             "@type": "Offer",
             price: "0",
             priceCurrency: "INR",
-            description: "Free plan with 500 leads per month",
+            description: "Free plan with free leads ",
         },
         aggregateRating: {
             "@type": "AggregateRating",
@@ -101,7 +100,7 @@ export default function JsonLd({ type, data }: JsonLdProps) {
                 name: "Can I cancel or upgrade my LeadSpotter plan anytime?",
                 acceptedAnswer: {
                     "@type": "Answer",
-                    text: "Absolutely. All plans are month-to-month with no long-term contracts. You can upgrade, downgrade, or cancel at any time from your dashboard. The free plan gives you 500 leads per month with no credit card required.",
+                    text: "Absolutely. All plans are month-to-month with no long-term contracts. You can upgrade, downgrade, or cancel at any time from your dashboard. The free plan gives you some free leads per month with no credit card required.",
                 },
             },
             {
@@ -109,7 +108,7 @@ export default function JsonLd({ type, data }: JsonLdProps) {
                 name: "What is the difference between the Starter and Pro plan?",
                 acceptedAnswer: {
                     "@type": "Answer",
-                    text: "The Starter plan gives you 500 leads per month with basic extraction. The Pro plan unlocks 5,000 leads, bulk keyword generation, social media enrichment, CSV/JSON data exports, and priority support for Rs 2,000 per month.",
+                    text: "The Starter plan gives you some free leads per month with basic extraction. The Pro plan unlocks 5,000 leads, bulk keyword generation, social media enrichment, CSV/JSON data exports, and priority support for Rs 2,000 per month.",
                 },
             },
             {
@@ -117,7 +116,7 @@ export default function JsonLd({ type, data }: JsonLdProps) {
                 name: "How many leads can I extract with LeadSpotter?",
                 acceptedAnswer: {
                     "@type": "Answer",
-                    text: "The free Starter plan includes 500 leads per month. The Pro plan includes 5,000 leads per month. The Premium plan offers unlimited leads with custom pricing. Each keyword search can return up to 400 business results.",
+                    text: "The free Starter plan includes some free leads per month. The Pro plan includes 5,000 leads per month. The Premium plan offers unlimited leads with custom pricing. Each keyword search can return up to 400 business results.",
                 },
             },
         ],

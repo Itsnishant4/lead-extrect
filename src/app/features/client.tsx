@@ -101,7 +101,7 @@ export default function FeaturesPageClient() {
           <motion.div className="flex justify-center" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
             <Link href="/signup">
               <HoverBorderGradient containerClassName="rounded-full" className="flex items-center gap-2 bg-gradient-to-r  from-indigo-600 to-violet-600 text-white px-8 py-3.5 text-base font-bold">
-                Start Free (500 Leads)<ArrowRight size={20} />
+                Start For Free <ArrowRight size={20} />
               </HoverBorderGradient>
             </Link>
           </motion.div>
@@ -171,7 +171,7 @@ export default function FeaturesPageClient() {
             <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-200/30 rounded-full blur-3xl" />
             <div className="relative z-10">
               <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Ready to Extract Your First Leads?</h2>
-              <p className="text-gray-500 text-lg mb-8 max-w-xl mx-auto">Start with 500 free leads. No credit card required. Upgrade anytime as you grow.</p>
+              <p className="text-gray-500 text-lg mb-8 max-w-xl mx-auto">Start with free leads. No credit card required. Upgrade anytime as you grow.</p>
               <Link href="/signup">
                 <HoverBorderGradient containerClassName="rounded-full mx-auto" className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-10 py-4 text-lg font-bold">
                   Get Started Free<ArrowRight size={20} />

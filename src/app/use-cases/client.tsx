@@ -150,7 +150,7 @@ export default function UseCasesPageClient() {
             <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-200/30 rounded-full blur-3xl" />
             <div className="relative z-10">
               <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Start Growing Your Business Today</h2>
-              <p className="text-gray-500 text-lg mb-8 max-w-xl mx-auto">Join 5,000+ professionals who use LeadSpotter for lead generation. Start with 500 free leads.</p>
+              <p className="text-gray-500 text-lg mb-8 max-w-xl mx-auto">Join 5,000+ professionals who use LeadSpotter for lead generation. Start with free leads.</p>
               <Link href="/signup">
                 <HoverBorderGradient containerClassName="rounded-full mx-auto" className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-10 py-4 text-lg font-bold">
                   Get Started Free<ArrowRight size={20} />
