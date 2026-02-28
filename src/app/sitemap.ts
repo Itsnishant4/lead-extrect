@@ -51,6 +51,7 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
 
   const staticEntries: MetadataRoute.Sitemap = parsedId === 0 ? [
     { url: baseUrl, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 1 },
+    { url: `${baseUrl}/pricing`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.9 },
     { url: `${baseUrl}/features`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.9 },
     { url: `${baseUrl}/features/google-maps-extractor`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 },
     { url: `${baseUrl}/features/email-enrichment`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 },

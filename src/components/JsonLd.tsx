@@ -108,7 +108,7 @@ export default function JsonLd({ type, data }: JsonLdProps) {
                 name: "What is the difference between the Starter and Pro plan?",
                 acceptedAnswer: {
                     "@type": "Answer",
-                    text: "The Starter plan gives you some free leads per month with basic extraction. The Pro plan unlocks 5,000 leads, bulk keyword generation, social media enrichment, CSV/JSON data exports, and priority support for Rs 2,000 per month.",
+                    text: "The Starter plan gives you some free leads to test the platform. Paid plans unlock high-volume lead extraction, bulk keyword generation, social media enrichment, CSV/JSON data exports, and priority support.",
                 },
             },
             {
@@ -116,7 +116,7 @@ export default function JsonLd({ type, data }: JsonLdProps) {
                 name: "How many leads can I extract with LeadSpotter?",
                 acceptedAnswer: {
                     "@type": "Answer",
-                    text: "The free Starter plan includes some free leads per month. The Pro plan includes 5,000 leads per month. The Premium plan offers unlimited leads with custom pricing. Each keyword search can return up to 400 business results.",
+                    text: "Lead generation limits depend on your selected plan. The free Starter plan includes a limited number of leads, while higher tiers offer large monthly allocations or unlimited leads for enterprise teams.",
                 },
             },
         ],

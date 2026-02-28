@@ -21,7 +21,8 @@ import {
   ArrowRightLeft,
 } from 'lucide-react';
 import { notFound } from 'next/navigation';
-import { competitors, getAllCompetitorSlugs, OUR_PRICING, type CompetitorData } from './competitor-data';
+import { competitors, getAllCompetitorSlugs, type CompetitorData } from './competitor-data';
+import { PlanService } from '@/services/plan.service';
 
 // ─── Static generation for all competitor pages ──────────────────────────────
 
@@ -32,6 +33,7 @@ export async function generateStaticParams() {
 }
 
 export const dynamicParams = true;
+export const revalidate = 3600; // ISR revalidate every hour
 
 // ─── SEO Metadata ────────────────────────────────────────────────────────────
 
@@ -69,6 +71,13 @@ export default async function ComparePage({ params }: { params: Params }) {
   if (!comp) {
     notFound();
   }
+
+  const plans = await PlanService.getAllPlans();
+  const leadspotterPricing = plans.map(p => ({
+    plan: p.name,
+    price: p.period === 'free' ? 'Free' : p.period === 'custom' ? 'Custom' : `₹${p.price}${p.period === 'month' ? '/mo' : ''}`,
+    note: p.period === 'custom' ? 'Enterprise solutions' : `${p.leadsCredits.toLocaleString()} leads`
+  }));
 
   const otherCompetitors = getAllCompetitorSlugs().filter((s) => s !== compKey);
 
@@ -305,7 +314,7 @@ export default async function ComparePage({ params }: { params: Params }) {
                     </div>
                   </div>
                   <div className="space-y-4">
-                    {OUR_PRICING.map((p, i) => (
+                    {leadspotterPricing.map((p, i) => (
                       <div key={i} className="flex items-center justify-between p-4 bg-indigo-50/50 rounded-xl border border-indigo-100/60">
                         <div>
                           <div className="font-bold text-gray-900">{p.plan}</div>

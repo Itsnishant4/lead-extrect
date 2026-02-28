@@ -111,7 +111,7 @@ export function LandingFooter() {
                   <h3 className="font-bold text-gray-900 mb-6 text-sm">Product</h3>
                   <ul className="space-y-4 text-sm text-gray-500 font-medium">
                     <li><Link className="hover:text-gray-900 transition-colors" href="/features">Features</Link></li>
-                    <li><Link className="hover:text-gray-900 transition-colors" href="/subscription">Pricing</Link></li>
+                    <li><Link className="hover:text-gray-900 transition-colors" href="/pricing">Pricing</Link></li>
                     <li><Link className="hover:text-gray-900 transition-colors" href="/use-cases">Use Cases</Link></li>
                     <li><Link className="hover:text-gray-900 transition-colors" href="/features/google-maps-extractor">Maps Extractor</Link></li>
                     <li><Link className="hover:text-gray-900 transition-colors" href="/features/email-enrichment">Email Enrichment</Link></li>

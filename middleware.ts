@@ -29,6 +29,7 @@ export async function middleware(request: NextRequest) {
   // Assets like favicon, robots, etc are also caught here if they are not excluded by matcher
   const publicPaths = [
     '/',
+    '/pricing',
     '/company',
     '/privacy',
     '/terms',

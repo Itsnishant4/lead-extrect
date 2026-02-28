@@ -32,11 +32,7 @@ export interface CompetitorData {
 
 // ─── LeadSpotter Pricing (constant across all pages) ─────────────────────────
 
-export const OUR_PRICING = [
-  { plan: 'Starter', price: 'Free', note: 'No credit card required' },
-  { plan: 'Pro', price: '₹2,000/mo', note: '5,000 leads, full enrichment' },
-  { plan: 'One-Time', price: '₹5,000', note: 'Pay once, no subscription' },
-];
+// OUR_PRICING array removed - plans are now fetched from DB
 
 // ─── LeadSpotter Features (reused in every comparison) ───────────────────────
 
@@ -137,7 +133,7 @@ export const competitors: Record<string, CompetitorData> = {
     ],
     faqs: [
       { question: 'Can Apollo.io extract data from Google Maps?', answer: 'No. Apollo.io is a B2B database and sales engagement platform. It does not scrape or extract data from Google Maps. LeadSpotter is specifically designed for deep Google Maps extraction with built-in email and phone enrichment.' },
-      { question: 'Is LeadSpotter cheaper than Apollo.io?', answer: 'Yes, significantly. Apollo charges $49–$119 per user per month. LeadSpotter offers a free tier, a Pro plan at ₹2,000/mo (approximately $24) with no per-user fees, and a one-time payment option for teams that prefer to avoid subscriptions.' },
+      { question: 'Is LeadSpotter cheaper than Apollo.io?', answer: 'Yes, significantly. Apollo charges $49–$119 per user per month. LeadSpotter offers a free tier, affordable flat-rate monthly plans with no per-user fees, and a one-time payment option for teams that prefer to avoid subscriptions.' },
       { question: 'Does LeadSpotter have email sequences like Apollo?', answer: 'No. LeadSpotter focuses exclusively on lead extraction and data enrichment. For email sequences, you can export LeadSpotter data as CSV and import it into Apollo, Instantly, or any outreach tool of your choice.' },
     ],
   },
@@ -194,7 +190,7 @@ export const competitors: Record<string, CompetitorData> = {
     ],
     faqs: [
       { question: 'Does ZoomInfo have Google Maps data?', answer: 'No. ZoomInfo\'s database is built from web crawling, partnerships, and community contributions — but it does not extract live data from Google Maps listings. LeadSpotter is purpose-built for this, pulling real-time business data including ratings, reviews, hours, and website-crawled contact info.' },
-      { question: 'How much does ZoomInfo cost compared to LeadSpotter?', answer: 'ZoomInfo typically requires annual contracts starting around $15,000/year. LeadSpotter starts completely free, with a Pro plan at ₹2,000/month and a one-time payment option at ₹5,000 — making it accessible to freelancers, agencies, and small teams.' },
+      { question: 'How much does ZoomInfo cost compared to LeadSpotter?', answer: 'ZoomInfo typically requires annual contracts starting around $15,000/year. LeadSpotter starts completely free, with affordable flat-rate monthly plans and a one-time payment option — making it accessible to freelancers, agencies, and small teams.' },
       { question: 'Can LeadSpotter replace ZoomInfo?', answer: 'It depends on your use case. If you primarily need Google Maps business data with enriched emails and phones, LeadSpotter is a superior and more affordable choice. If you need enterprise intent data, org charts, and deep firmographic intelligence, ZoomInfo remains the leader in that space.' },
     ],
   },
@@ -366,7 +362,7 @@ export const competitors: Record<string, CompetitorData> = {
     faqs: [
       { question: 'Can Snov.io scrape Google Maps?', answer: 'No. Snov.io is an email finder and outreach tool. It finds emails via domain search and LinkedIn, but has no Google Maps scraping capability. LeadSpotter is specifically designed for high-volume Google Maps extraction with built-in contact enrichment.' },
       { question: 'Should I use Snov.io or LeadSpotter for cold outreach?', answer: 'Use both. LeadSpotter is the ideal tool for building your lead list from Google Maps (discovery phase). Then export your enriched leads to Snov.io for email verification, drip campaigns, and outreach automation (engagement phase). They work well together.' },
-      { question: 'How does LeadSpotter pricing compare to Snov.io?', answer: 'Snov.io charges $30–$75/month with credit limits. LeadSpotter\'s Pro plan is ₹2,000/mo (~$24) with 5,000 leads and no per-contact credits, plus a one-time payment option. For volume-based lead extraction, LeadSpotter is significantly more cost-effective.' },
+      { question: 'How does LeadSpotter pricing compare to Snov.io?', answer: 'Snov.io charges $30–$75/month with credit limits. LeadSpotter offers high-volume plans at a fraction of the cost, plus a one-time payment option. For volume-based lead extraction, LeadSpotter is significantly more cost-effective.' },
     ],
   },
 

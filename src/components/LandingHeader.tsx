@@ -9,7 +9,7 @@ export function LandingHeader() {
   const navItems = [
     { name: "Features", link: "/features" },
     { name: "Use Cases", link: "/use-cases" },
-    { name: "Pricing", link: "/subscription" },
+    { name: "Pricing", link: "/pricing" },
     { name: "Blog", link: "/blog" },
     { name: "Company", link: "/company" },
   ];
