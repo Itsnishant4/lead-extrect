@@ -3,6 +3,10 @@
 import React from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import {motion} from 'motion/react'
+import { ArrowRight } from "phosphor-react";
+import { HoverBorderGradient } from "./ui/hover-border-gradient";
+import { Facebook } from "lucide-react";
 
 function LinkedInIcon() {
   return (
@@ -32,42 +36,40 @@ export function LandingFooter() {
   const socialLinks = [
     { Icon: TwitterIcon, href: "https://x.com/leadspotter_in", label: "Twitter" },
     { Icon: InstagramIcon, href: "https://instagram.com/leadspotter.in", label: "Instagram" },
+    {Icon: Facebook, href: "https://www.facebook.com/people/LeadsPotterin/61588329951050/", label: "Facebook"},
     { Icon: LinkedInIcon, href: "https://www.linkedin.com/in/nishantpatel44", label: "LinkedIn" },
   ];
 
   return (
-    <div className="bg-[#f8f9fc]">
+    <div className="">
       {/* Black CTA Section */}
       <section className="px-4 py-8 md:px-6 md:py-12">
-        <div className="max-w-7xl mx-auto">
-          <div className="relative overflow-hidden rounded-[2.5rem] bg-black text-white px-6 py-20 md:py-32 flex flex-col items-center justify-center text-center">
-            
-            {/* Subtle top glow effect to match the image */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[800px] h-[300px] bg-white/20 blur-[120px] rounded-full pointer-events-none -translate-y-1/2" />
+        <div className="py-16 sm:py-28">
+          <div className="max-w-4xl mx-auto px-6">
+            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} className="relative rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-8 sm:p-16 text-center overflow-hidden">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[800px] h-[300px] bg-white/20 blur-[120px] rounded-full pointer-events-none -translate-y-1/2" />
             
             <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center">
-              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
+              <h2 className="text-3xl md:text-4xl  font-bold tracking-tight mb-6">
                 Ready to transform your data?
               </h2>
-              <p className="text-gray-400 text-lg md:text-xl mb-10 max-w-xl font-medium">
+              <p className="text-gray-400 text-md md:text-lg mb-10 max-w-xl font-medium">
                 Join thousands of data-driven professionals who are extracting beautiful, verified leads in minutes.
               </p>
-              <Link 
-                href="/signup" 
-                className="bg-white text-black hover:bg-gray-100 transition-colors px-8 py-3.5 rounded-full font-bold text-[15px] inline-flex items-center gap-2"
-              >
-                Start for free
-              </Link>
+                <Link href="/signup" className="cursor-pointer"><HoverBorderGradient containerClassName="rounded-full mx-auto" className="flex  items-center gap-2 bg-white text-indigo-700 px-8 py-3 text-sm font-bold">Get Started Free<ArrowRight size={16} /></HoverBorderGradient></Link>
+             
             </div>
+            </motion.div>
           </div>
         </div>
+
       </section>
 
       {/* Footer Section */}
-      <footer className="relative pt-12 pb-12 overflow-hidden">
+      <footer className="relative pb-52 overflow-hidden">
         {/* Massive Background Text - placed behind everything but inside the footer wrapper */}
         <div className="absolute bottom-0 left-0 w-full overflow-hidden flex justify-center pointer-events-none z-0">
-          <span className="text-[17vw] font-black text-gray-200/40 leading-[0.8] tracking-tighter translate-y-[20%] select-none">
+          <span className="text-[17vw] font-black text-gray-200/40 leading-[0.8] tracking-tighter translate-y-[40%] select-none">
             LeadSpotter
           </span>
         </div>
@@ -95,7 +97,7 @@ export function LandingFooter() {
                       aria-label={label}
                       className="text-gray-400 hover:text-gray-900 transition-colors duration-200"
                     >
-                      <Icon />
+                      <Icon size={20}/>
                     </Link>
                   ))}
                 </div>
@@ -113,6 +115,7 @@ export function LandingFooter() {
                     <li><Link className="hover:text-gray-900 transition-colors" href="/use-cases">Use Cases</Link></li>
                     <li><Link className="hover:text-gray-900 transition-colors" href="/features/google-maps-extractor">Maps Extractor</Link></li>
                     <li><Link className="hover:text-gray-900 transition-colors" href="/features/email-enrichment">Email Enrichment</Link></li>
+                    <li><Link className="hover:text-gray-900 transition-colors" href="/features/bulk-keyword-generator">Keyword Generator</Link></li>
                   </ul>
                 </div>
 
@@ -122,20 +125,23 @@ export function LandingFooter() {
                   <ul className="space-y-4 text-sm text-gray-500 font-medium">
                     <li><Link className="hover:text-gray-900 transition-colors" href="/blog">Blog & Tutorials</Link></li>
                     <li><Link className="hover:text-gray-900 transition-colors" href="/leads/dentists">Dentists Leads</Link></li>
+                    <li><Link className="hover:text-gray-900 transition-colors" href="/leads/real-estate-agents">Real Estate Leads</Link></li>
                     <li><Link className="hover:text-gray-900 transition-colors" href="/leads/in/mumbai">Mumbai Directory</Link></li>
-                    <li><Link className="hover:text-gray-900 transition-colors" href="/compare/leadspotter-vs-phantombuster">vs PhantomBuster</Link></li>
-                    <li><Link className="hover:text-gray-900 transition-colors" href="/compare/leadspotter-vs-apollo">vs Apollo.io</Link></li>
+                    <li><Link className="hover:text-gray-900 transition-colors" href="/leads/in/delhi">Delhi Directory</Link></li>
+                    <li><Link className="hover:text-gray-900 transition-colors" href="/sitemap.xml">Sitemap</Link></li>
                   </ul>
                 </div>
 
                 {/* Company Col */}
                 <div>
-                  <h3 className="font-bold text-gray-900 mb-6 text-sm">Company</h3>
+                  <h3 className="font-bold text-gray-900 mb-6 text-sm">Company & Compare</h3>
                   <ul className="space-y-4 text-sm text-gray-500 font-medium">
-                    <li><Link className="hover:text-gray-900 transition-colors" href="/company">About</Link></li>
-                    <li><Link className="hover:text-gray-900 transition-colors" href="/company">Contact</Link></li>
-                    <li><a className="hover:text-gray-900 transition-colors" href="mailto:patelnishant2006@gmail.com">Support</a></li>
-                    <li><Link className="hover:text-gray-900 transition-colors" href="/features">Changelog</Link></li>
+                    <li><Link className="hover:text-gray-900 transition-colors" href="/company">About Us</Link></li>
+                    <li><a className="hover:text-gray-900 transition-colors" href="mailto:patelnishant2006@gmail.com">Support & Contact</a></li>
+                    <li><Link className="hover:text-gray-900 transition-colors" href="/compare/leadspotter-vs-phantombuster">vs PhantomBuster</Link></li>
+                    <li><Link className="hover:text-gray-900 transition-colors" href="/compare/leadspotter-vs-apollo">vs Apollo.io</Link></li>
+                    <li><Link className="hover:text-gray-900 transition-colors" href="/compare/leadspotter-vs-d7leadfinder">vs D7 Lead Finder</Link></li>
+                    <li><Link className="hover:text-gray-900 transition-colors" href="/compare/leadspotter-vs-outscraper">vs Outscraper</Link></li>
                   </ul>
                 </div>
 
@@ -150,7 +156,6 @@ export function LandingFooter() {
               <div className="flex flex-wrap justify-center gap-4 md:gap-6 text-sm text-gray-500 font-medium">
                 <Link className="hover:text-gray-900 hover:underline transition-colors" href="/privacy">Privacy Policy</Link>
                 <Link className="hover:text-gray-900 hover:underline transition-colors" href="/terms">Terms of Service</Link>
-                <Link className="hover:text-gray-900 hover:underline transition-colors" href="/company">Cookies Settings</Link>
               </div>
             </div>
           </div>
