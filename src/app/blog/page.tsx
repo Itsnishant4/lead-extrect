@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import BlogPageClient from './client';
 import { getBlogPostsPublicAction } from '@/app/actions';
 import { LandingBanner } from "@/components/LandingBanner";
+import { LandingHeader } from "@/components/LandingHeader";
 
 export const metadata: Metadata = {
   title: 'Blog - Lead Generation Tips, Guides & Best Practices',
@@ -31,6 +32,7 @@ export default async function BlogPage() {
   return (
     <>
       <LandingBanner />
+      <LandingHeader />
       <BlogPageClient initialPosts={posts || []} />
     </>
   );

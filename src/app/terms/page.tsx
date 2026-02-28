@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import TermsPageClient from "./client";
 import { LandingBanner } from "@/components/LandingBanner";
+import { LandingHeader } from "@/components/LandingHeader";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -19,6 +20,7 @@ export default function TermsPage() {
   return (
     <>
       <LandingBanner />
+      <LandingHeader />
       <TermsPageClient />
     </>
   );

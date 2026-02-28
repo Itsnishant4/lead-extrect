@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import UseCasesPageClient from "./client";
 import { LandingBanner } from "@/components/LandingBanner";
+import { LandingHeader } from "@/components/LandingHeader";
 
 export const metadata: Metadata = {
   title: "Use Cases - Lead Generation for Agencies, Freelancers & Sales Teams",
@@ -27,6 +28,7 @@ export default function UseCasesPage() {
   return (
     <>
       <LandingBanner />
+      <LandingHeader />
       <UseCasesPageClient />
     </>
   );

@@ -62,10 +62,10 @@ export function LandingFooter() {
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12 mb-16">
           <div className="col-span-2">
-            <div className="flex items-center gap-2 mb-6">
-              <Logo className="w-9 h-9" />
+            <Link href="/" className="flex items-center gap-2 mb-6 group inline-flex">
+              <Logo className="w-9 h-9 group-hover:scale-105 transition-transform" />
               <span className="text-xl font-bold tracking-tight text-indigo-950">LeadSpotter</span>
-            </div>
+            </Link>
             <p className="text-slate-500 text-sm mb-6 max-w-xs leading-relaxed">
               The ultimate data extraction tool for local sales teams and growth agencies. Turn maps into profit.
             </p>
@@ -111,6 +111,15 @@ export function LandingFooter() {
             <h3 className="font-bold text-indigo-950 mb-6 text-sm uppercase tracking-wider">Support</h3>
             <ul className="space-y-3 text-sm text-slate-500">
               <li><a className="hover:text-indigo-600 transition-colors" href="mailto:patelnishant2006@gmail.com">Email</a></li>
+            </ul>
+
+            <h3 className="font-bold text-indigo-950 mb-6 mt-8 text-sm uppercase tracking-wider">Compare</h3>
+            <ul className="space-y-3 text-sm text-slate-500">
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/compare/leadspotter-vs-phantombuster">PhantomBuster</Link></li>
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/compare/leadspotter-vs-d7leadfinder">D7 Lead Finder</Link></li>
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/compare/leadspotter-vs-apollo">Apollo.io</Link></li>
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/compare/leadspotter-vs-outscraper">Outscraper</Link></li>
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/compare/leadspotter-vs-apify">Apify</Link></li>
             </ul>
           </div>
           <div>
