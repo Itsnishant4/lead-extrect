@@ -60,6 +60,21 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
     { url: `${baseUrl}/company`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.7 },
     { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: 'yearly' as const, priority: 0.3 },
     { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly' as const, priority: 0.3 },
+    
+    // Competitor Comparison Pages
+    { url: `${baseUrl}/compare/leadspotter-vs-phantombuster`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 },
+    { url: `${baseUrl}/compare/leadspotter-vs-d7leadfinder`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 },
+    { url: `${baseUrl}/compare/leadspotter-vs-apollo`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 },
+    { url: `${baseUrl}/compare/leadspotter-vs-outscraper`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 },
+    { url: `${baseUrl}/compare/leadspotter-vs-apify`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 },
+    
+    // Core SEO Hub Pages (Fallback if DB is empty)
+    { url: `${baseUrl}/leads/dentists`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
+    { url: `${baseUrl}/leads/real-estate-agents`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
+    { url: `${baseUrl}/leads/restaurants`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
+    { url: `${baseUrl}/leads/in/mumbai`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
+    { url: `${baseUrl}/leads/in/delhi`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
+    { url: `${baseUrl}/leads/in/bangalore`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
   ] : [];
 
   const leadEntries: MetadataRoute.Sitemap = [];
