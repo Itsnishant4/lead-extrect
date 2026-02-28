@@ -42,6 +42,7 @@ export default function AdminBannerPage() {
   const [buttonText, setButtonText] = useState("");
   const [buttonUrl, setButtonUrl] = useState("");
   const [bgColor, setBgColor] = useState("#6366F1");
+  const [countdownEnd, setCountdownEnd] = useState("");
 
   useEffect(() => {
     if (banner) {
@@ -50,12 +51,13 @@ export default function AdminBannerPage() {
       setButtonText(banner.buttonText);
       setButtonUrl(banner.buttonUrl);
       setBgColor(banner.bgColor);
+      setCountdownEnd(banner.countdownEnd || "");
     }
   }, [banner]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const res = await updateBannerAdminAction({ enabled, text, buttonText, buttonUrl, bgColor });
+      const res = await updateBannerAdminAction({ enabled, text, buttonText, buttonUrl, bgColor, countdownEnd });
       if (!res.success) throw new Error((res as any).error || "Failed to save");
       return res;
     },
@@ -77,6 +79,16 @@ export default function AdminBannerPage() {
     { name: "Blue", value: "#3B82F6" },
     { name: "Black", value: "#18181B" },
   ];
+
+  const renderTextPreview = (text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <span key={i} className="font-bold">{part.slice(2, -2)}</span>;
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
 
   return (
     <>
@@ -123,7 +135,12 @@ export default function AdminBannerPage() {
                     className="w-full py-2.5 px-4 text-center text-white text-sm font-medium rounded-lg flex items-center justify-center gap-3 flex-wrap"
                     style={{ backgroundColor: bgColor }}
                   >
-                    <span>{text}</span>
+                    <span>{renderTextPreview(text)}</span>
+                    {countdownEnd && (
+                      <span className="mx-2 flex shrink-0 items-center gap-0.5 rounded-sm border border-black/20 bg-black/10 px-1 py-0.5 text-[10px] text-white font-mono">
+                        Valid till: {new Date(countdownEnd).toLocaleDateString()}
+                      </span>
+                    )}
                     {buttonText && (
                       <span className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1 rounded-full cursor-pointer transition-colors">
                         {buttonText}
@@ -163,9 +180,22 @@ export default function AdminBannerPage() {
                   <Input
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder="e.g. Limited offer: Get 50% off on Pro plan!"
+                    placeholder="e.g. 10% off on all-access. Use code **SUPER10**"
                     className="bg-muted/5"
                   />
+                  <p className="text-[10px] text-muted-foreground">Use **text** for bold text.</p>
+                </div>
+
+                {/* Countdown Date */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Countdown End Date (Optional)</Label>
+                  <Input
+                    type="datetime-local"
+                    value={countdownEnd}
+                    onChange={(e) => setCountdownEnd(e.target.value)}
+                    className="bg-muted/5"
+                  />
+                  <p className="text-[10px] text-muted-foreground">If set, a countdown timer will appear in the banner.</p>
                 </div>
 
                 {/* Button text + URL */}

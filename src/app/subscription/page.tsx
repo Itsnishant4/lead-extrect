@@ -384,23 +384,10 @@ export default function SubscriptionPage() {
       {/* Payment iframe overlay - full screen */}
       {paymentUrl && (
         <div className="fixed inset-0 z-[100] bg-white dark:bg-background animate-in fade-in duration-200">
-          <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-indigo-600 to-violet-600 text-white">
-            <div>
-              <p className="text-sm font-bold">Complete Your Payment</p>
-              <p className="text-xs text-indigo-200 mt-0.5">Scan the QR code with any UPI app to pay</p>
-            </div>
-            <button
-              onClick={() => { setPaymentUrl(null); setIsCheckingOut(null); }}
-              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
-            >
-              <X size={18} className="text-white" />
-            </button>
-          </div>
           <iframe
             ref={iframeRef}
             src={paymentUrl}
-            className="w-full border-none"
-            style={{ height: 'calc(100vh - 56px)' }}
+            className="w-full h-full border-none"
             allow="payment"
           />
         </div>

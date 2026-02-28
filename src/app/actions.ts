@@ -1025,6 +1025,7 @@ export async function updateBannerAdminAction(data: {
   buttonText: string;
   buttonUrl: string;
   bgColor: string;
+  countdownEnd?: string;
 }) {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };

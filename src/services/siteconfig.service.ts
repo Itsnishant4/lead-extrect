@@ -33,6 +33,7 @@ export class SiteConfigService {
       buttonText: string;
       buttonUrl: string;
       bgColor: string;
+      countdownEnd?: string;
     }>('landing_banner');
     return data || {
       enabled: false,
@@ -40,6 +41,7 @@ export class SiteConfigService {
       buttonText: '',
       buttonUrl: '',
       bgColor: '#6366F1',
+      countdownEnd: '',
     };
   }
 
@@ -49,6 +51,7 @@ export class SiteConfigService {
     buttonText: string;
     buttonUrl: string;
     bgColor: string;
+    countdownEnd?: string;
   }) {
     await this.setJSON('landing_banner', data);
   }
