@@ -7,7 +7,9 @@ import {
   getAdminTasksAction,
   updateTaskStatusAdminAction,
   bulkUpdateTasksAdminAction,
-  updateUserPlanAction
+  updateUserPlanAction,
+  getMaxConcurrentTasksAction,
+  updateMaxConcurrentTasksAdminAction
 } from "@/app/actions"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -152,6 +154,30 @@ export default function AdminDashboard() {
     },
     onError: (error: any) => {
       toast.error(`Failed to update plan: ${error.message}`);
+    }
+  });
+
+  const { data: maxConcurrentTasks = 3 } = useQuery({
+    queryKey: ['admin-max-concurrent'],
+    queryFn: async () => {
+      const res = await getMaxConcurrentTasksAction();
+      if (!res.success) return 3;
+      return (res as any).data || 3;
+    },
+  });
+
+  const concurrentMutation = useMutation({
+    mutationFn: async (limit: number) => {
+      const res = await updateMaxConcurrentTasksAdminAction(limit);
+      if (!res.success) throw new Error((res as any).error || "Failed to update");
+      return res;
+    },
+    onSuccess: () => {
+      toast.success("Max concurrent tasks updated");
+      queryClient.invalidateQueries({ queryKey: ['admin-max-concurrent'] });
+    },
+    onError: (error: any) => {
+      toast.error(`Failed: ${error.message}`);
     }
   });
 
@@ -471,7 +497,7 @@ export default function AdminDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4">
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap items-end gap-4">
                   <Button
                     variant="outline"
                     className="gap-2"
@@ -490,6 +516,28 @@ export default function AdminDashboard() {
                     <Play className="h-4 w-4" />
                     Resume Eligible Tasks
                   </Button>
+
+                  <div className="flex items-end gap-2 ml-auto">
+                    <div>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                        Max Concurrent Tasks (per user)
+                      </label>
+                      <Select
+                        value={String(maxConcurrentTasks)}
+                        onValueChange={(val) => concurrentMutation.mutate(Number(val))}
+                        disabled={concurrentMutation.isPending}
+                      >
+                        <SelectTrigger className="w-[100px] h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 50].map(n => (
+                            <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

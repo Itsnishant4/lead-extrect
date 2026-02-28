@@ -142,6 +142,7 @@ export function LandingFooter() {
                     <li><Link className="hover:text-gray-900 transition-colors" href="/compare/leadspotter-vs-zoominfo">vs ZoomInfo</Link></li>
                     <li><Link className="hover:text-gray-900 transition-colors" href="/compare/leadspotter-vs-lusha">vs Lusha</Link></li>
                     <li><Link className="hover:text-gray-900 transition-colors" href="/compare/leadspotter-vs-hunter">vs Hunter</Link></li>
+                    <li><Link className="hover:text-gray-900 transition-colors" href="/compare/leadspotter-vs-snov">vs Snov.io</Link></li>
                   </ul>
                 </div>
 

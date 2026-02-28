@@ -67,6 +67,10 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
     { url: `${baseUrl}/compare/leadspotter-vs-apollo`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 },
     { url: `${baseUrl}/compare/leadspotter-vs-outscraper`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 },
     { url: `${baseUrl}/compare/leadspotter-vs-apify`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 },
+    { url: `${baseUrl}/compare/leadspotter-vs-zoominfo`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 },
+    { url: `${baseUrl}/compare/leadspotter-vs-lusha`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 },
+    { url: `${baseUrl}/compare/leadspotter-vs-hunter`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 },
+    { url: `${baseUrl}/compare/leadspotter-vs-snov`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 },
     
     // Core SEO Hub Pages (Fallback if DB is empty)
     { url: `${baseUrl}/leads/dentists`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },

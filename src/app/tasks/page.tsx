@@ -17,7 +17,9 @@ import {
   Download, 
   Clock,
   Loader2,
-  Loader
+  Loader,
+  AlertCircle,
+  Info
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
@@ -25,6 +27,17 @@ import { ExportFilters, FilterSettings } from '@/components/ExportFilters';
 
 export default function TasksPage() {
   const queryClient = useQueryClient();
+  // Track which task+action is loading
+  const [loadingActions, setLoadingActions] = useState<Record<string, boolean>>({});
+
+  const setLoading = (taskId: number, action: string, value: boolean) => {
+    setLoadingActions(prev => ({ ...prev, [`${taskId}-${action}`]: value }));
+  };
+  const isActionLoading = (taskId: number, action: string) => loadingActions[`${taskId}-${action}`] || false;
+  const isAnyActionLoading = (taskId: number) => {
+    return Object.entries(loadingActions).some(([key, val]) => key.startsWith(`${taskId}-`) && val);
+  };
+
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['tasks'],
     queryFn: async () => {
@@ -35,35 +48,61 @@ export default function TasksPage() {
     refetchInterval: 5000
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteTaskAction,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast.success('Task deleted');
-    }
-  });
-
-  const statusMutation = useMutation({
-    mutationFn: async ({ taskId, status }: { taskId: number, status: string }) => {
-      const res = await updateTaskStatusAction(taskId, status);
-      if (res.success && status === 'running') {
-        // Automatically trigger automation when resumed
-        await triggerTaskAutomationAction(taskId);
+  const handleStart = async (taskId: number) => {
+    setLoading(taskId, 'start', true);
+    try {
+      const res = await triggerTaskAutomationAction(taskId);
+      if (res.success) {
+        toast.success('Task started');
+      } else {
+        toast.error((res as any).error || 'Failed to start task');
       }
-      return res;
-    },
-    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    } finally {
+      setLoading(taskId, 'start', false);
     }
-  });
+  };
 
-  const runMutation = useMutation({
-    mutationFn: triggerTaskAutomationAction,
-    onSuccess: () => {
+  const handlePause = async (taskId: number) => {
+    setLoading(taskId, 'pause', true);
+    try {
+      await updateTaskStatusAction(taskId, 'paused', undefined, 'Paused by user');
+      toast.info('Task paused');
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast.success('Task started');
+    } finally {
+      setLoading(taskId, 'pause', false);
     }
-  });
+  };
+
+  const handleResume = async (taskId: number) => {
+    setLoading(taskId, 'resume', true);
+    try {
+      const res = await triggerTaskAutomationAction(taskId);
+      if (res.success) {
+        toast.success('Task resumed');
+      } else {
+        toast.error((res as any).error || 'Failed to resume task');
+      }
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    } finally {
+      setLoading(taskId, 'resume', false);
+    }
+  };
+
+  const handleDelete = async (taskId: number) => {
+    setLoading(taskId, 'delete', true);
+    try {
+      const res = await deleteTaskAction(taskId);
+      if (res.success) {
+        toast.success('Task deleted');
+      } else {
+        toast.error((res as any).error || 'Failed to delete task');
+      }
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    } finally {
+      setLoading(taskId, 'delete', false);
+    }
+  };
 
   const handleExport = async (taskId: number, taskName: string, filters: FilterSettings) => {
     toast.info('Exporting leads...');
@@ -126,72 +165,140 @@ export default function TasksPage() {
           </div>
         ) : (
           <div className="grid gap-4 max-w-5xl mx-auto">
-            {tasks.map((task: any) => (
-              <Card key={task.id} className="overflow-hidden !rounded-3xl  bg-gradient-to-b from-white to-gray-100 !border-none shadow-sm hover:shadow-md transition-shadow">
-                <div className="px-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <div className="flex items-start gap-4 !rounded-2xl">
-                    <div className={cn(
-                      "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500",
-                      task.status === 'completed' ? "bg-emerald-100 text-emerald-600" :
-                      task.status === 'running' ? "bg-indigo-100 text-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.2)]" :
-                      task.status === 'failed' ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400"
-                    )}>
-                      <Rocket className={cn("h-6 w-6", task.status === 'running' && "animate-pulse")} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 text-lg">{task.name}</h3>
-                      <div className="flex items-center gap-3 mt-1">
-                        <Badge variant="secondary" className={cn(
-                          "capitalize text-[10px] font-black px-2 py-0.5 rounded-full border-none",
-                          task.status === 'completed' ? "bg-emerald-500/10 text-emerald-600" :
-                          task.status === 'running' ? "bg-indigo-500/10 text-indigo-600 shadow-[0_0_8px_rgba(79,70,229,0.1)]" :
-                          task.status === 'failed' ? "bg-rose-500/10 text-rose-600" : 
-                          task.status === 'paused' ? "bg-amber-500/10 text-amber-600" :
-                          "bg-slate-500/10 text-slate-500"
-                        )}>
-                          {task.status} {task.totalKeywords > 0 ? `• ${Math.round((task.currentKeywordIndex / task.totalKeywords) * 100)}%` : ''}
-                        </Badge>
-                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
-                          <Clock size={12} className="text-slate-300" /> {task.updatedAt ? format(new Date(task.updatedAt), 'MMM dd, HH:mm') : 'N/A'}
-                        </span>
+            {tasks.map((task: any) => {
+              const anyLoading = isAnyActionLoading(task.id);
+
+              return (
+                <Card key={task.id} className="overflow-hidden !rounded-3xl  bg-gradient-to-b from-white to-gray-100 !border-none shadow-sm hover:shadow-md transition-shadow">
+                  <div className="px-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-start gap-4 !rounded-2xl">
+                      <div className={cn(
+                        "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500",
+                        task.status === 'completed' ? "bg-emerald-100 text-emerald-600" :
+                        task.status === 'running' ? "bg-indigo-100 text-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.2)]" :
+                        task.status === 'failed' ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400"
+                      )}>
+                        <Rocket className={cn("h-6 w-6", task.status === 'running' && "animate-pulse")} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-lg">{task.name}</h3>
+                        <div className="flex items-center gap-3 mt-1">
+                          <Badge variant="secondary" className={cn(
+                            "capitalize text-[10px] font-black px-2 py-0.5 rounded-full border-none",
+                            task.status === 'completed' ? "bg-emerald-500/10 text-emerald-600" :
+                            task.status === 'running' ? "bg-indigo-500/10 text-indigo-600 shadow-[0_0_8px_rgba(79,70,229,0.1)]" :
+                            task.status === 'failed' ? "bg-rose-500/10 text-rose-600" : 
+                            task.status === 'paused' ? "bg-amber-500/10 text-amber-600" :
+                            "bg-slate-500/10 text-slate-500"
+                          )}>
+                            {task.status} {task.totalKeywords > 0 ? `• ${Math.round((task.currentKeywordIndex / task.totalKeywords) * 100)}%` : ''}
+                          </Badge>
+                          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
+                            <Clock size={12} className="text-slate-300" /> {task.updatedAt ? format(new Date(task.updatedAt), 'MMM dd, HH:mm') : 'N/A'}
+                          </span>
+                        </div>
+                        {/* Status Reason */}
+                        {task.statusReason && (
+                          <div className={cn(
+                            "flex items-center gap-1.5 mt-2 text-xs font-medium",
+                            task.status === 'failed' ? "text-rose-500" :
+                            task.status === 'paused' ? "text-amber-600" :
+                            task.status === 'completed' ? "text-emerald-600" :
+                            "text-slate-400"
+                          )}>
+                            {task.status === 'failed' ? <AlertCircle size={12} /> : <Info size={12} />}
+                            <span>{task.statusReason}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    {task.status === 'pending' && task.totalKeywords > 0 && task.currentKeywordIndex === 0 && (
-                      <Button size="sm" className="bg-indigo-600" onClick={() => runMutation.mutate(task.id)}>
-                        <Play size={14} className="mr-2" /> Start
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Start button: only show for never-triggered pending tasks (no statusReason of 'Queued') */}
+                      {task.status === 'pending' && task.currentKeywordIndex === 0 && !task.statusReason?.startsWith('Queued') && !task.statusReason?.startsWith('Uploading') && (
+                        <Button 
+                          size="sm" 
+                          className="bg-indigo-600" 
+                          onClick={() => handleStart(task.id)}
+                          disabled={anyLoading}
+                        >
+                          {isActionLoading(task.id, 'start') ? (
+                            <Loader2 size={14} className="mr-2 animate-spin" />
+                          ) : (
+                            <Play size={14} className="mr-2" />
+                          )}
+                          Start
+                        </Button>
+                      )}
+                      {/* Starting... spinner for queued tasks waiting for worker */}
+                      {task.status === 'pending' && (task.statusReason?.startsWith('Queued') || task.statusReason?.startsWith('Uploading') || task.statusReason?.startsWith('Auto-recovered')) && (
+                        <Button size="sm" variant="outline" disabled>
+                          <Loader2 size={14} className="mr-2 animate-spin" /> Starting...
+                        </Button>
+                      )}
+                      {/* Pending with progress (worker will pick up) */}
+                      {task.status === 'pending' && task.currentKeywordIndex > 0 && !task.statusReason?.startsWith('Queued') && !task.statusReason?.startsWith('Uploading') && !task.statusReason?.startsWith('Auto-recovered') && (
+                        <Button size="sm" variant="outline" disabled>
+                          <Loader2 size={14} className="mr-2 animate-spin" /> Starting...
+                        </Button>
+                      )}
+                      {/* Pause button for running tasks */}
+                      {task.status === 'running' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handlePause(task.id)}
+                          disabled={anyLoading}
+                        >
+                          {isActionLoading(task.id, 'pause') ? (
+                            <Loader2 size={14} className="mr-2 animate-spin" />
+                          ) : (
+                            <Pause size={14} className="mr-2" />
+                          )}
+                          Pause
+                        </Button>
+                      )}
+                      {/* Resume button for paused tasks */}
+                      {task.status === 'paused' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleResume(task.id)}
+                          disabled={anyLoading}
+                        >
+                          {isActionLoading(task.id, 'resume') ? (
+                            <Loader2 size={14} className="mr-2 animate-spin" />
+                          ) : (
+                            <Play size={14} className="mr-2" />
+                          )}
+                          Resume
+                        </Button>
+                      )}
+                      {/* Export */}
+                      <ExportFilters onExport={(filters) => handleExport(task.id, task.name, filters)} />
+                      {/* Delete */}
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="text-rose-500 hover:bg-rose-50" 
+                        onClick={() => handleDelete(task.id)}
+                        disabled={anyLoading}
+                      >
+                        {isActionLoading(task.id, 'delete') ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={14} />
+                        )}
                       </Button>
-                    )}
-                    {task.status === 'pending' && task.currentKeywordIndex > 0 && (
-                      <Button size="sm" variant="outline" disabled>
-                        <Loader2 size={14} className="mr-2 animate-spin" /> Starting...
-                      </Button>
-                    )}
-                    {task.status === 'running' && (
-                      <Button size="sm" variant="outline" onClick={() => statusMutation.mutate({ taskId: task.id, status: 'paused' })}>
-                        <Pause size={14} className="mr-2" /> Pause
-                      </Button>
-                    )}
-                    {task.status === 'paused' && (
-                      <Button size="sm" variant="outline" onClick={() => statusMutation.mutate({ taskId: task.id, status: 'pending' })}>
-                        <Play size={14} className="mr-2" /> Resume
-                      </Button>
-                    )}
-                    <ExportFilters onExport={(filters) => handleExport(task.id, task.name, filters)} />
-                    <Button size="sm" variant="ghost" className="text-rose-500 hover:bg-rose-50" onClick={() => deleteMutation.mutate(task.id)}>
-                      <Trash2 size={14} />
-                    </Button>
+                    </div>
                   </div>
-                </div>
-            
-              </Card>
-            ))}
+              
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>
     </div>
   );
 }
-

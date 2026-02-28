@@ -218,11 +218,11 @@ export async function appendTaskKeywordsAction(taskId: number, keywords: string[
   }
 }
 
-export async function updateTaskStatusAction(taskId: number, status: string, currentIndex?: number) {
+export async function updateTaskStatusAction(taskId: number, status: string, currentIndex?: number, statusReason?: string | null) {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
-    await TaskService.updateStatus(session.id, taskId, status, currentIndex);
+    await TaskService.updateStatus(session.id, taskId, status, currentIndex, statusReason);
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);
@@ -248,7 +248,7 @@ export async function getTasksAction() {
       console.log(`[ACTIONS] Found ${stalledTasks.length} stalled tasks for user ${session.id}. Recovering...`);
       for (const task of stalledTasks) {
         // Trigger recovery via the standardized runTask method
-        void TaskService.runTask(task.id, session.id);
+        void TaskService.runTask(task.id, session.id, 'Auto-recovered — worker stalled');
       }
     }
 
@@ -846,8 +846,21 @@ export async function triggerTaskAutomationAction(taskId: number) {
     const task = await TaskService.getTask(session.id, taskId);
     if (!task) return { success: false, error: 'Task not found' };
 
+    // Concurrent limit check
+    const maxConcurrent = await SiteConfigService.getMaxConcurrentTasks();
+    const activeCount = await TaskService.countActiveTasks(session.id);
+    // Don't count the current task if it's already pending (we're re-triggering it)
+    const otherActive = task.status === 'pending' || task.status === 'running' ? activeCount - 1 : activeCount;
+    if (otherActive >= maxConcurrent) {
+      return { 
+        success: false, 
+        error: `You can run only ${maxConcurrent} campaigns at a time. Please wait for a running campaign to finish.`,
+        limitType: 'concurrent'
+      };
+    }
+
     // The worker picks up tasks that are marked as 'pending'
-    await TaskService.updateStatus(session.id, taskId, 'pending');
+    await TaskService.updateStatus(session.id, taskId, 'pending', undefined, 'Queued — waiting for worker');
 
     return { success: true };
   } catch (error: any) {
@@ -1033,6 +1046,30 @@ export async function updateBannerAdminAction(data: {
     await AdminService.checkAdmin(session.id);
     await SiteConfigService.setBanner(data);
     revalidatePath('/');
+    return { success: true };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+// --- Max Concurrent Tasks Config ---
+
+export async function getMaxConcurrentTasksAction() {
+  try {
+    const limit = await SiteConfigService.getMaxConcurrentTasks();
+    return { success: true, data: limit };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function updateMaxConcurrentTasksAdminAction(limit: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    if (limit < 1 || limit > 50) return { success: false, error: 'Limit must be between 1 and 50' };
+    await SiteConfigService.setMaxConcurrentTasks(limit);
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);

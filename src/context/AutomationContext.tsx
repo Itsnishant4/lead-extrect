@@ -24,6 +24,7 @@ interface Task {
   id: number;
   name: string;
   status: 'pending' | 'running' | 'paused' | 'completed' | 'failed';
+  statusReason: string | null;
   total_keywords: number;
   current_keyword_index: number;
   total_leads: number;
@@ -91,7 +92,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     refetchInterval: (query) => {
       const data = query.state.data as Task[];
       // Polling every 4 seconds when tasks are running, 15 seconds otherwise
-      return (data && data.some(t => t.status === 'running')) ? 4000 : 15000;
+      return (data && data.some(t => t.status === 'running' || t.status === 'pending')) ? 4000 : 15000;
     },
   });
 
@@ -168,7 +169,10 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
             return;
           }
         }
-        await triggerTaskAutomationAction(taskId);
+        const triggerRes = await triggerTaskAutomationAction(taskId);
+        if (!triggerRes.success) {
+          toast.error((triggerRes as any).error || "Failed to start task");
+        }
       };
 
       void uploadKeywordsInBackground();
@@ -179,8 +183,14 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
 
     const res = await createTaskAction(name, keywords);
     if (res.success && 'taskId' in res) {
+      const triggerRes = await triggerTaskAutomationAction(Number(res.taskId));
+      if (!triggerRes.success) {
+        // Task was created but trigger failed (concurrent limit)
+        toast.error((triggerRes as any).error || "Failed to start task");
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        return;
+      }
       toast.success(`Automation task "${name}" started`);
-      await triggerTaskAutomationAction(Number(res.taskId));
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     } else {
       toast.error((res as any).error || "Failed to create task");
@@ -190,7 +200,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
   const handlePauseTask = async (taskId: number) => {
     const task = tasks.find(t => t.id === taskId);
     flushTelegramExport(taskId, task?.name || `Task-${taskId}`);
-    await updateTaskStatusAction(taskId, 'paused');
+    await updateTaskStatusAction(taskId, 'paused', undefined, 'Paused by user');
     toast.info("Task paused");
     queryClient.invalidateQueries({ queryKey: ['tasks'] });
   };
@@ -214,9 +224,13 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    await updateTaskStatusAction(taskId, 'running');
+    // Check concurrent limit before resuming
+    const triggerRes = await triggerTaskAutomationAction(taskId);
+    if (!triggerRes.success) {
+      toast.error((triggerRes as any).error || "Failed to resume task");
+      return;
+    }
     toast.success("Task resumed");
-    await triggerTaskAutomationAction(taskId);
     queryClient.invalidateQueries({ queryKey: ['tasks'] });
   };
 

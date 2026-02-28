@@ -55,4 +55,14 @@ export class SiteConfigService {
   }) {
     await this.setJSON('landing_banner', data);
   }
+
+  static async getMaxConcurrentTasks(): Promise<number> {
+    const val = await this.get('max_concurrent_tasks');
+    const parsed = val ? parseInt(val, 10) : NaN;
+    return isNaN(parsed) ? 3 : parsed; // Default: 3
+  }
+
+  static async setMaxConcurrentTasks(limit: number) {
+    await this.set('max_concurrent_tasks', String(limit));
+  }
 }

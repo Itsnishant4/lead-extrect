@@ -23,6 +23,7 @@ export const tasks = pgTable('tasks', {
   userId: integer('user_id').references(() => users.id),
   name: text('name').notNull(),
   status: text('status').default('pending'),
+  statusReason: text('status_reason'),
   totalKeywords: integer('total_keywords').default(0),
   currentKeywordIndex: integer('current_keyword_index').default(0),
   totalLeads: integer('total_leads').default(0),

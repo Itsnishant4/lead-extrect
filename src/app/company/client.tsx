@@ -208,20 +208,6 @@ export default function CompanyPageClient() {
             </motion.div>
           </div>
         </AnimatedSection>
-
-        <AnimatedSection className="py-16 sm:py-28">
-          <div className="max-w-4xl mx-auto px-6">
-            <motion.div variants={scaleIn} initial="hidden" whileInView="visible" viewport={{ once: true }} className="relative rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-8 sm:p-16 text-center overflow-hidden">
-              <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-200/30 rounded-full blur-3xl" />
-              <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-violet-200/30 rounded-full blur-3xl" />
-              <div className="relative z-10">
-                <h2 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-4">Ready to Supercharge Your Prospecting?</h2>
-                <p className="text-gray-500 text-base sm:text-lg max-w-xl mx-auto mb-8">Join thousands of sales teams already using LeadSpotter to extract, enrich, and close deals faster.</p>
-                <Link href="/signup"><HoverBorderGradient containerClassName="rounded-full mx-auto" className="flex items-center gap-2 bg-white text-indigo-700 px-8 py-3 text-sm font-bold">Get Started Free<ArrowRight size={16} /></HoverBorderGradient></Link>
-              </div>
-            </motion.div>
-          </div>
-        </AnimatedSection>
       </main>
       <LandingFooter />
     </div>

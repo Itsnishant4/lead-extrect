@@ -15,6 +15,7 @@ export class TaskService {
       keywords,
       totalKeywords: keywords.length,
       status: 'pending',
+      statusReason: 'Queued — waiting for worker',
       userAgent: options.userAgent,
       acceptLanguage: options.acceptLanguage,
     }).returning({ id: tasks.id });
@@ -28,6 +29,7 @@ export class TaskService {
       keywords: [],
       totalKeywords,
       status: 'pending',
+      statusReason: 'Uploading keywords...',
       userAgent: options.userAgent,
       acceptLanguage: options.acceptLanguage,
     }).returning({ id: tasks.id });
@@ -43,10 +45,11 @@ export class TaskService {
     `);
   }
 
-  static async updateStatus(userId: number, taskId: number, status: string, currentIndex?: number) {
+  static async updateStatus(userId: number, taskId: number, status: string, currentIndex?: number, statusReason?: string | null) {
     await TaskRepository.update(taskId, userId, { 
       status, 
-      currentKeywordIndex: currentIndex 
+      currentKeywordIndex: currentIndex,
+      statusReason: statusReason !== undefined ? statusReason : null,
     });
   }
 
@@ -92,7 +95,7 @@ export class TaskService {
 
       if (index >= keywords.length) {
         console.log(`[TASK SERVICE] Task ${tId} finished all keywords (${index}/${keywords.length})`);
-        await TaskRepository.update(tId, uId, { status: 'completed' });
+        await TaskRepository.update(tId, uId, { status: 'completed', statusReason: 'All keywords processed' });
         await AuditService.saveServerLog(tId, 'SUCCESS', 'Task completed', uId);
         await this.sendLogsToTelegram(tId, uId);
         return { success: true, completed: true };
@@ -101,8 +104,8 @@ export class TaskService {
       const keyword = keywords[index];
       const options = { userAgent: task.userAgent || undefined, acceptLanguage: task.acceptLanguage || undefined, manualUserId: uId };
 
-      // Update heartbeat to signal activity
-      await TaskRepository.update(tId, uId, { lastHeartbeat: new Date() });
+      // Update heartbeat and clear statusReason (actively running)
+      await TaskRepository.update(tId, uId, { lastHeartbeat: new Date(), statusReason: null });
 
       await AuditService.saveServerLog(tId, 'INFO', `Processing keyword ${index + 1}/${keywords.length}: "${keyword}"`, uId);
       
@@ -117,11 +120,11 @@ export class TaskService {
 
       if (!res.success) {
         if (res.limitReached) {
-          await TaskRepository.update(tId, uId, { status: 'paused' });
+          await TaskRepository.update(tId, uId, { status: 'paused', statusReason: 'Credit limit reached — upgrade your plan to continue' });
           await AuditService.saveServerLog(tId, 'WARN', `Task paused: Credit limit reached.`, uId);
           return { success: false, limitReached: true };
         }
-        await TaskRepository.update(tId, uId, { status: 'failed' });
+        await TaskRepository.update(tId, uId, { status: 'failed', statusReason: `Error: ${res.error || 'Unknown error during extraction'}` });
         await AuditService.saveServerLog(tId, 'ERROR', `Task failed on keyword "${keyword}": ${res.error}`, uId);
         await this.sendLogsToTelegram(tId, uId);
         return { success: false, error: res.error };
@@ -142,7 +145,7 @@ export class TaskService {
       if (nextIndex < keywords.length) {
         await this.triggerNextStep(tId, uId);
       } else {
-        await TaskRepository.update(tId, uId, { status: 'completed' });
+        await TaskRepository.update(tId, uId, { status: 'completed', statusReason: 'All keywords processed' });
         await AuditService.saveServerLog(tId, 'SUCCESS', 'Task completed', uId);
         await this.sendLogsToTelegram(tId, uId);
       }
@@ -151,7 +154,7 @@ export class TaskService {
     } catch (error) {
       console.error(`[TASK SERVICE] Critical error processing task ${tId}:`, error);
       try {
-        await TaskRepository.update(tId, uId, { status: 'failed' });
+        await TaskRepository.update(tId, uId, { status: 'failed', statusReason: `Crashed: ${(error as Error).message}` });
         await AuditService.saveServerLog(tId, 'ERROR', `Task crashed: ${(error as Error).message}`, uId);
         await this.sendLogsToTelegram(tId, uId);
       } catch (logErr) {
@@ -181,10 +184,25 @@ export class TaskService {
     return 'http://127.0.0.1:3000';
   }
 
-  static async runTask(taskId: number, userId: number) {
+  static async runTask(taskId: number, userId: number, statusReason?: string) {
     console.log(`[TASK SERVICE] runTask called for task ${taskId}. Updating status to pending for worker to pick up.`);
-    await TaskRepository.update(taskId, userId, { status: 'pending' });
+    await TaskRepository.update(taskId, userId, { 
+      status: 'pending', 
+      statusReason: statusReason || 'Queued — waiting for worker' 
+    });
     return { success: true };
+  }
+
+  /**
+   * Count active (running + pending) tasks for a user.
+   */
+  static async countActiveTasks(userId: number): Promise<number> {
+    const result = await db.execute(sql`
+      SELECT COUNT(*) as count FROM tasks 
+      WHERE user_id = ${userId} 
+      AND status IN ('running', 'pending')
+    `);
+    return Number(result[0]?.count || 0);
   }
 
   private static async triggerNextStep(taskId: number, userId: number) {

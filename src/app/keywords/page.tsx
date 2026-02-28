@@ -249,7 +249,7 @@ export default function KeywordsPage() {
                     setIsCreatingTask(true);
                     await startNewTask(taskName, keywords);
                     setIsCreatingTask(false);
-                    router.push('/tasks');
+                    router.replace('/tasks');
                   }} 
                   className="w-full gradient-button text-white py-3 rounded-2xl font-bold"
                 >
