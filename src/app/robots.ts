@@ -1,6 +1,10 @@
 import { MetadataRoute } from "next";
+import { generateSitemaps } from "./sitemap";
 
-export default function robots(): MetadataRoute.Robots {
+export default async function robots(): Promise<MetadataRoute.Robots> {
+    const sitemaps = await generateSitemaps();
+    const sitemapUrls = sitemaps.map(s => `https://leadspotter.in/sitemap/${s.id}.xml`);
+
     return {
         rules: [
             {
@@ -9,6 +13,6 @@ export default function robots(): MetadataRoute.Robots {
                 disallow: ["/admin/", "/login", "/signup", "/forgot-password", "/tasks", "/keywords", "/history", "/lists", "/profile", "/settings", "/subscription"],
             },
         ],
-        sitemap: "https://leadspotter.in/sitemap.xml",
+        sitemap: sitemapUrls,
     };
 }
