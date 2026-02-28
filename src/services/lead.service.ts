@@ -97,9 +97,8 @@ export class LeadService {
   }
 
   private static computeLimits(user: any) {
-    const planLimits: Record<string, number> = { 'free': 500, 'pro': 5000, 'premium': Infinity };
-    const baseLimit = planLimits[user.planType || 'free'] ?? 500;
-    const currentLimit = baseLimit === Infinity ? Infinity : baseLimit + (user.bonusCredits || 0);
+    const isUnlimited = user.planType === 'premium' || user.planType === 'enterprise';
+    const currentLimit = isUnlimited ? Infinity : 500 + (user.bonusCredits || 0);
     const used = user.leadsExtracted || 0;
     const remaining = currentLimit === Infinity ? Infinity : Math.max(currentLimit - used, 0);
     return { currentLimit, used, remaining };

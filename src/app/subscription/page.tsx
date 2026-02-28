@@ -90,9 +90,8 @@ export default function SubscriptionPage() {
 
   const usedLeads = user?.leadsExtracted || 0;
   const bonusCredits = user?.bonusCredits || 0;
-  const planLimits: Record<string, number> = { free: 500, starter: 500, pro: 5000, premium: Infinity, enterprise: Infinity };
-  const baseLimit = planLimits[user?.planType || 'free'] ?? 500;
-  const limit = baseLimit === Infinity ? Infinity : baseLimit + bonusCredits;
+  const isUnlimited = user?.planType === 'premium' || user?.planType === 'enterprise';
+  const limit = isUnlimited ? Infinity : 500 + bonusCredits;
   const remaining = limit === Infinity ? Infinity : Math.max(limit - usedLeads, 0);
   const usagePercent = limit === Infinity ? 0 : Math.min((usedLeads / limit) * 100, 100);
 
@@ -158,8 +157,13 @@ export default function SubscriptionPage() {
             {plans.length > 0 ? (
               <div className={`grid grid-cols-1 gap-6 ${plans.length === 1 ? 'max-w-md mx-auto' : plans.length === 2 ? 'md:grid-cols-2 max-w-3xl mx-auto' : plans.length >= 3 ? 'md:grid-cols-3' : ''}`}>
                 {plans.map((plan: any, index: number) => {
-                  const isCurrent = user?.planType?.toLowerCase() === plan.name?.toLowerCase()
-                    || (plan.period === 'free' && (user?.planType === 'free' || !user?.planType));
+                  const isPlanExpired = user?.subscriptionExpiry ? new Date(user.subscriptionExpiry) < new Date() : false;
+                  const isCurrent = plan.period === 'month' 
+                    ? (user?.planType?.toLowerCase() === plan.name?.toLowerCase() && !isPlanExpired)
+                    : plan.period === 'free'
+                      ? (user?.planType === 'free' || !user?.planType)
+                      : false;
+                      
                   const hasBadge = !!plan.badge;
                   const isHighlight = hasBadge && !isCurrent;
                   const isFree = plan.period === 'free';
