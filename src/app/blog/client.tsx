@@ -4,7 +4,6 @@ import React from "react";
 import Link from "next/link";
 import { ArrowRight, Clock, User } from "lucide-react";
 import { motion } from "motion/react";
-import { LandingHeader } from "@/components/LandingHeader";
 import { LandingFooter } from "@/components/LandingFooter";
 
 import { format } from "date-fns";
@@ -23,7 +22,6 @@ export default function BlogPageClient({ initialPosts }: { initialPosts: any[] }
 
   return (
     <div className="bg-white text-gray-900 antialiased overflow-x-hidden">
-      <LandingHeader />
 
       {/* Hero */}
       <section className="pt-28 md:pt-40 pb-16 md:pb-20 relative">

@@ -79,7 +79,13 @@ export default function SubscriptionPage() {
       if (res.success && (res as any).data?.paymentUrl) {
         setPaymentUrl((res as any).data.paymentUrl);
       } else {
-        toast.error((res as any).error || 'Failed to create checkout session');
+        const errorMsg = (res as any).error;
+        if (errorMsg === 'Unauthorized') {
+          toast.error('Please log in to subscribe to a plan');
+          window.location.href = '/login?redirect=/subscription';
+        } else {
+          toast.error(errorMsg || 'Failed to create checkout session');
+        }
         setIsCheckingOut(null);
       }
     } catch {

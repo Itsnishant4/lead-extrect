@@ -6,7 +6,6 @@ import {
   ArrowRight, Mail, MapPin, Globe, Target, Users, Zap, Heart, Shield, Rocket, TrendingUp, Clock, CheckCircle,
 } from "lucide-react";
 import { motion, useInView } from "motion/react";
-import { LandingHeader } from "@/components/LandingHeader";
 import { LandingFooter } from "@/components/LandingFooter";
 import { FlipWords } from "@/components/ui/flip-words";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
@@ -80,7 +79,6 @@ export default function CompanyPageClient() {
 
   return (
     <div className="bg-white text-slate-900 antialiased h-screen min-h-screen flex flex-col">
-      <LandingHeader />
       <main className="flex-grow">
         <section className="w-full bg-gray-50 md:pt-44 pt-28 h-screen">
           <div className="mx-auto grid max-h-[50rem] max-w-7xl grid-cols-1 items-start gap-10 overflow-hidden sm:grid-cols-2 md:max-h-[40rem] md:pt-10 lg:grid-cols-3">

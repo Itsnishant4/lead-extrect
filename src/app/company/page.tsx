@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import CompanyPageClient from "./client";
+import { LandingBanner } from "@/components/LandingBanner";
 
 export const metadata: Metadata = {
   title: "About LeadSpotter - Our Story & Mission",
@@ -15,5 +16,10 @@ export const metadata: Metadata = {
 };
 
 export default function CompanyPage() {
-  return <CompanyPageClient />;
+  return (
+    <>
+      <LandingBanner />
+      <CompanyPageClient />
+    </>
+  );
 }

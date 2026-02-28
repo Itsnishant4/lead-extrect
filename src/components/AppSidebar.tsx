@@ -20,6 +20,7 @@ import { Progress } from '@/components/ui/progress';
 import { logoutAction } from '@/app/actions';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { useQueryClient } from '@tanstack/react-query';
 
 import {
   Sidebar,
@@ -48,6 +49,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user } = useAutomation();
   const { open } = useSidebar();
+  const queryClient = useQueryClient();
 
   const menuItems = [
     {
@@ -232,6 +234,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   onClick={async () => {
                     const res = await logoutAction();
                     if (res.success) {
+                      queryClient.clear();
+                      localStorage.clear();
                       toast.success('Logged out successfully');
                       window.location.href = '/login';
                     }

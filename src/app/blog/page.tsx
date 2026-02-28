@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import BlogPageClient from './client';
 import { getBlogPostsPublicAction } from '@/app/actions';
+import { LandingBanner } from "@/components/LandingBanner";
 
 export const metadata: Metadata = {
   title: 'Blog - Lead Generation Tips, Guides & Best Practices',
@@ -27,5 +28,10 @@ export default async function BlogPage() {
   const res = await getBlogPostsPublicAction();
   const posts = ('data' in res) ? res.data : [];
   
-  return <BlogPageClient initialPosts={posts || []} />;
+  return (
+    <>
+      <LandingBanner />
+      <BlogPageClient initialPosts={posts || []} />
+    </>
+  );
 }

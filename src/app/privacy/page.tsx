@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import PrivacyPageClient from "./client";
+import { LandingBanner } from "@/components/LandingBanner";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -15,5 +16,10 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
-  return <PrivacyPageClient />;
+  return (
+    <>
+      <LandingBanner />
+      <PrivacyPageClient />
+    </>
+  );
 }

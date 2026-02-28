@@ -1,79 +1,9 @@
-'use client';
-
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getBannerAction } from '@/app/actions';
+import { SiteConfigService } from '@/services/siteconfig.service';
+import { CountdownTimer } from './CountdownTimer';
 
-interface BannerData {
-  enabled: boolean;
-  text: string;
-  buttonText: string;
-  buttonUrl: string;
-  bgColor: string;
-  countdownEnd?: string;
-}
-
-const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
-  const [timeLeft, setTimeLeft] = useState({
-    d: 0,
-    h: 0,
-    m: 0,
-    s: 0,
-  });
-
-  useEffect(() => {
-    const target = new Date(targetDate).getTime();
-    
-    const interval = setInterval(() => {
-      const now = new Date().getTime();
-      const distance = target - now;
-
-      if (distance < 0) {
-        clearInterval(interval);
-        setTimeLeft({ d: 0, h: 0, m: 0, s: 0 });
-        return;
-      }
-
-      setTimeLeft({
-        d: Math.floor(distance / (1000 * 60 * 60 * 24)),
-        h: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        m: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-        s: Math.floor((distance % (1000 * 60)) / 1000),
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [targetDate]);
-
-  const pad = (num: number) => num.toString().padStart(2, '0');
-
-  return (
-    <div className="flex items-center gap-0.5">
-      <span className="hidden sm:block mr-1">Valid till</span>
-      <span className="mx-2 flex shrink-0 items-center gap-0.5 rounded-sm border border-black/20 bg-black/10 px-1 py-0.5 text-[10px] text-white sm:text-sm tabular-nums tracking-widest font-mono">
-        <div className="flex items-center">{pad(timeLeft.d)}</div>
-        <span className="text-white/80 mx-0.5">d : </span>
-        <div className="flex items-center">{pad(timeLeft.h)}</div>
-        <span className="text-white/80 mx-0.5">h :</span>
-        <div className="flex items-center">{pad(timeLeft.m)}</div>
-        <span className="text-white/80 mx-0.5">m :</span>
-        <div className="flex items-center">{pad(timeLeft.s)}</div>
-        <span className="text-white/80 mx-0.5 ml-1">s</span>
-      </span>
-    </div>
-  );
-};
-
-export function LandingBanner() {
-  const [banner, setBanner] = useState<BannerData | null>(null);
-
-  useEffect(() => {
-    getBannerAction().then((res) => {
-      if (res.success && (res as any).data) {
-        setBanner((res as any).data);
-      }
-    });
-  }, []);
+export async function LandingBanner() {
+  const banner = await SiteConfigService.getBanner();
 
   if (!banner || !banner.enabled || !banner.text) return null;
 

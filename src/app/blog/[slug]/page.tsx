@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { LandingHeader } from '@/components/LandingHeader';
+import { LandingBanner } from "@/components/LandingBanner";
 import { LandingFooter } from '@/components/LandingFooter';
 import Link from 'next/link';
 import { ArrowLeft, Clock, User } from 'lucide-react';
@@ -87,6 +88,7 @@ export default async function BlogArticlePage({ params }: { params: Params }) {
   return (
     <div className="bg-white text-gray-900 antialiased">
       <JsonLdBlog article={article} />
+      <LandingBanner />
       <LandingHeader />
 
       <main className="pt-28 md:pt-36 pb-20">

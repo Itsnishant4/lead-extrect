@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import FeaturesPageClient from "./client";
+import { LandingBanner } from "@/components/LandingBanner";
 
 export const metadata: Metadata = {
   title: "Features - Google Maps Lead Extractor & Business Data Scraper",
@@ -25,5 +26,10 @@ export const metadata: Metadata = {
 };
 
 export default function FeaturesPage() {
-  return <FeaturesPageClient />;
+  return (
+    <>
+      <LandingBanner />
+      <FeaturesPageClient />
+    </>
+  );
 }

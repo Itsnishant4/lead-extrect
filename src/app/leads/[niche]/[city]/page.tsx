@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { LandingHeader } from '@/components/LandingHeader';
+import { LandingBanner } from "@/components/LandingBanner";
 import { LandingFooter } from '@/components/LandingFooter';
 import JsonLd from '@/components/JsonLd';
 import { notFound } from 'next/navigation';
@@ -57,6 +58,7 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
           ]
         }} 
       />
+      <LandingBanner />
       <LandingHeader />
       
       <main className="pt-32 pb-20">

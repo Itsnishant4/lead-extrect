@@ -6,6 +6,7 @@ import { useAutomation } from '@/context/AutomationContext';
 import { logoutAction } from '@/app/actions';
 import { toast } from 'sonner';
 import { Logo } from '@/components/Logo';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Search, Zap, Rocket, ChevronDown, User, CreditCard,
   LogOut, LogIn, UserPlus, X,
@@ -24,6 +25,7 @@ const navIcons = {
 
 export function DashboardHeader({ activePage }: DashboardHeaderProps) {
   const { user, isLoadingUser } = useAutomation();
+  const queryClient = useQueryClient();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -52,6 +54,8 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
     setShowMobileMenu(false);
     const res = await logoutAction();
     if (res.success) {
+      queryClient.clear();
+      localStorage.clear();
       toast.success('Logged out successfully');
       window.location.href = '/login';
     }

@@ -1,13 +1,11 @@
 "use client";
 
 import React from "react";
-import { LandingHeader } from "@/components/LandingHeader";
 import { LandingFooter } from "@/components/LandingFooter";
 
 export default function PrivacyPageClient() {
     return (
         <div className="bg-white text-slate-900 antialiased min-h-screen flex flex-col">
-            <LandingHeader />
             <main className="flex-grow py-12 lg:py-20 pt-28 md:pt-36">
                 <div className="container mx-auto px-6 max-w-4xl">
                     <h1 className="text-4xl font-extrabold mb-4">Privacy Policy</h1>

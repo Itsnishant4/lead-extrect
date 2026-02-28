@@ -18,6 +18,7 @@ import {
 } from 'phosphor-react';
 import { logoutAction } from '@/app/actions';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 import {
   Sidebar,
@@ -43,6 +44,7 @@ import { useAutomation } from '@/context/AutomationContext';
 export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user } = useAutomation();
+  const queryClient = useQueryClient();
 
   const adminMenuItems = [
     {
@@ -172,6 +174,8 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
                   onClick={async () => {
                     const res = await logoutAction();
                     if (res.success) {
+                      queryClient.clear();
+                      localStorage.clear();
                       toast.success('Logged out successfully');
                       window.location.href = '/login';
                     }

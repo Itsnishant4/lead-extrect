@@ -7,7 +7,6 @@ import {
   ArrowRight, CheckCircle, TrendingUp, Target,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { LandingHeader } from "@/components/LandingHeader";
 import { LandingFooter } from "@/components/LandingFooter";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 
@@ -82,7 +81,6 @@ const useCases = [
 export default function UseCasesPageClient() {
   return (
     <div className="bg-white text-gray-900 antialiased overflow-x-hidden">
-      <LandingHeader />
 
       {/* Hero */}
       <section className="pt-28 md:pt-40 pb-16 md:pb-24 relative">

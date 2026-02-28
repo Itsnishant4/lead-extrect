@@ -4,7 +4,6 @@ import React from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { FloatingNav } from "@/components/ui/floating-navbar";
-import { LandingBanner } from "@/components/LandingBanner";
 
 export function LandingHeader() {
   const navItems = [
@@ -17,7 +16,6 @@ export function LandingHeader() {
 
   return (
     <>
-      <LandingBanner />
       <FloatingNav
       
         navItems={navItems}

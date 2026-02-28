@@ -7,7 +7,6 @@ import {
   Globe, Zap, Shield, BarChart3, ArrowRight, CheckCircle, Clock, Users,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { LandingHeader } from "@/components/LandingHeader";
 import { LandingFooter } from "@/components/LandingFooter";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 
@@ -84,7 +83,6 @@ const additionalFeatures = [
 export default function FeaturesPageClient() {
   return (
     <div className="bg-white text-gray-900 antialiased overflow-x-hidden">
-      <LandingHeader />
 
       {/* Hero */}
       <section className="pt-28 md:pt-40 pb-16 md:pb-24 relative">
