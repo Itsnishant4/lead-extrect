@@ -82,7 +82,14 @@ export function LandingFooter() {
             <ul className="space-y-3 text-sm text-slate-500">
               <li><Link className="hover:text-indigo-600 transition-colors" href="/features">Features</Link></li>
               <li><Link className="hover:text-indigo-600 transition-colors" href="/use-cases">Use Cases</Link></li>
-              <li><Link className="hover:text-indigo-600 transition-colors" href="/#pricing">Pricing</Link></li>
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/subscription">Pricing</Link></li>
+            </ul>
+
+            <h3 className="font-bold text-indigo-950 mb-6 mt-8 text-sm uppercase tracking-wider">Top Industries</h3>
+            <ul className="space-y-3 text-sm text-slate-500">
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/leads/dentists">Dentists</Link></li>
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/leads/real-estate-agents">Real Estate</Link></li>
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/leads/restaurants">Restaurants</Link></li>
             </ul>
           </div>
           <div>
@@ -91,6 +98,13 @@ export function LandingFooter() {
               <li><Link className="hover:text-indigo-600 transition-colors" href="/company">About Us</Link></li>
               <li><Link className="hover:text-indigo-600 transition-colors" href="/blog">Blog</Link></li>
               <li><Link className="hover:text-indigo-600 transition-colors" href="/company">Contact</Link></li>
+            </ul>
+
+            <h3 className="font-bold text-indigo-950 mb-6 mt-8 text-sm uppercase tracking-wider">Top Cities</h3>
+            <ul className="space-y-3 text-sm text-slate-500">
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/leads/in/mumbai">Mumbai</Link></li>
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/leads/in/delhi">Delhi</Link></li>
+              <li><Link className="hover:text-indigo-600 transition-colors" href="/leads/in/bangalore">Bangalore</Link></li>
             </ul>
           </div>
           <div>
