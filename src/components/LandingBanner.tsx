@@ -28,7 +28,7 @@ export async function LandingBanner() {
         backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(0,0,0,0.1))'
       }}
     >
-      <div className="flex-1 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+      <div className="flex-1 flex flex-row items-center justify-center gap-2 sm:gap-4">
         <div>{renderText(banner.text)}</div>
         
         {banner.countdownEnd && (
