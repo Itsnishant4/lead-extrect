@@ -43,8 +43,10 @@ import { useAutomation } from '@/context/AutomationContext';
 
 export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
-  const { user } = useAutomation();
+  const { user, isLoadingUser, isFetchingUser } = useAutomation();
   const queryClient = useQueryClient();
+
+  const isActuallyLoading = isLoadingUser || (isFetchingUser && !user);
 
   const adminMenuItems = [
     {
@@ -140,13 +142,14 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
                 <SidebarMenuButton
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                  disabled={isActuallyLoading}
                 >
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                     <User className="size-4" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">{user?.name || 'Admin'}</span>
-                    <span className="truncate text-xs">{user?.email || ''}</span>
+                    <span className="truncate font-semibold">{isActuallyLoading ? 'Loading...' : (user?.name || 'Admin')}</span>
+                    <span className="truncate text-xs">{isActuallyLoading ? 'Please wait' : (user?.email || '')}</span>
                   </div>
                   <CaretUp className="ml-auto size-4" />
                 </SidebarMenuButton>

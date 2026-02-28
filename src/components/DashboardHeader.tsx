@@ -24,11 +24,14 @@ const navIcons = {
 } as const;
 
 export function DashboardHeader({ activePage }: DashboardHeaderProps) {
-  const { user, isLoadingUser } = useAutomation();
+  const { user, isLoadingUser, isFetchingUser } = useAutomation();
   const queryClient = useQueryClient();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Consider user as loading if either initial load is true, OR it's fetching and we don't have user yet (fresh login)
+  const isActuallyLoading = isLoadingUser || (isFetchingUser && !user);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -101,14 +104,14 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
           <div className="hidden md:flex items-center gap-2 shrink-0">
             <div className="relative" ref={dropdownRef}>
               <button
-                onClick={() => !isLoadingUser && setShowDropdown(!showDropdown)}
-                disabled={isLoadingUser}
-                className={`flex items-center gap-3 p-1 pr-3 rounded-full border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-white/5 transition-colors ${isLoadingUser ? 'opacity-70 cursor-not-allowed' : 'hover:bg-white dark:hover:bg-white/10'}`}
+                onClick={() => !isActuallyLoading && setShowDropdown(!showDropdown)}
+                disabled={isActuallyLoading}
+                className={`flex items-center gap-3 p-1 pr-3 rounded-full border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-white/5 transition-colors ${isActuallyLoading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-white dark:hover:bg-white/10'}`}
               >
                 <div className="w-8 h-8 rounded-full border-2 border-white dark:border-slate-700 shadow-sm bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-bold text-sm">
-                  {isLoadingUser ? '...' : (user?.name?.charAt(0)?.toUpperCase() || 'U')}
+                  {isActuallyLoading ? '...' : (user?.name?.charAt(0)?.toUpperCase() || 'U')}
                 </div>
-                {isLoadingUser ? (
+                {isActuallyLoading ? (
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Loading...</span>
                 ) : user ? (
                   <div className="text-left">
@@ -250,7 +253,7 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
           <p className="px-3 mb-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
             Account
           </p>
-          {isLoadingUser ? (
+          {isActuallyLoading ? (
             <div className="px-3 py-2.5 text-sm font-medium text-slate-400 dark:text-slate-500">
               Loading...
             </div>

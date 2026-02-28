@@ -17,12 +17,14 @@ import { signupAction } from "@/app/actions"
 import { toast } from "sonner"
 import { Eye, EyeSlash, Rocket, ShieldCheck, Users } from "phosphor-react"
 import { LoaderCircle } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 
 export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -43,6 +45,7 @@ export function SignupForm({
       const result = await signupAction(name, email, password)
       if (result.success) {
         toast.success("Account created successfully")
+        queryClient.invalidateQueries()
         router.push("/leads")
         router.refresh()
       } else {
@@ -101,6 +104,7 @@ export function SignupForm({
                     id="password"
                     type={showPassword ? "text" : "password"}
                     required
+                    placeholder="********"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isLoading}

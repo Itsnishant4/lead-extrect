@@ -16,12 +16,14 @@ import { loginAction } from "@/app/actions"
 import { toast } from "sonner"
 import { Eye, EyeSlash, Sparkle, ShieldCheck, Lightning } from "phosphor-react"
 import { LoaderCircle } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -35,6 +37,7 @@ export function LoginForm({
       const result = await loginAction(email, password)
       if (result.success) {
         toast.success("Logged in successfully")
+        queryClient.invalidateQueries()
         router.push("/leads")
         router.refresh()
       } else {

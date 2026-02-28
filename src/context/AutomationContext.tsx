@@ -43,6 +43,7 @@ interface AutomationContextType {
   isLoadingTasks: boolean;
   user: any;
   isLoadingUser: boolean;
+  isFetchingUser: boolean;
   refreshUser: () => Promise<void>;
   loadedSession: { name: string, niche: string, keywords: string[] } | null;
   loadKeywordSession: (name: string, niche: string, keywords: string[]) => void;
@@ -70,7 +71,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     taskName: '',
   });
 
-  const { data: user, isLoading: isLoadingUser, refetch: refreshUser } = useQuery({
+  const { data: user, isLoading: isLoadingUser, isFetching: isFetchingUser, refetch: refreshUser } = useQuery({
     queryKey: ['user'],
     queryFn: async () => {
       const res = await getUserAction();
@@ -255,6 +256,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       isLoadingTasks,
       user,
       isLoadingUser,
+      isFetchingUser,
       refreshUser: async () => { await refreshUser() },
       loadedSession,
       loadKeywordSession,
