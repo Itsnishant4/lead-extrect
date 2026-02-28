@@ -104,14 +104,14 @@ export default async function PricingPage() {
                     <Link 
                       href={isCustom ? (plan.whatsappUrl || '#') : '/signup'}
                       target={isCustom ? '_blank' : undefined}
-                      className={`w-full py-3 px-5 rounded-full text-sm font-bold text-center transition-all flex items-center justify-center gap-2 ${
+                      className={`w-full py-4 px-6 rounded-full font-bold text-center transition-all flex items-center justify-center gap-2 ${
                         isPopular
                           ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:opacity-90'
                           : 'bg-slate-900 text-white hover:bg-slate-800'
                       }`}
                     >
                       {isFree ? 'Start for free' : isCustom ? 'Contact Sales' : 'Get Started'}
-                      <ArrowRight size={14} />
+                      <ArrowRight size={16} />
                     </Link>
 
                     <div className="mt-8 space-y-6 flex-1">
