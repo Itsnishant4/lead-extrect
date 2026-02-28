@@ -1,5 +1,20 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  variable: "--font-playfair",
+  display: "swap",
+});
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { AutomationProvider } from "@/context/AutomationContext";
@@ -79,9 +94,6 @@ export const metadata: Metadata = {
     },
   },
   metadataBase: new URL("https://leadspotter.in"),
-  alternates: {
-    canonical: "/",
-  },
   icons: {
     icon: [
       { url: "/favicon/favicon.ico" },
@@ -106,14 +118,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${playfair.variable}`}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" />
         <link rel="preconnect" href="https://www.googletagmanager.com" />
       </head>
-      <body className="antialiased min-h-screen">
+      <body className="antialiased min-h-screen font-sans">
         <GoogleAnalytics />
 
         <QueryProvider>

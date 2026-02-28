@@ -14,6 +14,11 @@ export const FlipWords = ({
 }) => {
   const [currentWord, setCurrentWord] = useState(words[0]);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
+  const [isFirstRender, setIsFirstRender] = useState(true);
+
+  useEffect(() => {
+    setIsFirstRender(false);
+  }, []);
 
   // thanks for the fix Julian - https://github.com/Julian-AT
   const startAnimation = useCallback(() => {
@@ -36,10 +41,7 @@ export const FlipWords = ({
       }}
     >
       <motion.div
-        initial={{
-          opacity: 0,
-          y: 10,
-        }}
+        initial={isFirstRender ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
         animate={{
           opacity: 1,
           y: 0,
@@ -66,7 +68,7 @@ export const FlipWords = ({
         {currentWord.split(" ").map((word, wordIndex) => (
           <motion.span
             key={word + wordIndex}
-            initial={{ opacity: 0, y: 10 }}
+            initial={isFirstRender ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
               delay: wordIndex * 0.3,
@@ -77,7 +79,7 @@ export const FlipWords = ({
             {word.split("").map((letter, letterIndex) => (
               <motion.span
                 key={word + letterIndex}
-                initial={{ opacity: 0, y: 10 }}
+                initial={isFirstRender ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
                   delay: wordIndex * 0.3 + letterIndex * 0.05,

@@ -36,8 +36,8 @@
   --sidebar-accent-foreground: #6366f1;
   --sidebar-border: #e0e7ff;
   --sidebar-ring: #6366f1;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-serif: var(--font-playfair), Georgia, serif;
   --font-mono: Menlo, monospace;
   --radius: 0.625rem;
   --spacing: 0.25rem;
@@ -78,8 +78,8 @@
   --sidebar-accent-foreground: #818cf8;
   --sidebar-border: #2e2754;
   --sidebar-ring: #818cf8;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-serif: var(--font-playfair), Georgia, serif;
   --font-mono: Menlo, monospace;
   --radius: 0.625rem;
 }
@@ -131,11 +131,11 @@
 
 /* ── Typography ── */
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
 }
 
 .serif-font {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--font-playfair), Georgia, serif;
 }
 
 /* ── Glassmorphic card ── */
