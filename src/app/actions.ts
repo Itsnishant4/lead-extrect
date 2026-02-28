@@ -14,6 +14,7 @@ import { PlanService } from '@/services/plan.service';
 import { SubscriptionService } from '@/services/subscription.service';
 import { ProxyService } from '@/services/proxy.service';
 import { SettingsService } from '@/services/settings.service';
+import { SiteConfigService } from '@/services/siteconfig.service';
 import { AuditService } from '@/services/audit.service';
 import { KeywordService } from '@/services/keyword.service';
 import { ListService } from '@/services/list.service';
@@ -1001,6 +1002,36 @@ export async function rejectPaymentAdminAction(transactionId: number) {
   try {
     await AdminService.checkAdmin(session.id);
     await SubscriptionService.rejectPayment(transactionId);
+    return { success: true };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+// --- Banner / Site Config Actions ---
+
+export async function getBannerAction() {
+  try {
+    const data = await SiteConfigService.getBanner();
+    return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function updateBannerAdminAction(data: {
+  enabled: boolean;
+  text: string;
+  buttonText: string;
+  buttonUrl: string;
+  bgColor: string;
+}) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    await SiteConfigService.setBanner(data);
+    revalidatePath('/');
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);

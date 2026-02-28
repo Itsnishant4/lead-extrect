@@ -68,12 +68,14 @@ interface FormState {
   name: string;
   description: string;
   price: number;
+  discount: number;
   period: PlanPeriod;
   leadsCredits: number;
   features: string[];
   unavailableFeatures: string[];
   whatsappUrl: string;
   badge: string;
+  sortOrder: number;
   isActive: boolean;
 }
 
@@ -81,12 +83,14 @@ const defaultForm: FormState = {
   name: "",
   description: "",
   price: 0,
+  discount: 0,
   period: "month",
   leadsCredits: 0,
   features: [],
   unavailableFeatures: [],
   whatsappUrl: "",
   badge: "",
+  sortOrder: 0,
   isActive: true,
 };
 
@@ -155,12 +159,14 @@ export default function AdminPlansPage() {
       name: plan.name || "",
       description: plan.description || "",
       price: plan.price || 0,
+      discount: plan.discount || 0,
       period: plan.period || "month",
       leadsCredits: plan.leadsCredits || 0,
       features: plan.features || [],
       unavailableFeatures: plan.unavailableFeatures || [],
       whatsappUrl: plan.whatsappUrl || "",
       badge: plan.badge || "",
+      sortOrder: plan.sortOrder ?? 0,
       isActive: plan.isActive ?? true,
     });
     setIsDialogOpen(true);
@@ -351,7 +357,19 @@ export default function AdminPlansPage() {
                           ) : plan.period === 'custom' ? (
                             <span className="text-violet-600">Custom</span>
                           ) : (
-                            <>₹{plan.price}</>
+                            <div className="flex flex-col">
+                              <div className="flex items-baseline gap-1.5">
+                                <span>₹{plan.price}</span>
+                                {plan.discount > 0 && plan.discount > plan.price && (
+                                  <span className="text-xs text-muted-foreground line-through font-normal">₹{plan.discount}</span>
+                                )}
+                              </div>
+                              {plan.discount > 0 && plan.discount > plan.price && (
+                                <span className="text-[10px] font-bold text-emerald-600">
+                                  {Math.round(((plan.discount - plan.price) / plan.discount) * 100)}% off
+                                </span>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                         <TableCell>
@@ -483,7 +501,7 @@ export default function AdminPlansPage() {
               </div>
 
               {/* Price, Period, Credits, Badge */}
-              <div className={`grid gap-4 p-4 bg-muted/10 rounded-2xl ${isFreeOrCustom ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
+              <div className={`grid gap-4 p-4 bg-muted/10 rounded-2xl ${isFreeOrCustom ? 'md:grid-cols-3' : 'md:grid-cols-3'}`}>
                 {!isFreeOrCustom && (
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400">Price (INR)</Label>
@@ -496,6 +514,20 @@ export default function AdminPlansPage() {
                       placeholder="999"
                       className="h-9 text-sm bg-background border-none shadow-sm"
                     />
+                  </div>
+                )}
+                {!isFreeOrCustom && (
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">Original Price (Discount)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={formData.discount || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, discount: parseInt(e.target.value) || 0 }))}
+                      placeholder="1499 (strikethrough price, 0 = no discount)"
+                      className="h-9 text-sm bg-background border-none shadow-sm"
+                    />
+                    <p className="text-[9px] text-muted-foreground">Set higher than price to show as crossed-out original price</p>
                   </div>
                 )}
                 <div className="space-y-2">
@@ -532,6 +564,18 @@ export default function AdminPlansPage() {
                     placeholder="Most Popular"
                     className="h-9 text-sm bg-background border-none shadow-sm"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Sort Order</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={formData.sortOrder}
+                    onChange={(e) => setFormData(prev => ({ ...prev, sortOrder: parseInt(e.target.value) || 0 }))}
+                    placeholder="0 = first"
+                    className="h-9 text-sm bg-background border-none shadow-sm"
+                  />
+                  <p className="text-[9px] text-muted-foreground">Lower number = shown first</p>
                 </div>
               </div>
 

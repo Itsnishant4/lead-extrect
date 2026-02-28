@@ -220,7 +220,17 @@ export default function SubscriptionPage() {
                           </>
                         ) : (
                           <>
-                            <span className="text-4xl font-bold text-slate-900 dark:text-foreground">₹{plan.price?.toLocaleString()}</span>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-4xl font-bold text-slate-900 dark:text-foreground">₹{plan.price?.toLocaleString()}</span>
+                              {plan.discount > 0 && plan.discount > plan.price && (
+                                <span className="text-lg text-slate-400 dark:text-slate-500 line-through font-medium">₹{plan.discount?.toLocaleString()}</span>
+                              )}
+                            </div>
+                            {plan.discount > 0 && plan.discount > plan.price && (
+                              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                {Math.round(((plan.discount - plan.price) / plan.discount) * 100)}% off
+                              </span>
+                            )}
                             <span className="text-slate-400 dark:text-slate-500 text-sm font-medium ml-1">
                               {plan.period === 'month' ? '/month' : ''}
                             </span>

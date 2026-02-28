@@ -245,12 +245,14 @@ export const plans = pgTable('plans', {
   name: text('name').notNull(),
   description: text('description'),
   price: integer('price').notNull(), // Amount in INR (0 for free)
+  discount: integer('discount').default(0), // Original price before discount (0 = no discount)
   period: text('period').notNull(), // 'month', 'one-time', 'free', 'custom'
   leadsCredits: integer('leads_credits').notNull(),
   features: jsonb('features').$type<string[]>(),
   unavailableFeatures: jsonb('unavailable_features').$type<string[]>(),
   whatsappUrl: text('whatsapp_url'),
   badge: text('badge'),
+  sortOrder: integer('sort_order').default(0),
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
@@ -265,5 +267,11 @@ export const transactions = pgTable('transactions', {
   gatewayOrderId: text('gateway_order_id'),
   utr: text('utr'),
   createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const siteConfig = pgTable('site_config', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

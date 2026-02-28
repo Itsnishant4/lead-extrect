@@ -1,5 +1,6 @@
 import React from "react";
 import { LandingHeader } from "@/components/LandingHeader";
+import { LandingBanner } from "@/components/LandingBanner";
 import { LandingFooter } from "@/components/LandingFooter";
 import { HomeClient } from "@/components/HomeClient";
 import JsonLd from "@/components/JsonLd";
@@ -22,6 +23,7 @@ export default function Home() {
   return (
     <div className="bg-white text-gray-900 antialiased overflow-x-hidden">
       <JsonLd />
+      <LandingBanner />
       <LandingHeader />
       <HomeClient />
       <LandingFooter />

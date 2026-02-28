@@ -13,7 +13,8 @@ import {
   CaretUp,
   SignOut,
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  Megaphone
 } from 'phosphor-react';
 import { logoutAction } from '@/app/actions';
 import { toast } from 'sonner';
@@ -68,6 +69,11 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
       title: 'Payment Log',
       icon: CreditCard,
       url: '/admin/payments',
+    },
+    {
+      title: 'Banner Settings',
+      icon: Megaphone,
+      url: '/admin/banner',
     },
     {
       title: 'System Logs',
