@@ -846,15 +846,19 @@ export async function triggerTaskAutomationAction(taskId: number) {
     const task = await TaskService.getTask(session.id, taskId);
     if (!task) return { success: false, error: 'Task not found' };
 
-    // Concurrent limit check
-    const maxConcurrent = await SiteConfigService.getMaxConcurrentTasks();
+    // Concurrent limit check based on user's plan
+    const user = await UserService.getUser(session.id);
+    const planType = user?.planType || 'free';
+    const plan = await PlanService.getPlanByName(planType);
+    const maxConcurrent = plan?.maxConcurrentTasks || 1;
+
     const activeCount = await TaskService.countActiveTasks(session.id);
     // Don't count the current task if it's already pending (we're re-triggering it)
     const otherActive = task.status === 'pending' || task.status === 'running' ? activeCount - 1 : activeCount;
     if (otherActive >= maxConcurrent) {
       return { 
         success: false, 
-        error: `You can run only ${maxConcurrent} campaigns at a time. Please wait for a running campaign to finish.`,
+        error: `Your current plan (${planType}) allows only ${maxConcurrent} concurrent task${maxConcurrent === 1 ? '' : 's'}. Please wait for a running task to finish or upgrade.`,
         limitType: 'concurrent'
       };
     }
@@ -1052,26 +1056,4 @@ export async function updateBannerAdminAction(data: {
   }
 }
 
-// --- Max Concurrent Tasks Config ---
 
-export async function getMaxConcurrentTasksAction() {
-  try {
-    const limit = await SiteConfigService.getMaxConcurrentTasks();
-    return { success: true, data: limit };
-  } catch (error: any) {
-    return handleActionError(error);
-  }
-}
-
-export async function updateMaxConcurrentTasksAdminAction(limit: number) {
-  const session = await getSession();
-  if (!session) return { success: false, error: 'Unauthorized' };
-  try {
-    await AdminService.checkAdmin(session.id);
-    if (limit < 1 || limit > 50) return { success: false, error: 'Limit must be between 1 and 50' };
-    await SiteConfigService.setMaxConcurrentTasks(limit);
-    return { success: true };
-  } catch (error: any) {
-    return handleActionError(error);
-  }
-}

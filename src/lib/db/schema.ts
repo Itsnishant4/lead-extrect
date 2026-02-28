@@ -249,6 +249,7 @@ export const plans = pgTable('plans', {
   discount: integer('discount').default(0), // Original price before discount (0 = no discount)
   period: text('period').notNull(), // 'month', 'one-time', 'free', 'custom'
   leadsCredits: integer('leads_credits').notNull(),
+  maxConcurrentTasks: integer('max_concurrent_tasks').default(1),
   features: jsonb('features').$type<string[]>(),
   unavailableFeatures: jsonb('unavailable_features').$type<string[]>(),
   whatsappUrl: text('whatsapp_url'),

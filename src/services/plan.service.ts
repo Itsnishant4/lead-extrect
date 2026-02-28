@@ -16,6 +16,14 @@ export class PlanService {
     return result[0];
   }
 
+  static async getPlanByName(name: string) {
+    // Note: Since users.planType might be lowercase, we need a case-insensitive check
+    // Since drizzle doesn't have an out-of-the-box ILIKE that's trivial without sql``,
+    // we can just fetch all and filter, or use sql.
+    const all = await this.getAllPlansAdmin();
+    return all.find(p => p.name.toLowerCase() === name.toLowerCase());
+  }
+
   static async createPlan(data: any) {
     const result = await db.insert(plans).values({
       name: data.name,
@@ -24,6 +32,7 @@ export class PlanService {
       discount: data.discount ?? 0,
       period: data.period,
       leadsCredits: data.leadsCredits,
+      maxConcurrentTasks: data.maxConcurrentTasks ?? 1,
       features: data.features || [],
       unavailableFeatures: data.unavailableFeatures || [],
       whatsappUrl: data.whatsappUrl || null,
@@ -42,6 +51,7 @@ export class PlanService {
     if (data.discount !== undefined) updateData.discount = data.discount;
     if (data.period !== undefined) updateData.period = data.period;
     if (data.leadsCredits !== undefined) updateData.leadsCredits = data.leadsCredits;
+    if (data.maxConcurrentTasks !== undefined) updateData.maxConcurrentTasks = data.maxConcurrentTasks;
     if (data.features !== undefined) updateData.features = data.features;
     if (data.unavailableFeatures !== undefined) updateData.unavailableFeatures = data.unavailableFeatures;
     if (data.whatsappUrl !== undefined) updateData.whatsappUrl = data.whatsappUrl;

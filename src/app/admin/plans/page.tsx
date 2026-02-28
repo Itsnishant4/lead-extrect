@@ -71,6 +71,7 @@ interface FormState {
   discount: number;
   period: PlanPeriod;
   leadsCredits: number;
+  maxConcurrentTasks: number;
   features: string[];
   unavailableFeatures: string[];
   whatsappUrl: string;
@@ -86,6 +87,7 @@ const defaultForm: FormState = {
   discount: 0,
   period: "month",
   leadsCredits: 0,
+  maxConcurrentTasks: 1,
   features: [],
   unavailableFeatures: [],
   whatsappUrl: "",
@@ -129,6 +131,7 @@ export default function AdminPlansPage() {
       price: 0,
       period: "free",
       leadsCredits: 500,
+      maxConcurrentTasks: 1,
       features: ["Up to 500 leads", "Localized search by area", "Basic email extraction", "Standard support"],
       unavailableFeatures: ["Priority support", "Bulk export history", "Advanced social enrichment", "API access"],
       badge: "",
@@ -145,6 +148,7 @@ export default function AdminPlansPage() {
       price: 0,
       period: "custom",
       leadsCredits: 999999,
+      maxConcurrentTasks: 5,
       features: ["Unlimited leads extraction", "Full API access", "Dedicated account manager", "Custom integration support"],
       unavailableFeatures: [],
       whatsappUrl: "https://wa.me/919773005701?text=Hi, I am interested in the Enterprise plan.",
@@ -162,6 +166,7 @@ export default function AdminPlansPage() {
       discount: plan.discount || 0,
       period: plan.period || "month",
       leadsCredits: plan.leadsCredits || 0,
+      maxConcurrentTasks: plan.maxConcurrentTasks ?? 1,
       features: plan.features || [],
       unavailableFeatures: plan.unavailableFeatures || [],
       whatsappUrl: plan.whatsappUrl || "",
@@ -323,6 +328,7 @@ export default function AdminPlansPage() {
                       <TableHead>Price</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Credits</TableHead>
+                      <TableHead>Concurrency</TableHead>
                       <TableHead>Features</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -383,6 +389,11 @@ export default function AdminPlansPage() {
                         <TableCell>
                           <Badge variant="secondary" className="tabular-nums">
                             {plan.period === 'custom' ? 'Unlimited' : `${plan.leadsCredits?.toLocaleString()} leads`}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="tabular-nums font-mono text-xs text-slate-500 bg-slate-50">
+                            {plan.maxConcurrentTasks || 1} {plan.maxConcurrentTasks === 1 ? 'task' : 'tasks'}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -553,6 +564,18 @@ export default function AdminPlansPage() {
                     value={formData.leadsCredits || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, leadsCredits: parseInt(e.target.value) || 0 }))}
                     placeholder="5000"
+                    className="h-9 text-sm bg-background border-none shadow-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Max Concurrent Tasks</Label>
+                  <Input
+                    type="number"
+                    required
+                    min={1}
+                    value={formData.maxConcurrentTasks || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, maxConcurrentTasks: parseInt(e.target.value) || 1 }))}
+                    placeholder="1"
                     className="h-9 text-sm bg-background border-none shadow-sm"
                   />
                 </div>

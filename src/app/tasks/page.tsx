@@ -196,6 +196,9 @@ export default function TasksPage() {
                           <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
                             <Clock size={12} className="text-slate-300" /> {task.updatedAt ? format(new Date(task.updatedAt), 'MMM dd, HH:mm') : 'N/A'}
                           </span>
+                          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
+                            • {task.totalLeads || 0} Leads Extracted
+                          </span>
                         </div>
                         {/* Status Reason */}
                         {task.statusReason && (
