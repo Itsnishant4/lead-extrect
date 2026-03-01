@@ -408,15 +408,29 @@ export default function SubscriptionPage() {
         )}
       </main>
 
-      {/* Payment iframe overlay - full screen */}
+      {/* Payment iframe overlay */}
       {paymentUrl && (
-        <div className="fixed inset-0 z-[100] bg-white dark:bg-background animate-in fade-in duration-200">
-          <iframe
-            ref={iframeRef}
-            src={paymentUrl}
-            className="w-full h-full border-none"
-            allow="payment"
-          />
+        <div className="fixed inset-0 z-[100] bg-indigo-900/30 dark:bg-indigo-950/60 backdrop-blur-md animate-in fade-in duration-200 flex items-center justify-center p-4 md:p-8">
+          <div className="relative w-full max-w-4xl h-[90vh] bg-white dark:bg-slate-950 rounded-3xl overflow-hidden shadow-2xl shadow-indigo-500/20 border border-indigo-100 dark:border-indigo-900/50">
+            {/* Close button just in case the user wants to cancel before paying */}
+            <button 
+              onClick={() => {
+                setPaymentUrl(null);
+                setCurrentOrderId(null);
+                setIsCheckingOut(null);
+              }}
+              className="absolute top-4 right-4 z-10 p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-500"
+            >
+              <X size={20} />
+            </button>
+            <iframe
+              ref={iframeRef}
+              src={paymentUrl}
+              className="w-full h-full border-none"
+              allow="payment"
+              style={{ backgroundColor: 'transparent' }}
+            />
+          </div>
         </div>
       )}
 
