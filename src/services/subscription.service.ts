@@ -57,6 +57,11 @@ export class SubscriptionService {
     return signature === expectedSignature;
   }
 
+  static async getOrderStatus(orderId: string) {
+    const tx = await db.select({ status: transactions.status }).from(transactions).where(eq(transactions.gatewayOrderId, orderId)).limit(1).then(r => r[0]);
+    return tx?.status || null;
+  }
+
   static async handleSuccessfulPayment(data: any) {
     const { order_id, amount, utr } = data;
 

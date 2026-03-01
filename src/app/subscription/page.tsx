@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAutomation } from '@/context/AutomationContext';
 import { DashboardHeader } from '@/components/DashboardHeader';
-import { getPlansAction, createCheckoutSessionAction } from '@/app/actions';
+import { getPlansAction, createCheckoutSessionAction, checkOrderStatusAction } from '@/app/actions';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -14,6 +14,7 @@ import {
 export default function SubscriptionPage() {
   const { user, isLoadingUser: isLoading, refreshUser } = useAutomation();
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState<number | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -29,6 +30,7 @@ export default function SubscriptionPage() {
   const handleMessage = useCallback((event: MessageEvent) => {
     if (event.data?.type === 'PAYMENT_SUCCESS') {
       setPaymentUrl(null);
+      setCurrentOrderId(null);
       setIsCheckingOut(null);
       toast.success('Payment successful! Your plan has been activated.');
       refreshUser();
@@ -41,22 +43,40 @@ export default function SubscriptionPage() {
   }, [handleMessage]);
 
   useEffect(() => {
-    if (!paymentUrl) return;
-    const interval = setInterval(() => {
+    if (!paymentUrl || !currentOrderId) return;
+    
+    const interval = setInterval(async () => {
+      // 1. First, still try checking the iframe location fallback
       try {
         const iframe = iframeRef.current;
         if (iframe?.contentWindow?.location?.href?.includes('/success')) {
           setPaymentUrl(null);
+          setCurrentOrderId(null);
           setIsCheckingOut(null);
           toast.success('Payment successful! Your plan has been activated.');
           refreshUser();
+          return;
         }
       } catch {
         // Cross-origin restriction - expected
       }
-    }, 1000);
+
+      // 2. Safely poll the backend for order status
+      try {
+        const statusRes = await checkOrderStatusAction(currentOrderId);
+        if (statusRes.success && 'status' in statusRes && statusRes.status === 'paid') {
+          setPaymentUrl(null);
+          setCurrentOrderId(null);
+          setIsCheckingOut(null);
+          toast.success('Payment successful! Your plan has been activated.');
+          refreshUser();
+        }
+      } catch (err) {
+        console.error('Failed to check order status', err);
+      }
+    }, 2000);
     return () => clearInterval(interval);
-  }, [paymentUrl, refreshUser]);
+  }, [paymentUrl, currentOrderId, refreshUser]);
 
   const handleCheckout = async (plan: any) => {
     // Custom plan -> redirect to WhatsApp
@@ -78,6 +98,7 @@ export default function SubscriptionPage() {
       const res = await createCheckoutSessionAction(plan.id);
       if (res.success && (res as any).data?.paymentUrl) {
         setPaymentUrl((res as any).data.paymentUrl);
+        setCurrentOrderId((res as any).data.orderId);
       } else {
         const errorMsg = (res as any).error;
         if (errorMsg === 'Unauthorized') {

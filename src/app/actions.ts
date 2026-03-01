@@ -983,6 +983,17 @@ export async function createCheckoutSessionAction(planId: number) {
   }
 }
 
+export async function checkOrderStatusAction(orderId: string) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    const status = await SubscriptionService.getOrderStatus(orderId);
+    return { success: true, status };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
 export async function getPaymentHistoryAction() {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };
