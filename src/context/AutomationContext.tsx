@@ -209,14 +209,9 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    const limits: Record<string, number> = {
-      free: 500,
-      pro: 5000,
-      premium: Infinity
-    };
-    const baseLimit = limits[user?.planType || 'free'] ?? 500;
+    const isUnlimited = user?.planType === 'premium' || user?.planType === 'enterprise';
     const bonus = user?.bonusCredits || 0;
-    const currentLimit = baseLimit === Infinity ? Infinity : baseLimit + bonus;
+    const currentLimit = isUnlimited ? Infinity : 500 + bonus;
     const used = user?.leadsExtracted || 0;
     const exhausted = currentLimit !== Infinity && used >= currentLimit;
     if (exhausted) {

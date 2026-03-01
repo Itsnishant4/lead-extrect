@@ -145,10 +145,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs font-medium text-muted-foreground  tracking-wider">Usage</span>
               {(() => {
-                const limits: Record<string, number> = { 'free': 500, 'pro': 5000, 'premium': Infinity };
-                const baseLimit = limits[user.planType || 'free'] || 500;
+                const isUnlimited = user.planType === 'premium' || user.planType === 'enterprise';
                 const bonus = (user as any).bonusCredits || 0;
-                const total = baseLimit === Infinity ? Infinity : baseLimit + bonus;
+                const total = isUnlimited ? Infinity : 500 + bonus;
                 
                 return (
                   <span className="text-xs font-bold text-primary">
@@ -158,10 +157,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               })()}
             </div>
             {(() => {
-                const limits: Record<string, number> = { 'free': 500, 'pro': 5000, 'premium': Infinity };
-                const baseLimit = limits[user.planType || 'free'] || 500;
+                const isUnlimited = user.planType === 'premium' || user.planType === 'enterprise';
                 const bonus = (user as any).bonusCredits || 0;
-                const total = baseLimit === Infinity ? Infinity : baseLimit + bonus;
+                const total = isUnlimited ? Infinity : 500 + bonus;
                 const percent = total === Infinity ? 0 : Math.min(((user.leadsExtracted || 0) / total) * 100, 100);
                 
                 return <Progress value={percent} className="h-1.5" />;

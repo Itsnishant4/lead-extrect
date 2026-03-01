@@ -5,9 +5,22 @@ import { CheckCircle } from "lucide-react"
 
 export default function PaymentSuccessPage() {
   useEffect(() => {
-    // Notify parent window (iframe host) that payment succeeded
     if (window.parent !== window) {
+      // Notify parent window (iframe host) that payment succeeded
       window.parent.postMessage({ type: "PAYMENT_SUCCESS" }, "*");
+      // Fallback: try to navigate the parent directly
+      setTimeout(() => {
+        try {
+          window.parent.location.href = '/subscription';
+        } catch (e) {
+          console.error(e);
+        }
+      }, 1500);
+    } else {
+      // If opened in top window, redirect to dashboard
+      setTimeout(() => {
+        window.location.href = '/subscription';
+      }, 2000);
     }
   }, []);
 

@@ -905,6 +905,11 @@ export async function sendTaskExportToTelegramAction(taskId: number) {
 }
 
 export async function processTaskStepAction(taskId: number, userId: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  if (!session.is_admin && session.id !== userId) {
+    return { success: false, error: 'Forbidden' };
+  }
   return await TaskService.processTaskStep(taskId, userId);
 }
 

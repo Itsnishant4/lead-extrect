@@ -12,10 +12,9 @@ import {
 export default function ProfilePage() {
   const { user, isLoadingUser: isLoading } = useAutomation();
 
-  const limits: Record<string, number> = { free: 500, pro: 5000, premium: Infinity };
-  const baseLimit = limits[user?.planType || 'free'];
+  const isUnlimited = user?.planType === 'premium' || user?.planType === 'enterprise';
   const bonusCredits = (user as any)?.bonusCredits || 0;
-  const currentLimit = baseLimit === Infinity ? Infinity : baseLimit + bonusCredits;
+  const currentLimit = isUnlimited ? Infinity : 500 + bonusCredits;
   const usagePercent = currentLimit === Infinity ? 0 : Math.min(((user?.leadsExtracted || 0) / currentLimit) * 100, 100);
 
   const getPlanIcon = () => {

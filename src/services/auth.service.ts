@@ -81,7 +81,7 @@ export class AuthService {
     return await db.transaction(async (tx) => {
       const userRows = await tx.select().from(users).where(eq(users.email, email)).for('update');
       const user = userRows[0];
-      if (!user) return true;
+      if (!user) throw new Error("You are not registered");
 
       if (user.isSuspended) {
         throw new Error('Account suspended. Contact support.');

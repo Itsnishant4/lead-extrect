@@ -60,28 +60,33 @@ export class SubscriptionService {
   static async handleSuccessfulPayment(data: any) {
     const { order_id, amount, utr } = data;
 
-    const transaction = await db.select().from(transactions).where(eq(transactions.gatewayOrderId, order_id)).limit(1).then(res => res[0]);
-    if (!transaction) throw new Error('Transaction not found');
-    if (transaction.status === 'paid') return; // Already processed
+    await db.transaction(async (tx) => {
+      const transactionRows = await tx.select().from(transactions).where(eq(transactions.gatewayOrderId, order_id)).for('update').limit(1);
+      const transaction = transactionRows[0];
+      
+      if (!transaction) throw new Error('Transaction not found');
+      if (transaction.status === 'paid') return; // Already processed
 
-    const plan = await db.select().from(plans).where(eq(plans.id, transaction.planId!)).limit(1).then(res => res[0]);
-    if (!plan) throw new Error('Plan not found');
+      const planRows = await tx.select().from(plans).where(eq(plans.id, transaction.planId!)).limit(1);
+      const plan = planRows[0];
+      if (!plan) throw new Error('Plan not found');
 
-    // Update transaction
-    await db.update(transactions).set({
-      status: 'paid',
-      utr: utr,
-      updatedAt: new Date(),
-    }).where(eq(transactions.id, transaction.id));
+      // Update transaction
+      await tx.update(transactions).set({
+        status: 'paid',
+        utr: utr,
+        updatedAt: new Date(),
+      }).where(eq(transactions.id, transaction.id));
 
-    // Update user credits and plan
-    await db.update(users).set({
-      planType: plan.name.toLowerCase(),
-      bonusCredits: sql`COALESCE(${users.bonusCredits}, 0) + ${plan.leadsCredits}`,
-      subscriptionExpiry: plan.period === 'month' 
-        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) 
-        : null,
-    }).where(eq(users.id, transaction.userId!));
+      // Update user credits and plan
+      await tx.update(users).set({
+        planType: plan.name.toLowerCase(),
+        bonusCredits: sql`COALESCE(${users.bonusCredits}, 0) + ${plan.leadsCredits}`,
+        subscriptionExpiry: plan.period === 'month' 
+          ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) 
+          : null,
+      }).where(eq(users.id, transaction.userId!));
+    });
   }
 
   static async getPaymentHistory(userId: number) {
@@ -131,27 +136,31 @@ export class SubscriptionService {
   }
 
   static async acceptPayment(transactionId: number) {
-    const tx = await db.select().from(transactions).where(eq(transactions.id, transactionId)).limit(1).then(r => r[0]);
-    if (!tx) throw new Error('Transaction not found');
-    if (tx.status === 'paid') throw new Error('Transaction already paid');
+    await db.transaction(async (txDB) => {
+      const txRows = await txDB.select().from(transactions).where(eq(transactions.id, transactionId)).for('update').limit(1);
+      const tx = txRows[0];
+      if (!tx) throw new Error('Transaction not found');
+      if (tx.status === 'paid') throw new Error('Transaction already paid');
 
-    const plan = await db.select().from(plans).where(eq(plans.id, tx.planId!)).limit(1).then(r => r[0]);
-    if (!plan) throw new Error('Plan not found');
+      const planRows = await txDB.select().from(plans).where(eq(plans.id, tx.planId!)).limit(1);
+      const plan = planRows[0];
+      if (!plan) throw new Error('Plan not found');
 
-    // Mark transaction as paid
-    await db.update(transactions).set({
-      status: 'paid',
-      updatedAt: new Date(),
-    }).where(eq(transactions.id, transactionId));
+      // Mark transaction as paid
+      await txDB.update(transactions).set({
+        status: 'paid',
+        updatedAt: new Date(),
+      }).where(eq(transactions.id, transactionId));
 
-    // Update user credits and plan
-    await db.update(users).set({
-      planType: plan.name.toLowerCase(),
-      bonusCredits: sql`COALESCE(bonus_credits, 0) + ${plan.leadsCredits}`,
-      subscriptionExpiry: plan.period === 'month'
-        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        : null,
-    }).where(eq(users.id, tx.userId!));
+      // Update user credits and plan
+      await txDB.update(users).set({
+        planType: plan.name.toLowerCase(),
+        bonusCredits: sql`COALESCE(bonus_credits, 0) + ${plan.leadsCredits}`,
+        subscriptionExpiry: plan.period === 'month'
+          ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          : null,
+      }).where(eq(users.id, tx.userId!));
+    });
   }
 
   static async rejectPayment(transactionId: number) {
