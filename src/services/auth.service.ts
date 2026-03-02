@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/index';
-import { users } from '@/lib/db/schema';
+import { users, plans } from '@/lib/db/schema';
 import { eq, sql, and } from 'drizzle-orm';
 import { hashPassword, verifyPassword, signToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
@@ -16,10 +16,20 @@ export class AuthService {
 
     const hashedPassword = await hashPassword(password);
 
+    // Look up the free plan from DB to get initial credits
+    const freePlan = await db.select({ leadsCredits: plans.leadsCredits })
+      .from(plans)
+      .where(and(eq(plans.name, 'Free'), eq(plans.isActive, true)))
+      .limit(1)
+      .then(r => r[0]);
+
+    const initialCredits = freePlan?.leadsCredits || 0;
+
     const result = await db.insert(users).values({
       name,
       email,
       password: hashedPassword,
+      bonusCredits: initialCredits,
     }).returning({ id: users.id });
 
     const userId = result[0].id;

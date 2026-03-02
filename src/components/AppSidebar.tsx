@@ -147,7 +147,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               {(() => {
                 const isUnlimited = user.planType === 'premium' || user.planType === 'enterprise';
                 const bonus = (user as any).bonusCredits || 0;
-                const total = isUnlimited ? Infinity : 500 + bonus;
+                const total = isUnlimited ? Infinity : bonus;
                 
                 return (
                   <span className="text-xs font-bold text-primary">
@@ -159,7 +159,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             {(() => {
                 const isUnlimited = user.planType === 'premium' || user.planType === 'enterprise';
                 const bonus = (user as any).bonusCredits || 0;
-                const total = isUnlimited ? Infinity : 500 + bonus;
+                const total = isUnlimited ? Infinity : bonus;
                 const percent = total === Infinity ? 0 : Math.min(((user.leadsExtracted || 0) / total) * 100, 100);
                 
                 return <Progress value={percent} className="h-1.5" />;

@@ -211,7 +211,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
 
     const isUnlimited = user?.planType === 'premium' || user?.planType === 'enterprise';
     const bonus = user?.bonusCredits || 0;
-    const currentLimit = isUnlimited ? Infinity : 500 + bonus;
+    const currentLimit = isUnlimited ? Infinity : bonus;
     const used = user?.leadsExtracted || 0;
     const exhausted = currentLimit !== Infinity && used >= currentLimit;
     if (exhausted) {

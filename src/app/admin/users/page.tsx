@@ -298,10 +298,10 @@ export default function AdminUsersPage() {
                         <TableCell>
                           <div className="flex flex-col gap-1">
                             <span className="text-xs font-bold">
-                              {user.leadsExtracted?.toLocaleString() || 0} / {user.planType === 'premium' ? 'Unlimited' : (500 + (user.bonusCredits || 0)).toLocaleString()}
+                              {user.leadsExtracted?.toLocaleString() || 0} / {user.planType === 'premium' || user.planType === 'enterprise' ? 'Unlimited' : (user.bonusCredits || 0).toLocaleString()}
                             </span>
                             <Progress
-                              value={user.planType === 'premium' ? 0 : Math.min(((user.leadsExtracted || 0) / (500 + (user.bonusCredits || 0))) * 100, 100)}
+                              value={user.planType === 'premium' || user.planType === 'enterprise' ? 0 : Math.min(((user.leadsExtracted || 0) / Math.max(user.bonusCredits || 1, 1)) * 100, 100)}
                               className="h-1.5 w-24"
                             />
                           </div>

@@ -118,7 +118,7 @@ export default function SubscriptionPage() {
   const usedLeads = user?.leadsExtracted || 0;
   const bonusCredits = user?.bonusCredits || 0;
   const isUnlimited = user?.planType === 'premium' || user?.planType === 'enterprise';
-  const limit = isUnlimited ? Infinity : 500 + bonusCredits;
+  const limit = isUnlimited ? Infinity : bonusCredits;
   const remaining = limit === Infinity ? Infinity : Math.max(limit - usedLeads, 0);
   const usagePercent = limit === Infinity ? 0 : Math.min((usedLeads / limit) * 100, 100);
 

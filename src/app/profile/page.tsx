@@ -14,7 +14,7 @@ export default function ProfilePage() {
 
   const isUnlimited = user?.planType === 'premium' || user?.planType === 'enterprise';
   const bonusCredits = (user as any)?.bonusCredits || 0;
-  const currentLimit = isUnlimited ? Infinity : 500 + bonusCredits;
+  const currentLimit = isUnlimited ? Infinity : bonusCredits;
   const usagePercent = currentLimit === Infinity ? 0 : Math.min(((user?.leadsExtracted || 0) / currentLimit) * 100, 100);
 
   const getPlanIcon = () => {
