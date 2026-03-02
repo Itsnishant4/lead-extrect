@@ -24,7 +24,6 @@ export class AuthService {
         or(
           eq(plans.period, 'free'),
           sql`${plans.name} ILIKE '%free%'`,
-          eq(plans.price, 0)
         ),
         eq(plans.isActive, true)
       ))
@@ -160,7 +159,7 @@ export class AuthService {
 
       // Success: Wipe OTP
       await tx.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
-      
+
       await AuditService.logAction('verify_otp', 'success', { email, ip });
       return user.id;
     });
@@ -174,7 +173,7 @@ export class AuthService {
     await UserRepository.update(userId, {
       password: hashedPassword,
     });
-    
+
     await AuditService.logAction('reset_password', 'success', { email, ip });
     return true;
   }
