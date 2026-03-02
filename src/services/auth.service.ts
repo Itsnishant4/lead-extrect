@@ -30,7 +30,7 @@ export class AuthService {
       .orderBy(desc(plans.leadsCredits))
       .limit(1)
       .then(r => r[0]);
-
+      
     const initialCredits = freePlan?.leadsCredits || 0;
 
     const result = await db.insert(users).values({
@@ -81,7 +81,8 @@ export class AuthService {
     });
 
     await AuditService.logAction('login', 'success', { email, ip });
-    return user;
+    const { password: _p, otpCode: _o, ...safeUser } = user;
+    return safeUser;
   }
 
   static async logout() {

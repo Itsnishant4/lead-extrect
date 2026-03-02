@@ -143,7 +143,18 @@ export class AdminService {
   }
 
   static async getAllUsers() {
-    return await db.select().from(users).orderBy(desc(users.createdAt));
+    return await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      isAdmin: users.isAdmin,
+      isSuspended: users.isSuspended,
+      planType: users.planType,
+      leadsExtracted: users.leadsExtracted,
+      bonusCredits: users.bonusCredits,
+      subscriptionExpiry: users.subscriptionExpiry,
+      createdAt: users.createdAt,
+    }).from(users).orderBy(desc(users.createdAt));
   }
 
   static async updateUser(userId: number, data: any) {

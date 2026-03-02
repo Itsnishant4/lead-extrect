@@ -9,15 +9,21 @@ export class UserService {
     const user = userRows[0];
     
     if (user) {
-      if (user.isSuspended) return user;
+      if (user.isSuspended) {
+        const { password, otpCode, ...safeUser } = user;
+        return safeUser;
+      }
 
-      // Check for subscription expiry
-      if (user.planType === 'pro' && user.subscriptionExpiry && new Date(user.subscriptionExpiry) < new Date()) {
+      // Check for subscription expiry (only for non-unlimited plans that have an expiry date)
+      if (user.planType !== 'free' && user.subscriptionExpiry && new Date(user.subscriptionExpiry) < new Date()) {
         await db.update(users).set({ planType: 'free' }).where(eq(users.id, user.id));
         user.planType = 'free';
         await AuditService.logAction('subscription_expired', 'info', { email: user.email });
       }
-      return user;
+
+      // Strip sensitive data before returning to the frontend
+      const { password, otpCode, ...safeUser } = user;
+      return safeUser;
     }
     return null;
   }
