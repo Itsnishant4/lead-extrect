@@ -101,7 +101,7 @@ export default function ProfilePage() {
                       Joined
                     </span>
                     <span className="font-semibold text-slate-700 dark:text-slate-200">
-                      {user?.created_at ? format(new Date(user.created_at), 'MMM dd, yyyy') : 'N/A'}
+                      {user?.createdAt ? format(new Date(user.createdAt), 'MMM dd, yyyy') : 'N/A'}
                     </span>
                   </div>
                 </div>
