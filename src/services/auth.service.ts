@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/index';
 import { users, plans } from '@/lib/db/schema';
-import { eq, sql, and } from 'drizzle-orm';
+import { eq, sql, and, or, desc } from 'drizzle-orm';
 import { hashPassword, verifyPassword, signToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { AuditService } from './audit.service';
@@ -17,9 +17,18 @@ export class AuthService {
     const hashedPassword = await hashPassword(password);
 
     // Look up the free plan from DB to get initial credits
+    // Match by period='free', name containing 'free', or price=0
     const freePlan = await db.select({ leadsCredits: plans.leadsCredits })
       .from(plans)
-      .where(and(eq(plans.name, 'Free'), eq(plans.isActive, true)))
+      .where(and(
+        or(
+          eq(plans.period, 'free'),
+          sql`${plans.name} ILIKE '%free%'`,
+          eq(plans.price, 0)
+        ),
+        eq(plans.isActive, true)
+      ))
+      .orderBy(desc(plans.leadsCredits))
       .limit(1)
       .then(r => r[0]);
 
