@@ -6,7 +6,8 @@ import {
   toggleUserAdminAction,
   updateUserCreditsAction,
   suspendUserAction,
-  getUserHistoryAdminAction
+  getUserHistoryAdminAction,
+  recalculateUserUsageAction
 } from "@/app/actions"
 import {
   Table,
@@ -19,7 +20,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Shield, ShieldSlash, Calendar, Coins, Plus, Minus, ClockCounterClockwise } from "phosphor-react"
+import { Shield, ShieldSlash, Calendar, Coins, Plus, Minus, ClockCounterClockwise, ArrowsClockwise } from "phosphor-react"
 import { LoaderCircle } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -135,6 +136,21 @@ export default function AdminUsersPage() {
     },
     onSuccess: () => {
       toast.success("User status updated");
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message);
+    }
+  });
+
+  const recalculateMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await recalculateUserUsageAction(userId);
+      if (!res.success) throw new Error((res as any).error || "Failed to recalculate");
+      return res;
+    },
+    onSuccess: (data: any) => {
+      toast.success(`Usage recalculated: ${data.actualCount?.toLocaleString()} actual leads`);
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     },
     onError: (error: any) => {
@@ -319,6 +335,15 @@ export default function AdminUsersPage() {
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => openHistoryDialog(user)} title="View History">
                               <ClockCounterClockwise className="h-4 w-4 text-indigo-500" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => recalculateMutation.mutate(user.id)} 
+                              title="Recalculate Usage (fix inflated counter)"
+                              disabled={recalculateMutation.isPending}
+                            >
+                              <ArrowsClockwise className={`h-4 w-4 text-emerald-500 ${recalculateMutation.isPending ? 'animate-spin' : ''}`} />
                             </Button>
                           </div>
                         </TableCell>

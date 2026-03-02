@@ -169,6 +169,22 @@ export class AdminService {
     }).where(eq(users.id, userId));
   }
 
+  /**
+   * Recalculate leadsExtracted from actual lead_sources data
+   * to fix inflated counters caused by duplicate worker processing.
+   */
+  static async recalculateUserUsage(userId: number) {
+    const result = await db.execute(sql`
+      SELECT COUNT(DISTINCT ls.lead_id) as actual_count
+      FROM lead_sources ls
+      INNER JOIN searches s ON ls.search_id = s.id
+      WHERE s.user_id = ${userId}
+    `);
+    const actualCount = Number(result[0]?.actual_count || 0);
+    await db.update(users).set({ leadsExtracted: actualCount }).where(eq(users.id, userId));
+    return actualCount;
+  }
+
   static async getUserHistory(userId: number) {
     const user = await db.select({
       id: users.id,

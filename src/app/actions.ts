@@ -443,6 +443,18 @@ export async function updateUserCreditsAction(userId: number, amount: number) {
   }
 }
 
+export async function recalculateUserUsageAction(userId: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    const actualCount = await AdminService.recalculateUserUsage(userId);
+    return { success: true, actualCount };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
 export async function getUserHistoryAdminAction(userId: number) {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };
