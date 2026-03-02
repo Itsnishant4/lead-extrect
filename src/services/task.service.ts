@@ -79,42 +79,66 @@ export class TaskService {
     console.log(`[TASK SERVICE] processTaskStep started for task ${tId}, user ${uId}`);
     
     try {
-      const task = await TaskRepository.findById(tId, uId);
-      if (!task) {
-        console.error(`[TASK SERVICE] Task ${tId} not found for user ${uId}`);
-        return { success: false, error: 'Task not found' };
+      // CRITICAL: Atomically claim the next keyword index using row-level locking.
+      // This prevents multiple workers from processing the same keyword concurrently.
+      const claimed = await db.transaction(async (tx) => {
+        const taskRows = await tx.select().from(tasks)
+          .where(and(eq(tasks.id, tId), eq(tasks.userId, uId)))
+          .for('update')
+          .limit(1);
+        const task = taskRows[0];
+
+        if (!task) return { claimed: false, reason: 'Task not found' } as const;
+        if (task.status !== 'running') return { claimed: false, reason: `Task not running (${task.status})` } as const;
+
+        const keywords = task.keywords as string[];
+        const index = task.currentKeywordIndex || 0;
+
+        if (index >= keywords.length) {
+          await tx.update(tasks).set({ status: 'completed', statusReason: 'All keywords processed', updatedAt: new Date() })
+            .where(and(eq(tasks.id, tId), eq(tasks.userId, uId)));
+          return { claimed: false, reason: 'completed' } as const;
+        }
+
+        // Atomically advance the index so no other worker can claim this keyword
+        await tx.update(tasks).set({ 
+          currentKeywordIndex: index + 1, 
+          lastHeartbeat: new Date(), 
+          statusReason: null, 
+          updatedAt: new Date() 
+        }).where(and(eq(tasks.id, tId), eq(tasks.userId, uId)));
+
+        return { 
+          claimed: true, 
+          keyword: keywords[index], 
+          index, 
+          totalKeywords: keywords.length,
+          userAgent: task.userAgent,
+          acceptLanguage: task.acceptLanguage,
+        } as const;
+      });
+
+      if (!claimed.claimed) {
+        if (claimed.reason === 'completed') {
+          await AuditService.saveServerLog(tId, 'SUCCESS', 'Task completed', uId);
+          await this.sendLogsToTelegram(tId, uId);
+          return { success: true, completed: true };
+        }
+        console.log(`[TASK SERVICE] Task ${tId}: ${claimed.reason}. Aborting step.`);
+        return { success: false, error: claimed.reason };
       }
-      
-      if (task.status !== 'running') {
-        console.log(`[TASK SERVICE] Task ${tId} is not in running state (status: ${task.status}). Aborting step.`);
-        return { success: false, error: 'Task not running' };
-      }
 
-      const keywords = task.keywords as string[];
-      const index = task.currentKeywordIndex || 0;
+      const { keyword, index, totalKeywords, userAgent, acceptLanguage } = claimed;
+      const options = { userAgent: userAgent || undefined, acceptLanguage: acceptLanguage || undefined, manualUserId: uId };
 
-      if (index >= keywords.length) {
-        console.log(`[TASK SERVICE] Task ${tId} finished all keywords (${index}/${keywords.length})`);
-        await TaskRepository.update(tId, uId, { status: 'completed', statusReason: 'All keywords processed' });
-        await AuditService.saveServerLog(tId, 'SUCCESS', 'Task completed', uId);
-        await this.sendLogsToTelegram(tId, uId);
-        return { success: true, completed: true };
-      }
-
-      const keyword = keywords[index];
-      const options = { userAgent: task.userAgent || undefined, acceptLanguage: task.acceptLanguage || undefined, manualUserId: uId };
-
-      // Update heartbeat and clear statusReason (actively running)
-      await TaskRepository.update(tId, uId, { lastHeartbeat: new Date(), statusReason: null });
-
-      await AuditService.saveServerLog(tId, 'INFO', `Processing keyword ${index + 1}/${keywords.length}: "${keyword}"`, uId);
+      await AuditService.saveServerLog(tId, 'INFO', `Processing keyword ${index + 1}/${totalKeywords}: "${keyword}"`, uId);
       
       const res = await LeadService.searchLeads(keyword, tId, true, options);
       
-      // RE-CHECK STATUS: Did the user pause the task while we were fetching (which takes time)?
+      // RE-CHECK STATUS: Did the user pause the task while we were fetching?
       const freshTask = await TaskRepository.findById(tId, uId);
       if (!freshTask || freshTask.status !== 'running') {
-        console.log(`[TASK SERVICE] Task ${tId} status changed to ${freshTask?.status} during fetch. Stopping automation chain.`);
+        console.log(`[TASK SERVICE] Task ${tId} status changed to ${freshTask?.status} during fetch. Stopping.`);
         return { success: true };
       }
 
@@ -132,9 +156,6 @@ export class TaskService {
 
       await AuditService.saveServerLog(tId, 'SUCCESS', `Found ${'count' in res ? res.count : 0} leads for "${keyword}"`, uId);
 
-      const nextIndex = index + 1;
-      await TaskRepository.update(tId, uId, { currentKeywordIndex: nextIndex });
-
       // Periodic logs to Telegram (every hour)
       const lastSent = freshTask.lastLogsSentAt ? new Date(freshTask.lastLogsSentAt) : new Date(0);
       if (Date.now() - lastSent.getTime() > 60 * 60 * 1000) {
@@ -142,12 +163,14 @@ export class TaskService {
         await TaskRepository.update(tId, uId, { lastLogsSentAt: new Date() });
       }
 
-      if (nextIndex < keywords.length) {
-        await this.triggerNextStep(tId, uId);
-      } else {
+      // Check if all keywords are now done
+      const nextIndex = index + 1;
+      if (nextIndex >= totalKeywords) {
         await TaskRepository.update(tId, uId, { status: 'completed', statusReason: 'All keywords processed' });
         await AuditService.saveServerLog(tId, 'SUCCESS', 'Task completed', uId);
         await this.sendLogsToTelegram(tId, uId);
+      } else {
+        await this.triggerNextStep(tId, uId);
       }
 
       return { success: true };
