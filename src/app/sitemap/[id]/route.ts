@@ -3,7 +3,7 @@ import { db } from '@/lib/db/index';
 import { blogPosts, leads } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 export async function GET(
   request: Request,
@@ -33,7 +33,7 @@ export async function GET(
   </url>`;
   };
 
-  
+
   if (parsedId === 0) {
     const now = new Date();
     // Core Static Pages
@@ -112,7 +112,7 @@ export async function GET(
   return new NextResponse(xml, {
     headers: {
       'Content-Type': 'application/xml',
-      'Cache-Control': 'no-store',
+      'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
     },
   });
 }
