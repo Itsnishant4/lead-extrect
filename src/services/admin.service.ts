@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/index';
-import { users, leads, tasks, searches, auditLogs, serverLogs, transactions, plans } from '@/lib/db/schema';
-import { eq, sql, desc, and, gt } from 'drizzle-orm';
+import { users, leads, tasks, searches, auditLogs, serverLogs, transactions, plans, taskLeads } from '@/lib/db/schema';
+import { eq, sql, desc, and, gt, count } from 'drizzle-orm';
 
 export class AdminService {
   static async checkAdmin(userId: number) {
@@ -128,6 +128,39 @@ export class AdminService {
     .innerJoin(users, eq(tasks.userId, users.id))
     .orderBy(desc(tasks.updatedAt))
     .limit(200);
+  }
+
+  /**
+   * Detailed admin task list: includes user info, credit (lead) consumption per task,
+   * keyword progress, status reason, timestamps, and user plan/credit details.
+   */
+  static async getAdminTasksDetailed() {
+    const rows = await db.select({
+      id: tasks.id,
+      name: tasks.name,
+      status: tasks.status,
+      statusReason: tasks.statusReason,
+      totalKeywords: tasks.totalKeywords,
+      currentKeywordIndex: tasks.currentKeywordIndex,
+      totalLeads: tasks.totalLeads,
+      createdAt: tasks.createdAt,
+      updatedAt: tasks.updatedAt,
+      // User info
+      userId: users.id,
+      userName: users.name,
+      userEmail: users.email,
+      userPlan: users.planType,
+      userLeadsExtracted: users.leadsExtracted,
+      userBonusCredits: users.bonusCredits,
+      // Credits consumed = leads extracted by this task (counted from task_leads)
+      creditsConsumed: sql<number>`(SELECT COUNT(*) FROM task_leads WHERE task_leads.task_id = ${tasks.id})`,
+    })
+    .from(tasks)
+    .innerJoin(users, eq(tasks.userId, users.id))
+    .orderBy(desc(tasks.createdAt))
+    .limit(500);
+
+    return rows;
   }
 
   static async updateTaskStatus(taskId: number, status: string) {

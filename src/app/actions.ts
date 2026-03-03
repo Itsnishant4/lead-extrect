@@ -400,6 +400,18 @@ export async function getAdminTasksAction() {
   }
 }
 
+export async function getAdminTasksDetailedAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    const data = await AdminService.getAdminTasksDetailed();
+    return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
 export async function getAllUsersAdminAction() {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };
