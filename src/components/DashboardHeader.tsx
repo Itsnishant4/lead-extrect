@@ -10,14 +10,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   Search, Zap, Rocket, ChevronDown, User, CreditCard,
   LogOut, LogIn, UserPlus, X,
-  Menu, Receipt,
+  Menu, Receipt, LayoutDashboard,
 } from 'lucide-react';
 
 interface DashboardHeaderProps {
-  activePage: 'search' | 'bulk' | 'campaigns';
+  activePage: 'dashboard' | 'search' | 'bulk' | 'campaigns';
 }
 
 const navIcons = {
+  dashboard: LayoutDashboard,
   search: Search,
   bulk: Zap,
   campaigns: Rocket,
@@ -65,6 +66,7 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
   };
 
   const navLinks = [
+    { key: 'dashboard', href: '/dashboard', label: 'Dashboard' },
     { key: 'search', href: '/leads', label: 'Search' },
     { key: 'bulk', href: '/keywords', label: 'Bulk' },
     { key: 'campaigns', href: '/tasks', label: 'Campaigns' },

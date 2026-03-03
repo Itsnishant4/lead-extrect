@@ -133,6 +133,17 @@ export async function getUserAction() {
   }
 }
 
+export async function getDashboardStatsAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    const data = await UserService.getDashboardStats(session.id);
+    return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
 // --- Lead Actions ---
 
 export async function searchLeadsAction(query: string, taskId?: number, forceStore?: boolean) {
