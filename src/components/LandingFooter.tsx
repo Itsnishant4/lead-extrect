@@ -66,10 +66,10 @@ export function LandingFooter() {
       </section>
 
       {/* Footer Section */}
-      <footer className="relative pb-52 overflow-hidden">
+      <footer className="relative pb-32 md:pb-52 overflow-hidden">
         {/* Massive Background Text - placed behind everything but inside the footer wrapper */}
-        <div className="absolute bottom-0 left-0 w-full overflow-hidden flex justify-center pointer-events-none z-0">
-          <span className="text-[17vw] font-black text-gray-200/40 leading-[0.8] tracking-tighter translate-y-[40%] select-none">
+        <div className="absolute bottom-10 md:-bottom-0 left-0 w-full overflow-hidden flex justify-center pointer-events-none z-0">
+          <span className="text-[17vw] font-black text-gray-200/40 leading-[0.8] tracking-tighter translate-y-[-10%] md:translate-y-[40%] select-none">
             LeadSpotter
           </span>
         </div>
