@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
@@ -12,7 +13,8 @@ import {
 import { useAutomation } from '@/context/AutomationContext';
 import {
   Bell, BellOff, Download, Shield, Trash2, AlertTriangle,
-  CheckCircle2, XCircle, CreditCard, Loader2, Settings,
+  CheckCircle2, XCircle, CreditCard, Loader2, Settings, Zap, Database,
+  RotateCcw,
 } from 'lucide-react';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
@@ -30,6 +32,7 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export default function SettingsPage() {
   const { settings: appSettings, updateSetting, user, isLoadingUser } = useAutomation();
+  const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Push notification state
@@ -125,6 +128,11 @@ export default function SettingsPage() {
     const newValue = !appSettings[key];
     await updateSetting(key, newValue);
     toast.success('Setting updated');
+  };
+
+  const handleReplayTour = async () => {
+    await updateSetting('onboardingCompleted', false);
+    router.push('/leads');
   };
 
   return (
@@ -263,6 +271,71 @@ export default function SettingsPage() {
                     checked={appSettings.exportCityWise}
                     onCheckedChange={() => toggleSetting('exportCityWise')}
                   />
+                </div>
+              </div>
+
+              {/* ── Extraction Settings ── */}
+              <div className="glass-card rounded-3xl p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-full bg-indigo-100/80 dark:bg-indigo-950/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                    <Zap size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-foreground">Extraction Settings</h3>
+                    <p className="text-sm text-slate-400 dark:text-slate-500">Configure how lead extraction works.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between bg-white/40 dark:bg-white/5 rounded-2xl border border-white/60 dark:border-slate-700 p-4">
+                  <div className="flex items-center gap-3">
+                    {appSettings.fastMode ? (
+                      <Zap size={18} className="text-amber-500" />
+                    ) : (
+                      <Database size={18} className="text-indigo-500" />
+                    )}
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Fast mode</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 max-w-sm">
+                        {appSettings.fastMode
+                          ? 'Leads are exported directly without saving to the database. Faster extraction.'
+                          : 'Leads are saved to the database for later viewing. Slightly slower.'}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={appSettings.fastMode}
+                    onCheckedChange={() => toggleSetting('fastMode')}
+                  />
+                </div>
+              </div>
+
+              {/* ── General ── */}
+              <div className="glass-card rounded-3xl p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-full bg-indigo-100/80 dark:bg-indigo-950/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                    <Settings size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-foreground">General</h3>
+                    <p className="text-sm text-slate-400 dark:text-slate-500">App preferences and help.</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-4 bg-white/40 dark:bg-white/5 rounded-2xl border border-white/60 dark:border-slate-700 p-4 md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-center gap-3">
+                    <RotateCcw size={18} className="text-slate-400 dark:text-slate-500" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Replay onboarding tour</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">Walk through the app features again.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleReplayTour}
+                    className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-950 border border-indigo-200/50 dark:border-indigo-800/50 transition-colors"
+                  >
+                    <RotateCcw size={14} />
+                    Replay Tour
+                  </button>
                 </div>
               </div>
 

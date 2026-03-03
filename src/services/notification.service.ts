@@ -158,6 +158,19 @@ export class NotificationService {
   }
 
   static async notifySubscriptionExpiring(userId: number, daysLeft: number) {
+    // Avoid spamming — only notify once while an unread expiry notification exists
+    const existing = await db
+      .select({ id: notifications.id })
+      .from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.type, 'subscription_expiring'),
+        eq(notifications.isRead, false),
+      ))
+      .limit(1);
+
+    if (existing.length > 0) return; // Already has an unread subscription_expiring notification
+
     await this.create({
       userId,
       type: 'subscription_expiring',

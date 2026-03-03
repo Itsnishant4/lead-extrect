@@ -157,18 +157,18 @@ export function DashboardHeader({ activePage, navStyle = 'default' }: DashboardH
 
   return (
     <>
-      <header className="w-full fixed top-0 z-50 px-4 pt-4">
+      <header className="w-full fixed top-0 z-50 pt-4">
         <div className={`${navStyle === 'wide' ? 'max-w-5xl' : 'max-w-4xl'} mx-auto flex items-center justify-between rounded-full px-4 py-2.5 backdrop-blur-xl`}>
           {/* Logo */}
-          <Link href={navStyle === 'logoDashboard' ? '/dashboard' : '/leads'} className="flex items-center gap-2 shrink-0">
-            <Logo className="w-7 h-7" />
+          <Link href={navStyle === 'logoDashboard' ? '/dashboard' : '/leads'} id="tour-logo" className="flex mr-4 items-center gap-2 shrink-0">
+            <Logo className="w-7 h-7 " />
             <span className="text-base font-bold tracking-tight text-indigo-950 dark:text-indigo-100">LeadSpotter</span>
           </Link>
 
           {/* Desktop nav — hidden on mobile */}
           {navStyle === 'segment' ? (
             /* Option A: Segment Control — tabs inside a pill container */
-            <nav className="hidden md:flex items-center bg-slate-100/70 dark:bg-slate-800/50 rounded-full p-1">
+            <nav className="hidden md:flex items-center bg-slate-100/70 dark:bg-slate-800/50 rounded-full p-1" id="tour-nav">
               {navLinks.map((link) => {
                 const Icon = navIcons[link.key];
                 const isActive = activePage === link.key;
@@ -176,6 +176,7 @@ export function DashboardHeader({ activePage, navStyle = 'default' }: DashboardH
                   <Link
                     key={link.key}
                     href={link.href}
+                    id={`tour-nav-${link.key}`}
                     className={`px-3.5 py-1.5 text-sm rounded-full flex items-center gap-1.5 transition-all duration-200 ${isActive
                         ? 'font-semibold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-700 shadow-sm'
                         : 'font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
@@ -189,7 +190,7 @@ export function DashboardHeader({ activePage, navStyle = 'default' }: DashboardH
             </nav>
           ) : navStyle === 'iconOnly' ? (
             /* Option B: Icon-only inactive tabs, icon+label for active */
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden md:flex items-center gap-1" id="tour-nav">
               {navLinks.map((link) => {
                 const Icon = navIcons[link.key];
                 const isActive = activePage === link.key;
@@ -197,6 +198,7 @@ export function DashboardHeader({ activePage, navStyle = 'default' }: DashboardH
                   <Link
                     key={link.key}
                     href={link.href}
+                    id={`tour-nav-${link.key}`}
                     title={link.label}
                     className={`py-1.5 text-sm rounded-full flex items-center gap-1.5 transition-all duration-200 ${isActive
                         ? 'px-3.5 font-semibold text-indigo-600 hover:shadow-md bg-gradient-to-b from-white to-gray-900/01 shadow-sm'
@@ -211,14 +213,15 @@ export function DashboardHeader({ activePage, navStyle = 'default' }: DashboardH
             </nav>
           ) : (
             /* Default / Wide / LogoDashboard — standard tabs (natural width) */
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden md:flex items-center gap-1 " id="tour-nav">
               {navLinks.map((link) => {
                 const Icon = navIcons[link.key];
                 return (
                   <Link
                     key={link.key}
                     href={link.href}
-                    className={`px-3 py-1.5 text-sm rounded-full flex items-center gap-1.5 transition-all duration-200 ${activePage === link.key
+                    id={`tour-nav-${link.key}`}
+                    className={`px-3 py-1.5  text-sm rounded-full flex items-center gap-1.5 transition-all duration-200 ${activePage === link.key
                         ? 'font-semibold text-indigo-600 hover:shadow-md bg-gradient-to-b from-white to-gray-900/01 shadow-sm'
                         : 'font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400'
                       }`}
@@ -235,6 +238,7 @@ export function DashboardHeader({ activePage, navStyle = 'default' }: DashboardH
           <div className="hidden md:flex items-center gap-2 shrink-0">
             <div className="relative" ref={dropdownRef}>
               <button
+                id="tour-profile"
                 onClick={() => !isActuallyLoading && setShowDropdown(!showDropdown)}
                 disabled={isActuallyLoading}
                 className={`flex items-center gap-3 p-1 pr-3 rounded-full border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-white/5 transition-colors ${isActuallyLoading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-white dark:hover:bg-white/10'}`}

@@ -51,7 +51,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-50 via-indigo-100 to-violet-50 dark:from-background dark:via-background dark:to-background text-foreground">
-        <DashboardHeader activePage="dashboard" navStyle="segment" />
+        <DashboardHeader activePage="dashboard" />
         <main className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">
             <Loader2 size={48} className="text-indigo-300 animate-spin" />
@@ -65,7 +65,7 @@ export default function DashboardPage() {
   if (!stats) {
     return (
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-50 via-indigo-100 to-violet-50 dark:from-background dark:via-background dark:to-background text-foreground">
-        <DashboardHeader activePage="dashboard" navStyle="segment" />
+        <DashboardHeader activePage="dashboard" />
         <main className="flex-1 flex items-center justify-center">
           <p className="text-slate-500 dark:text-slate-400 text-sm">Failed to load dashboard data.</p>
         </main>
@@ -98,7 +98,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-indigo-100 dark:selection:bg-indigo-900 bg-gradient-to-br from-indigo-50 via-indigo-100 to-violet-50 dark:from-background dark:via-background dark:to-background text-foreground">
-      <DashboardHeader activePage="dashboard" navStyle="logoDashboard" />
+      <DashboardHeader activePage="dashboard" />
 
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 md:px-8 pt-28 pb-16">
         {/* Header */}

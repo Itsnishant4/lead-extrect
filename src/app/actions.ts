@@ -995,16 +995,10 @@ export async function uploadTaskExportChunkAction(taskId: number, name: string, 
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
-    return { success: true };
-  } catch (error: any) {
-    return handleActionError(error);
-  }
-}
-
-export async function sendTaskExportToTelegramAction(taskId: number) {
-  const session = await getSession();
-  if (!session) return { success: false, error: 'Unauthorized' };
-  try {
+    // TODO: Implement Telegram export chunking when TelegramService is added.
+    // This action is called from AutomationContext.flushTelegramExport() to
+    // upload CSV chunks for Telegram delivery. Currently a no-op because
+    // the Telegram integration service hasn't been built yet.
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);

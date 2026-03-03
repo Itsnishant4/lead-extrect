@@ -13,6 +13,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { useOnboarding } from '@/hooks/use-onboarding';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,9 @@ export default function LeadsPage() {
   const { user } = useAutomation();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+
+  // Onboarding tour — auto-starts on first visit
+  useOnboarding();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchId, setSearchId] = useState<number | undefined>(undefined);
@@ -146,12 +150,12 @@ export default function LeadsPage() {
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-indigo-100 bg-gradient-to-br from-indigo-50 via-indigo-100 to-violet-50 text-foreground">
-      <DashboardHeader activePage="search" navStyle="logoDashboard"/>
+      <DashboardHeader activePage="search" />
 
       {!hasSearched ? (
         <main className="flex-1 flex items-center justify-center px-4 md:px-6 relative overflow-hidden">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-200/20 rounded-full blur-[120px] -z-10" />
-          
+
           <div className="w-full max-w-2xl text-center z-10 flex flex-col items-center">
             <div className="mb-10">
               <h1 className="text-3xl serif-font sm:text-5xl md:text-6xl font-medium tracking-tight text-indigo-950 mb-4">Find your next customer</h1>

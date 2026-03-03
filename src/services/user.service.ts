@@ -2,6 +2,7 @@ import { db } from '@/lib/db/index';
 import { users, leads, tasks, searches, keywordHistory, taskLeads, leadSources, transactions, plans } from '@/lib/db/schema';
 import { eq, sql, lt, and, desc, gte, count } from 'drizzle-orm';
 import { AuditService } from './audit.service';
+import { NotificationService } from './notification.service';
 
 export class UserService {
   static async getUser(userId: number) {
@@ -12,6 +13,19 @@ export class UserService {
       if (user.isSuspended) {
         const { password, otpCode, ...safeUser } = user;
         return safeUser;
+      }
+
+      // Check for subscription expiry warning (3 days before expiry)
+      if (user.planType !== 'free' && user.subscriptionExpiry) {
+        const expiryDate = new Date(user.subscriptionExpiry);
+        const now = new Date();
+        const msLeft = expiryDate.getTime() - now.getTime();
+        const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+
+        if (daysLeft <= 3 && daysLeft > 0) {
+          // Fire-and-forget: don't block getUser on notification creation
+          NotificationService.notifySubscriptionExpiring(user.id, daysLeft).catch(() => {});
+        }
       }
 
       // Check for subscription expiry (only for non-unlimited plans that have an expiry date)
