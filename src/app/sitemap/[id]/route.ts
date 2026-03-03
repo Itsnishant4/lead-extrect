@@ -13,7 +13,6 @@ export async function GET(
   const baseUrl = 'https://leadspotter.in';
   const limit = 25000;
 
-
   const idMatch = id.match(/^(\d+)\.xml$/);
   if (!idMatch) {
     return new NextResponse('Not found', { status: 404 });
