@@ -8,13 +8,11 @@ import {
   List,
   MagnifyingGlass,
   Database,
-  ClockCounterClockwise,
   GearSix,
   SignOut,
   User,
   CaretUp,
-  CreditCard,
-  Stack
+  CreditCard
 } from 'phosphor-react';
 import { Progress } from '@/components/ui/progress';
 import { logoutAction } from '@/app/actions';
@@ -71,16 +69,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           title: 'Automation Tasks',
           icon: Activity,
           url: '/tasks',
-        },
-        {
-          title: 'History',
-          icon: ClockCounterClockwise,
-          url: '/history',
-        },
-        {
-          title: 'Saved Lists',
-          icon: Stack,
-          url: '/lists',
         },
         {
           title: 'Settings',
