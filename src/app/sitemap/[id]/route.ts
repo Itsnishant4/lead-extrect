@@ -10,15 +10,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const baseUrl = 'https://leadspotter.in';
+  const baseUrl = 'https://www.leadspotter.in';
   const limit = 25000;
-  
+
   // Try to parse the id (e.g., "0.xml" -> 0)
   const idMatch = id.match(/^(\d+)\.xml$/);
   if (!idMatch) {
     return new NextResponse('Not found', { status: 404 });
   }
-  
+
   const parsedId = Number(idMatch[1]);
   const offset = parsedId * limit;
 
@@ -51,7 +51,7 @@ export async function GET(
 
     // Competitors
     const competitors = [
-      'phantombuster', 'd7leadfinder', 'apollo', 'outscraper', 
+      'phantombuster', 'd7leadfinder', 'apollo', 'outscraper',
       'apify', 'zoominfo', 'lusha', 'hunter', 'snov'
     ];
     competitors.forEach(comp => addUrl(`${baseUrl}/compare/leadspotter-vs-${comp}`, now, 'monthly', 0.8));
@@ -62,7 +62,7 @@ export async function GET(
         slug: blogPosts.slug,
         updatedAt: blogPosts.updatedAt
       }).from(blogPosts).where(eq(blogPosts.isPublished, true));
-      
+
       posts.forEach(post => {
         addUrl(`${baseUrl}/blog/${post.slug}`, post.updatedAt || now, 'monthly', 0.8);
       });
@@ -85,7 +85,7 @@ export async function GET(
     data.forEach((row: any) => {
       const niche = String(row.category).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const city = String(row.city).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      
+
       if (niche && city) {
         if (!uniqueSlugs.has(`niche-${niche}`)) {
           uniqueSlugs.add(`niche-${niche}`);
