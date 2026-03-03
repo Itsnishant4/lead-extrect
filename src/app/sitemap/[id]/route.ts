@@ -33,6 +33,7 @@ export async function GET(
   </url>`;
   };
 
+  
   if (parsedId === 0) {
     const now = new Date();
     // Core Static Pages
