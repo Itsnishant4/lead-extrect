@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 
+export const revalidate = 3600;
+
 export async function GET() {
   const baseUrl = 'https://leadspotter.in';
+  const now = new Date().toISOString();
 
   const sitemapIndex = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap>
     <loc>${baseUrl}/sitemap/0.xml</loc>
+    <lastmod>${now}</lastmod>
   </sitemap>
 </sitemapindex>`;
 
