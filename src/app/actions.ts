@@ -18,6 +18,7 @@ import { SiteConfigService } from '@/services/siteconfig.service';
 import { AuditService } from '@/services/audit.service';
 import { NotificationService } from '@/services/notification.service';
 import { KeywordService } from '@/services/keyword.service';
+import { PushService } from '@/services/push.service';
 import { ListService } from '@/services/list.service';
 import { fromZodError } from 'zod-validation-error';
 import { 
@@ -185,6 +186,30 @@ export async function markAllNotificationsReadAction() {
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
     await NotificationService.markAllAsRead(session.id);
+    return { success: true };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+// --- Push Subscription Actions ---
+
+export async function subscribePushAction(subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await PushService.saveSubscription(session.id, subscription);
+    return { success: true };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function unsubscribePushAction(endpoint: string) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await PushService.removeSubscription(endpoint);
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);

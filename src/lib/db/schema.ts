@@ -305,3 +305,15 @@ export const notifications = pgTable('notifications', {
   userIdIdx: index('idx_notifications_user_id').on(table.userId),
   isReadIdx: index('idx_notifications_is_read').on(table.userId, table.isRead),
 }));
+
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  endpoint: text('endpoint').notNull(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  userIdIdx: index('idx_push_subscriptions_user_id').on(table.userId),
+  endpointIdx: unique('push_subscriptions_endpoint_unique').on(table.endpoint),
+}));

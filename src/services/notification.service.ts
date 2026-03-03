@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { notifications, users } from '@/lib/db/schema';
 import { eq, and, desc, count, sql } from 'drizzle-orm';
+import { PushService } from './push.service';
 
 export type NotificationType =
   | 'task_completed'
@@ -30,6 +31,17 @@ export class NotificationService {
       message: params.message,
       metadata: params.metadata || null,
     }).returning({ id: notifications.id });
+
+    // Fire-and-forget browser push notification
+    PushService.sendToUser(params.userId, {
+      title: params.title,
+      body: params.message,
+      tag: `${params.type}-${result.id}`,
+      url: '/leads',
+    }).catch((err) => {
+      console.error('[NOTIFICATION] Push send error:', err.message || err);
+    });
+
     return result.id;
   }
 
