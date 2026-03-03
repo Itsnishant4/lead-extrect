@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const baseUrl = 'https://www.leadspotter.in';
+  const baseUrl = 'https://leadspotter.in';
   const limit = 25000;
 
   // Try to parse the id (e.g., "0.xml" -> 0)
