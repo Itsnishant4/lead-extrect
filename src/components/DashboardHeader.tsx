@@ -15,8 +15,11 @@ import {
   CircleCheck, CircleX, Info, Settings,
 } from 'lucide-react';
 
+type NavStyle = 'default' | 'segment' | 'iconOnly' | 'wide' | 'logoDashboard';
+
 interface DashboardHeaderProps {
   activePage: 'dashboard' | 'search' | 'bulk' | 'campaigns';
+  navStyle?: NavStyle;
 }
 
 const navIcons = {
@@ -63,7 +66,7 @@ function formatNotifTime(date: string | Date | null) {
   return d.toLocaleDateString();
 }
 
-export function DashboardHeader({ activePage }: DashboardHeaderProps) {
+export function DashboardHeader({ activePage, navStyle = 'default' }: DashboardHeaderProps) {
   const { user, isLoadingUser, isFetchingUser } = useAutomation();
   const queryClient = useQueryClient();
   const [showDropdown, setShowDropdown] = useState(false);
@@ -112,8 +115,6 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setShowDropdown(false);
-      }
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setShowNotifications(false);
       }
     }
@@ -142,124 +143,111 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
     }
   };
 
-  const navLinks = [
-    { key: 'dashboard', href: '/dashboard', label: 'Dashboard' },
-    { key: 'search', href: '/leads', label: 'Search' },
-    { key: 'bulk', href: '/keywords', label: 'Bulk' },
-    { key: 'campaigns', href: '/tasks', label: 'Campaigns' },
-  ] as const;
+  const allNavLinks = [
+    { key: 'dashboard' as const, href: '/dashboard', label: 'Dashboard' },
+    { key: 'search' as const, href: '/leads', label: 'Search' },
+    { key: 'bulk' as const, href: '/keywords', label: 'Bulk' },
+    { key: 'campaigns' as const, href: '/tasks', label: 'Campaigns' },
+  ];
+
+  // Option D: remove Dashboard tab (logo links to dashboard instead)
+  const navLinks = navStyle === 'logoDashboard'
+    ? allNavLinks.filter(l => l.key !== 'dashboard')
+    : allNavLinks;
 
   return (
     <>
       <header className="w-full fixed top-0 z-50 px-4 pt-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between rounded-full px-4 py-2.5 backdrop-blur-xl">
+        <div className={`${navStyle === 'wide' ? 'max-w-5xl' : 'max-w-4xl'} mx-auto flex items-center justify-between rounded-full px-4 py-2.5 backdrop-blur-xl`}>
           {/* Logo */}
-          <Link href="/leads" className="flex items-center gap-2 shrink-0">
+          <Link href={navStyle === 'logoDashboard' ? '/dashboard' : '/leads'} className="flex items-center gap-2 shrink-0">
             <Logo className="w-7 h-7" />
             <span className="text-base font-bold tracking-tight text-indigo-950 dark:text-indigo-100">LeadSpotter</span>
           </Link>
 
           {/* Desktop nav — hidden on mobile */}
-          <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => {
-              const Icon = navIcons[link.key];
-              return (
-                <Link
-                  key={link.key}
-                  href={link.href}
-                  className={`px-3 py-1.5 text-sm rounded-full flex items-center gap-1.5 transition-all duration-200 ${activePage === link.key
-                      ? 'font-semibold text-indigo-600 hover:shadow-md bg-gradient-to-b from-white to-gray-900/01 shadow-sm'
-                      : 'font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400'
-                    }`}
-                >
-                  <Icon size={18} />
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
+          {navStyle === 'segment' ? (
+            /* Option A: Segment Control — tabs inside a pill container */
+            <nav className="hidden md:flex items-center bg-slate-100/70 dark:bg-slate-800/50 rounded-full p-1">
+              {navLinks.map((link) => {
+                const Icon = navIcons[link.key];
+                const isActive = activePage === link.key;
+                return (
+                  <Link
+                    key={link.key}
+                    href={link.href}
+                    className={`px-3.5 py-1.5 text-sm rounded-full flex items-center gap-1.5 transition-all duration-200 ${isActive
+                        ? 'font-semibold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-700 shadow-sm'
+                        : 'font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                      }`}
+                  >
+                    <Icon size={16} />
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          ) : navStyle === 'iconOnly' ? (
+            /* Option B: Icon-only inactive tabs, icon+label for active */
+            <nav className="hidden md:flex items-center gap-1">
+              {navLinks.map((link) => {
+                const Icon = navIcons[link.key];
+                const isActive = activePage === link.key;
+                return (
+                  <Link
+                    key={link.key}
+                    href={link.href}
+                    title={link.label}
+                    className={`py-1.5 text-sm rounded-full flex items-center gap-1.5 transition-all duration-200 ${isActive
+                        ? 'px-3.5 font-semibold text-indigo-600 hover:shadow-md bg-gradient-to-b from-white to-gray-900/01 shadow-sm'
+                        : 'px-2.5 font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white/50 dark:hover:bg-white/5'
+                      }`}
+                  >
+                    <Icon size={18} />
+                    {isActive && <span>{link.label}</span>}
+                  </Link>
+                );
+              })}
+            </nav>
+          ) : (
+            /* Default / Wide / LogoDashboard — standard tabs (natural width) */
+            <nav className="hidden md:flex items-center gap-1">
+              {navLinks.map((link) => {
+                const Icon = navIcons[link.key];
+                return (
+                  <Link
+                    key={link.key}
+                    href={link.href}
+                    className={`px-3 py-1.5 text-sm rounded-full flex items-center gap-1.5 transition-all duration-200 ${activePage === link.key
+                        ? 'font-semibold text-indigo-600 hover:shadow-md bg-gradient-to-b from-white to-gray-900/01 shadow-sm'
+                        : 'font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+                      }`}
+                  >
+                    <Icon size={18} />
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
 
           {/* Desktop profile dropdown — hidden on mobile */}
           <div className="hidden md:flex items-center gap-2 shrink-0">
-            {/* Notification bell */}
-            {user && (
-              <div className="relative" ref={notifRef}>
-                <button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="relative w-9 h-9 flex items-center justify-center rounded-full border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 transition-colors"
-                >
-                  <Bell size={18} className="text-slate-600 dark:text-slate-300" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-bold px-1 shadow-sm">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
-                </button>
-
-                {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-80 max-h-[420px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-lg shadow-slate-200/50 dark:shadow-black/30 overflow-hidden z-50 flex flex-col">
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-                      <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Notifications</p>
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={() => markAllReadMutation.mutate()}
-                          disabled={markAllReadMutation.isPending}
-                          className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors disabled:opacity-50"
-                        >
-                          Mark all read
-                        </button>
-                      )}
-                    </div>
-
-                    {/* List */}
-                    <div className="flex-1 overflow-y-auto">
-                      {isLoadingNotifs ? (
-                        <div className="px-4 py-8 text-center text-sm text-slate-400">Loading...</div>
-                      ) : notifications.length === 0 ? (
-                        <div className="px-4 py-8 text-center">
-                          <Bell size={24} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                          <p className="text-sm text-slate-400 dark:text-slate-500">No notifications yet</p>
-                        </div>
-                      ) : (
-                        notifications.map((n: any) => (
-                          <button
-                            key={n.id}
-                            onClick={() => { if (!n.isRead) markReadMutation.mutate(n.id); }}
-                            className={`w-full text-left px-4 py-3 border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${!n.isRead ? 'bg-indigo-50/40 dark:bg-indigo-950/20' : ''}`}
-                          >
-                            <div className="flex items-start gap-2.5">
-                              <div className={`mt-0.5 shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${getNotifIconStyle(n.type)}`}>
-                                {getNotifIcon(n.type)}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <p className={`text-xs font-semibold truncate ${!n.isRead ? 'text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}>
-                                    {n.title}
-                                  </p>
-                                  {!n.isRead && <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-indigo-500" />}
-                                </div>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{n.message}</p>
-                                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">{formatNotifTime(n.createdAt)}</p>
-                              </div>
-                            </div>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => !isActuallyLoading && setShowDropdown(!showDropdown)}
                 disabled={isActuallyLoading}
                 className={`flex items-center gap-3 p-1 pr-3 rounded-full border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-white/5 transition-colors ${isActuallyLoading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-white dark:hover:bg-white/10'}`}
               >
-                <div className="w-8 h-8 rounded-full border-2 border-white dark:border-slate-700 shadow-sm bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-bold text-sm">
-                  {isActuallyLoading ? '...' : (user?.name?.charAt(0)?.toUpperCase() || 'U')}
+                <div className="relative">
+                  <div className="w-8 h-8 rounded-full border-2 border-white dark:border-slate-700 shadow-sm bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-bold text-sm">
+                    {isActuallyLoading ? '...' : (user?.name?.charAt(0)?.toUpperCase() || 'U')}
+                  </div>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-rose-500 text-white text-[8px] font-bold px-0.5 shadow-sm">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </div>
                 {isActuallyLoading ? (
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Loading...</span>
@@ -275,13 +263,85 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
               </button>
 
               {showDropdown && (
-                <div className="absolute right-0 mt-2 w-52 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-lg shadow-slate-200/50 dark:shadow-black/30 overflow-hidden z-50">
+                <div className="absolute right-0 mt-2 w-72 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-lg shadow-slate-200/50 dark:shadow-black/30 overflow-hidden z-50" ref={notifRef}>
                   {user ? (
+                    showNotifications ? (
+                      /* ── Notification panel inside dropdown ── */
+                      <>
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+                          <button
+                            onClick={() => setShowNotifications(false)}
+                            className="flex items-center gap-1.5 text-sm font-bold text-slate-800 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                          >
+                            <ChevronDown size={14} className="rotate-90" />
+                            Notifications
+                          </button>
+                          {unreadCount > 0 && (
+                            <button
+                              onClick={() => markAllReadMutation.mutate()}
+                              disabled={markAllReadMutation.isPending}
+                              className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors disabled:opacity-50"
+                            >
+                              Mark all read
+                            </button>
+                          )}
+                        </div>
+                        <div className="max-h-[340px] overflow-y-auto">
+                          {isLoadingNotifs ? (
+                            <div className="px-4 py-8 text-center text-sm text-slate-400">Loading...</div>
+                          ) : notifications.length === 0 ? (
+                            <div className="px-4 py-8 text-center">
+                              <Bell size={24} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                              <p className="text-sm text-slate-400 dark:text-slate-500">No notifications yet</p>
+                            </div>
+                          ) : (
+                            notifications.map((n: any) => (
+                              <button
+                                key={n.id}
+                                onClick={() => { if (!n.isRead) markReadMutation.mutate(n.id); }}
+                                className={`w-full text-left px-4 py-3 border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${!n.isRead ? 'bg-indigo-50/40 dark:bg-indigo-950/20' : ''}`}
+                              >
+                                <div className="flex items-start gap-2.5">
+                                  <div className={`mt-0.5 shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${getNotifIconStyle(n.type)}`}>
+                                    {getNotifIcon(n.type)}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <p className={`text-xs font-semibold truncate ${!n.isRead ? 'text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}>
+                                        {n.title}
+                                      </p>
+                                      {!n.isRead && <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-indigo-500" />}
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{n.message}</p>
+                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">{formatNotifTime(n.createdAt)}</p>
+                                  </div>
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      /* ── Normal dropdown menu ── */
                     <>
                       <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
                         <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{user.name}</p>
                         <p className="text-xs text-slate-400 truncate">{user.email}</p>
                       </div>
+                      <button
+                        onClick={() => setShowNotifications(true)}
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                      >
+                        <div className="relative">
+                          <Bell size={18} />
+                          {unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-rose-500 text-white text-[8px] font-bold px-0.5">
+                              {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                          )}
+                        </div>
+                        Notifications
+                      </button>
                       <Link
                         href="/profile"
                         onClick={() => setShowDropdown(false)}
@@ -296,15 +356,7 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                       >
                         <CreditCard size={18} />
-                        Subscription
-                      </Link>
-                      <Link
-                        href="/payment/history"
-                        onClick={() => setShowDropdown(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-                      >
-                        <Receipt size={18} />
-                        Payment History
+                        Subscription & Billing
                       </Link>
                       <Link
                         href="/settings"
@@ -324,6 +376,7 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
                         </button>
                       </div>
                     </>
+                    )
                   ) : (
                     <>
                       <Link
@@ -500,15 +553,7 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-foreground transition-colors mb-0.5"
               >
                 <CreditCard size={18} />
-                Subscription
-              </Link>
-              <Link
-                href="/payment/history"
-                onClick={() => setShowMobileMenu(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-foreground transition-colors mb-0.5"
-              >
-                <Receipt size={18} />
-                Payment History
+                Subscription & Billing
               </Link>
               <Link
                 href="/settings"

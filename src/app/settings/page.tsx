@@ -218,7 +218,7 @@ export default function SettingsPage() {
 
                   {/* What you get notified about */}
                   <div className="bg-white/40 dark:bg-white/5 rounded-2xl border border-white/60 dark:border-slate-700 p-4">
-                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-3">You'll be notified about</p>
+                    <p className="text-xs font-semibold text-slate-400 dark:text-slate-500   mb-3">You'll be notified about</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {[
                         { icon: CheckCircle2, label: 'Task completed', desc: 'When extraction finishes', color: 'text-emerald-500' },

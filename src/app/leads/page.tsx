@@ -146,7 +146,7 @@ export default function LeadsPage() {
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-indigo-100 bg-gradient-to-br from-indigo-50 via-indigo-100 to-violet-50 text-foreground">
-      <DashboardHeader activePage="search" />
+      <DashboardHeader activePage="search" navStyle="logoDashboard"/>
 
       {!hasSearched ? (
         <main className="flex-1 flex items-center justify-center px-4 md:px-6 relative overflow-hidden">
