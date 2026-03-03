@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { transactions, users, plans } from '@/lib/db/schema';
 import { eq, sql, desc, ne, lt, count } from 'drizzle-orm';
 import crypto from 'crypto';
+import { NotificationService } from './notification.service';
 
 export class SubscriptionService {
   static async createOrder(userId: number, planId: number) {
@@ -91,6 +92,14 @@ export class SubscriptionService {
           ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) 
           : null,
       }).where(eq(users.id, transaction.userId!));
+
+      // Notify user of successful payment (fire-and-forget, outside transaction)
+      const uid = transaction.userId!;
+      const pName = plan.name;
+      const pAmount = amount || transaction.amount;
+      setTimeout(() => {
+        void NotificationService.notifyPaymentSuccess(uid, pName, String(pAmount));
+      }, 0);
     });
   }
 

@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAutomation } from '@/context/AutomationContext';
-import { logoutAction } from '@/app/actions';
+import { logoutAction, getNotificationsAction, getUnreadNotificationCountAction, markNotificationReadAction, markAllNotificationsReadAction } from '@/app/actions';
 import { toast } from 'sonner';
 import { Logo } from '@/components/Logo';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import {
   Search, Zap, Rocket, ChevronDown, User, CreditCard,
   LogOut, LogIn, UserPlus, X,
   Menu, Receipt, LayoutDashboard,
+  Bell, Check, CheckCheck, AlertTriangle, CreditCard as CreditCardIcon,
+  CircleCheck, CircleX, Info,
 } from 'lucide-react';
 
 interface DashboardHeaderProps {
@@ -24,20 +26,95 @@ const navIcons = {
   campaigns: Rocket,
 } as const;
 
+function getNotifIcon(type: string) {
+  switch (type) {
+    case 'task_completed': return <CircleCheck size={14} />;
+    case 'task_failed': return <CircleX size={14} />;
+    case 'credits_low': return <AlertTriangle size={14} />;
+    case 'payment_success': return <CreditCardIcon size={14} />;
+    case 'subscription_expiring': return <AlertTriangle size={14} />;
+    default: return <Info size={14} />;
+  }
+}
+
+function getNotifIconStyle(type: string) {
+  switch (type) {
+    case 'task_completed': return 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400';
+    case 'task_failed': return 'bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400';
+    case 'credits_low': return 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400';
+    case 'payment_success': return 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400';
+    case 'subscription_expiring': return 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400';
+    default: return 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400';
+  }
+}
+
+function formatNotifTime(date: string | Date | null) {
+  if (!date) return '';
+  const d = new Date(date);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return d.toLocaleDateString();
+}
+
 export function DashboardHeader({ activePage }: DashboardHeaderProps) {
   const { user, isLoadingUser, isFetchingUser } = useAutomation();
   const queryClient = useQueryClient();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   // Consider user as loading if either initial load is true, OR it's fetching and we don't have user yet (fresh login)
   const isActuallyLoading = isLoadingUser || (isFetchingUser && !user);
+
+  // ── Notification queries ──
+  const { data: unreadData } = useQuery({
+    queryKey: ['notification-unread-count'],
+    queryFn: () => getUnreadNotificationCountAction(),
+    refetchInterval: 30_000, // poll every 30s
+    enabled: !!user,
+  });
+  const unreadCount = (unreadData?.success && 'count' in unreadData) ? (unreadData.count as number) : 0;
+
+  const { data: notifsData, isLoading: isLoadingNotifs } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => getNotificationsAction(),
+    enabled: !!user && showNotifications,
+    refetchInterval: showNotifications ? 15_000 : false,
+  });
+  const notifications = (notifsData?.success && 'data' in notifsData && notifsData.data) ? notifsData.data : [];
+
+  const markReadMutation = useMutation({
+    mutationFn: (id: number) => markNotificationReadAction(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notification-unread-count'] });
+    },
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: () => markAllNotificationsReadAction(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notification-unread-count'] });
+    },
+  });
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setShowDropdown(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -104,6 +181,77 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
 
           {/* Desktop profile dropdown — hidden on mobile */}
           <div className="hidden md:flex items-center gap-2 shrink-0">
+            {/* Notification bell */}
+            {user && (
+              <div className="relative" ref={notifRef}>
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative w-9 h-9 flex items-center justify-center rounded-full border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 transition-colors"
+                >
+                  <Bell size={18} className="text-slate-600 dark:text-slate-300" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-bold px-1 shadow-sm">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 max-h-[420px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-lg shadow-slate-200/50 dark:shadow-black/30 overflow-hidden z-50 flex flex-col">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+                      <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Notifications</p>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={() => markAllReadMutation.mutate()}
+                          disabled={markAllReadMutation.isPending}
+                          className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors disabled:opacity-50"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+
+                    {/* List */}
+                    <div className="flex-1 overflow-y-auto">
+                      {isLoadingNotifs ? (
+                        <div className="px-4 py-8 text-center text-sm text-slate-400">Loading...</div>
+                      ) : notifications.length === 0 ? (
+                        <div className="px-4 py-8 text-center">
+                          <Bell size={24} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                          <p className="text-sm text-slate-400 dark:text-slate-500">No notifications yet</p>
+                        </div>
+                      ) : (
+                        notifications.map((n: any) => (
+                          <button
+                            key={n.id}
+                            onClick={() => { if (!n.isRead) markReadMutation.mutate(n.id); }}
+                            className={`w-full text-left px-4 py-3 border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${!n.isRead ? 'bg-indigo-50/40 dark:bg-indigo-950/20' : ''}`}
+                          >
+                            <div className="flex items-start gap-2.5">
+                              <div className={`mt-0.5 shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${getNotifIconStyle(n.type)}`}>
+                                {getNotifIcon(n.type)}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <p className={`text-xs font-semibold truncate ${!n.isRead ? 'text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}>
+                                    {n.title}
+                                  </p>
+                                  {!n.isRead && <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-indigo-500" />}
+                                </div>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{n.message}</p>
+                                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">{formatNotifTime(n.createdAt)}</p>
+                              </div>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => !isActuallyLoading && setShowDropdown(!showDropdown)}
@@ -193,12 +341,81 @@ export function DashboardHeader({ activePage }: DashboardHeaderProps) {
             </div>
           </div>
 
-          <button
-            onClick={() => setShowMobileMenu(true)}
-            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 transition-colors"
-          >
-            <Menu size={18} className="text-slate-600 dark:text-slate-300" />
-          </button>
+          {/* Mobile: notification bell + hamburger */}
+          <div className="md:hidden flex items-center gap-1.5">
+            {user && (
+              <div className="relative" ref={notifRef}>
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative w-9 h-9 flex items-center justify-center rounded-full border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 transition-colors"
+                >
+                  <Bell size={18} className="text-slate-600 dark:text-slate-300" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-bold px-1 shadow-sm">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-80 max-h-[420px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-lg shadow-slate-200/50 dark:shadow-black/30 overflow-hidden z-50 flex flex-col">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+                      <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Notifications</p>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={() => markAllReadMutation.mutate()}
+                          disabled={markAllReadMutation.isPending}
+                          className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors disabled:opacity-50"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      {isLoadingNotifs ? (
+                        <div className="px-4 py-8 text-center text-sm text-slate-400">Loading...</div>
+                      ) : notifications.length === 0 ? (
+                        <div className="px-4 py-8 text-center">
+                          <Bell size={24} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                          <p className="text-sm text-slate-400 dark:text-slate-500">No notifications yet</p>
+                        </div>
+                      ) : (
+                        notifications.map((n: any) => (
+                          <button
+                            key={n.id}
+                            onClick={() => { if (!n.isRead) markReadMutation.mutate(n.id); }}
+                            className={`w-full text-left px-4 py-3 border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${!n.isRead ? 'bg-indigo-50/40 dark:bg-indigo-950/20' : ''}`}
+                          >
+                            <div className="flex items-start gap-2.5">
+                              <div className={`mt-0.5 shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${getNotifIconStyle(n.type)}`}>
+                                {getNotifIcon(n.type)}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <p className={`text-xs font-semibold truncate ${!n.isRead ? 'text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}>
+                                    {n.title}
+                                  </p>
+                                  {!n.isRead && <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-indigo-500" />}
+                                </div>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{n.message}</p>
+                                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">{formatNotifTime(n.createdAt)}</p>
+                              </div>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            <button
+              onClick={() => setShowMobileMenu(true)}
+              className="w-9 h-9 flex items-center justify-center rounded-full border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 transition-colors"
+            >
+              <Menu size={18} className="text-slate-600 dark:text-slate-300" />
+            </button>
+          </div>
         </div>
       </header>
 

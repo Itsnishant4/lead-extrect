@@ -291,3 +291,17 @@ export const seoHubRegistry = pgTable('seo_hub_registry', {
 }, (t) => ({
   unqNicheCity: unique('unq_seo_niche_city').on(t.niche, t.city)
 }));
+
+export const notifications = pgTable('notifications', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  type: text('type').notNull(), // 'task_completed' | 'task_failed' | 'credits_low' | 'payment_success' | 'subscription_expiring' | 'general'
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  isRead: boolean('is_read').default(false),
+  metadata: jsonb('metadata'), // optional JSON for links, task IDs, etc.
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  userIdIdx: index('idx_notifications_user_id').on(table.userId),
+  isReadIdx: index('idx_notifications_is_read').on(table.userId, table.isRead),
+}));

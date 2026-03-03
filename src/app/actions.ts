@@ -16,6 +16,7 @@ import { ProxyService } from '@/services/proxy.service';
 import { SettingsService } from '@/services/settings.service';
 import { SiteConfigService } from '@/services/siteconfig.service';
 import { AuditService } from '@/services/audit.service';
+import { NotificationService } from '@/services/notification.service';
 import { KeywordService } from '@/services/keyword.service';
 import { ListService } from '@/services/list.service';
 import { fromZodError } from 'zod-validation-error';
@@ -139,6 +140,52 @@ export async function getDashboardStatsAction() {
   try {
     const data = await UserService.getDashboardStats(session.id);
     return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+// --- Notification Actions ---
+
+export async function getNotificationsAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    const data = await NotificationService.getByUserId(session.id, 20);
+    return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function getUnreadNotificationCountAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    const count = await NotificationService.getUnreadCount(session.id);
+    return { success: true, count };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function markNotificationReadAction(notificationId: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await NotificationService.markAsRead(session.id, notificationId);
+    return { success: true };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function markAllNotificationsReadAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await NotificationService.markAllAsRead(session.id);
+    return { success: true };
   } catch (error: any) {
     return handleActionError(error);
   }

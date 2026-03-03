@@ -1,9 +1,10 @@
 import { db } from '@/lib/db/index';
 import { tasks, leadSources, taskLeads, searches, leads, serverLogs } from '@/lib/db/schema';
-import { eq, and, sql, desc, inArray } from 'drizzle-orm';
+import { eq, and, sql, desc, inArray, count } from 'drizzle-orm';
 import { signToken } from '@/lib/auth';
 import { AuditService } from './audit.service';
 import { LeadService } from './lead.service';
+import { NotificationService } from './notification.service';
 import { LeadRepository } from '@/repositories/lead.repository';
 import { TaskRepository } from '@/repositories/task.repository';
 
@@ -122,6 +123,10 @@ export class TaskService {
         if (claimed.reason === 'completed') {
           await AuditService.saveServerLog(tId, 'SUCCESS', 'Task completed', uId);
           await this.sendLogsToTelegram(tId, uId);
+          // Notify user
+          const taskInfo = await TaskRepository.findById(tId, uId);
+          const leadCount = taskInfo ? await this.getTaskLeadCount(tId) : 0;
+          void NotificationService.notifyTaskCompleted(uId, taskInfo?.name || `Task #${tId}`, leadCount, tId);
           return { success: true, completed: true };
         }
         console.log(`[TASK SERVICE] Task ${tId}: ${claimed.reason}. Aborting step.`);
@@ -146,11 +151,16 @@ export class TaskService {
         if (res.limitReached) {
           await TaskRepository.update(tId, uId, { status: 'paused', statusReason: 'Credit limit reached — upgrade your plan to continue' });
           await AuditService.saveServerLog(tId, 'WARN', `Task paused: Credit limit reached.`, uId);
+          // Notify about low credits
+          void NotificationService.checkAndNotifyCreditsLow(uId);
           return { success: false, limitReached: true };
         }
         await TaskRepository.update(tId, uId, { status: 'failed', statusReason: `Error: ${res.error || 'Unknown error during extraction'}` });
         await AuditService.saveServerLog(tId, 'ERROR', `Task failed on keyword "${keyword}": ${res.error}`, uId);
         await this.sendLogsToTelegram(tId, uId);
+        // Notify user of task failure
+        const failedTaskInfo = await TaskRepository.findById(tId, uId);
+        void NotificationService.notifyTaskFailed(uId, failedTaskInfo?.name || `Task #${tId}`, res.error || 'Unknown error', tId);
         return { success: false, error: res.error };
       }
 
@@ -169,6 +179,10 @@ export class TaskService {
         await TaskRepository.update(tId, uId, { status: 'completed', statusReason: 'All keywords processed' });
         await AuditService.saveServerLog(tId, 'SUCCESS', 'Task completed', uId);
         await this.sendLogsToTelegram(tId, uId);
+        // Notify user
+        const completedTask = await TaskRepository.findById(tId, uId);
+        const finalLeadCount = await this.getTaskLeadCount(tId);
+        void NotificationService.notifyTaskCompleted(uId, completedTask?.name || `Task #${tId}`, finalLeadCount, tId);
       } else {
         await this.triggerNextStep(tId, uId);
       }
@@ -180,6 +194,9 @@ export class TaskService {
         await TaskRepository.update(tId, uId, { status: 'failed', statusReason: `Crashed: ${(error as Error).message}` });
         await AuditService.saveServerLog(tId, 'ERROR', `Task crashed: ${(error as Error).message}`, uId);
         await this.sendLogsToTelegram(tId, uId);
+        // Notify user of crash
+        const crashedTask = await TaskRepository.findById(tId, uId);
+        void NotificationService.notifyTaskFailed(uId, crashedTask?.name || `Task #${tId}`, (error as Error).message, tId);
       } catch (logErr) {
         console.error('[TASK SERVICE] Failed to log task crash:', logErr);
       }
@@ -233,6 +250,17 @@ export class TaskService {
     // However, if the processTaskStep is called manually via UI, we might still want it to continue.
     // The worker is designed to poll, so returning success is fine.
     return { success: true };
+  }
+
+  /**
+   * Get total lead count for a task
+   */
+  private static async getTaskLeadCount(taskId: number): Promise<number> {
+    const [result] = await db
+      .select({ count: count() })
+      .from(taskLeads)
+      .where(eq(taskLeads.taskId, taskId));
+    return result?.count || 0;
   }
 
   static async sendLogsToTelegram(taskId: number, userId?: number) {
