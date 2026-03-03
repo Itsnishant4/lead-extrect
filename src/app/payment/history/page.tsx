@@ -2,29 +2,81 @@
 
 import { useAutomation } from '@/context/AutomationContext';
 import { DashboardHeader } from '@/components/DashboardHeader';
-import { getPaymentHistoryAction } from '@/app/actions';
-import { useQuery } from '@tanstack/react-query';
+import { getPaymentHistoryAction, getPaymentStatsAction } from '@/app/actions';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { useRef, useCallback, useEffect } from 'react';
 import {
   Loader2, ArrowLeft, CheckCircle, XCircle, Clock, Receipt,
   CreditCard, IndianRupee, Hash, CalendarDays, ArrowUpRight,
 } from 'lucide-react';
 
+const PAGE_SIZE = 10;
+
 export default function PaymentHistoryPage() {
   const { user, isLoadingUser } = useAutomation();
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
-  const { data: history = [], isLoading } = useQuery({
-    queryKey: ['payment-history'],
+  const {
+    data: stats,
+    isLoading: isLoadingStats,
+  } = useQuery({
+    queryKey: ['payment-stats'],
     queryFn: async () => {
-      const res = await getPaymentHistoryAction();
-      if (!res.success) return [];
-      return (res as any).data || [];
+      const res = await getPaymentStatsAction();
+      if (!res.success) return { totalPaid: 0, totalAttempts: 0, successCount: 0, failedCount: 0 };
+      return (res as any).data;
     },
     enabled: !!user,
   });
 
-  const loading = isLoadingUser || isLoading;
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['payment-history'],
+    queryFn: async ({ pageParam }: { pageParam: number | undefined }) => {
+      const res = await getPaymentHistoryAction(pageParam, PAGE_SIZE);
+      if (!res.success) return { items: [], nextCursor: undefined };
+      return (res as any).data as { items: any[]; nextCursor: number | undefined };
+    },
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: !!user,
+  });
+
+  const history = data?.pages.flatMap((page) => page.items) ?? [];
+
+  const lastElementRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (isFetchingNextPage) return;
+      if (observerRef.current) observerRef.current.disconnect();
+
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && hasNextPage) {
+            fetchNextPage();
+          }
+        },
+        { threshold: 0.1 }
+      );
+
+      if (node) observerRef.current.observe(node);
+    },
+    [isFetchingNextPage, hasNextPage, fetchNextPage]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (observerRef.current) observerRef.current.disconnect();
+    };
+  }, []);
+
+  const loading = isLoadingUser || (isLoading && isLoadingStats);
 
   const statusConfig: Record<string, { icon: any; label: string; color: string; bg: string; border: string }> = {
     paid: {
@@ -52,13 +104,10 @@ export default function PaymentHistoryPage() {
 
   const getStatus = (status: string) => statusConfig[status] || statusConfig.pending;
 
-  const totalPaid = history
-    .filter((t: any) => t.status === 'paid')
-    .reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0);
-
-  const totalAttempts = history.length;
-  const successCount = history.filter((t: any) => t.status === 'paid').length;
-  const failedCount = history.filter((t: any) => t.status !== 'paid').length;
+  const totalPaid = stats?.totalPaid ?? 0;
+  const totalAttempts = stats?.totalAttempts ?? 0;
+  const successCount = stats?.successCount ?? 0;
+  const failedCount = stats?.failedCount ?? 0;
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-indigo-100 dark:selection:bg-indigo-900 bg-gradient-to-br from-indigo-50 via-indigo-100 to-violet-50 dark:from-background dark:via-background dark:to-background text-foreground">
@@ -111,7 +160,7 @@ export default function PaymentHistoryPage() {
             </div>
 
             {/* Transaction List */}
-            {history.length === 0 ? (
+            {history.length === 0 && !isLoading ? (
               <div className="glass-card rounded-3xl p-16 text-center">
                 <div className="w-20 h-20 rounded-3xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-6 border border-dashed border-slate-300 dark:border-slate-600">
                   <Receipt size={36} className="text-slate-300 dark:text-slate-600" />
@@ -130,13 +179,15 @@ export default function PaymentHistoryPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {history.map((tx: any) => {
+                {history.map((tx: any, index: number) => {
                   const s = getStatus(tx.status);
                   const StatusIcon = s.icon;
+                  const isLast = index === history.length - 1;
 
                   return (
                     <div
                       key={tx.id}
+                      ref={isLast ? lastElementRef : undefined}
                       className={`glass-card rounded-2xl p-5 transition-all duration-200 hover:translate-y-[-2px] hover:shadow-lg border-l-4 ${s.border}`}
                     >
                       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -203,6 +254,23 @@ export default function PaymentHistoryPage() {
                     </div>
                   );
                 })}
+
+                {/* Infinite scroll loading indicator */}
+                {isFetchingNextPage && (
+                  <div className="py-6 flex flex-col items-center gap-2">
+                    <Loader2 size={24} className="text-indigo-400 animate-spin" />
+                    <p className="text-slate-400 dark:text-slate-500 text-xs font-medium">Loading more transactions...</p>
+                  </div>
+                )}
+
+                {/* End of list indicator */}
+                {!hasNextPage && history.length > 0 && (
+                  <div className="py-6 text-center">
+                    <p className="text-slate-400 dark:text-slate-500 text-xs font-medium">
+                      You&apos;ve reached the end of your transaction history.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </>

@@ -1006,11 +1006,22 @@ export async function checkOrderStatusAction(orderId: string) {
   }
 }
 
-export async function getPaymentHistoryAction() {
+export async function getPaymentHistoryAction(cursor?: number, limit = 10) {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
-    const data = await SubscriptionService.getPaymentHistory(session.id);
+    const data = await SubscriptionService.getPaymentHistory(session.id, cursor, limit);
+    return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function getPaymentStatsAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    const data = await SubscriptionService.getPaymentStats(session.id);
     return { success: true, data };
   } catch (error: any) {
     return handleActionError(error);

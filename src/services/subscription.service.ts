@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { transactions, users, plans } from '@/lib/db/schema';
-import { eq, sql, desc, ne } from 'drizzle-orm';
+import { eq, sql, desc, ne, lt, count } from 'drizzle-orm';
 import crypto from 'crypto';
 
 export class SubscriptionService {
@@ -94,7 +94,11 @@ export class SubscriptionService {
     });
   }
 
-  static async getPaymentHistory(userId: number) {
+  static async getPaymentHistory(userId: number, cursor?: number, limit = 10) {
+    const baseWhere = cursor
+      ? sql`${transactions.userId} = ${userId} AND ${transactions.id} < ${cursor}`
+      : eq(transactions.userId, userId);
+
     const rows = await db
       .select({
         id: transactions.id,
@@ -110,10 +114,34 @@ export class SubscriptionService {
       })
       .from(transactions)
       .leftJoin(plans, eq(transactions.planId, plans.id))
-      .where(eq(transactions.userId, userId))
-      .orderBy(desc(transactions.createdAt));
+      .where(baseWhere)
+      .orderBy(desc(transactions.id))
+      .limit(limit + 1); // Fetch one extra to check if there are more
 
-    return rows;
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? items[items.length - 1].id : undefined;
+
+    return { items, nextCursor };
+  }
+
+  static async getPaymentStats(userId: number) {
+    const [stats] = await db
+      .select({
+        totalAttempts: count(),
+        totalPaid: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.status} = 'paid' THEN CAST(${transactions.amount} AS NUMERIC) ELSE 0 END), 0)`,
+        successCount: sql<number>`COUNT(CASE WHEN ${transactions.status} = 'paid' THEN 1 END)`,
+        failedCount: sql<number>`COUNT(CASE WHEN ${transactions.status} != 'paid' THEN 1 END)`,
+      })
+      .from(transactions)
+      .where(eq(transactions.userId, userId));
+
+    return {
+      totalAttempts: stats.totalAttempts,
+      totalPaid: parseFloat(stats.totalPaid || '0'),
+      successCount: stats.successCount,
+      failedCount: stats.failedCount,
+    };
   }
 
   static async getAllPaymentsAdmin() {
