@@ -13,7 +13,6 @@ export async function GET(
   const baseUrl = 'https://leadspotter.in';
   const limit = 25000;
 
-  // Try to parse the id (e.g., "0.xml" -> 0)
   const idMatch = id.match(/^(\d+)\.xml$/);
   if (!idMatch) {
     return new NextResponse('Not found', { status: 404 });
@@ -22,39 +21,49 @@ export async function GET(
   const parsedId = Number(idMatch[1]);
   const offset = parsedId * limit;
 
-  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+  // Use a fixed date for static pages to avoid "faking" modified dates
+  const staticLastMod = '2025-03-01T12:00:00Z';
+  const now = new Date();
 
-  const addUrl = (loc: string, lastMod: Date, changeFreq: string, priority: number) => {
+
+  // Helper to format date for XML without milliseconds
+  const formatDate = (date: Date) => date.toISOString().split('.')[0] + 'Z';
+
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+
+  const addUrl = (loc: string, lastMod: Date | string, changeFreq: string, priority: number) => {
+    const formattedDate = typeof lastMod === 'string' ? lastMod : formatDate(lastMod);
     xml += `
   <url>
     <loc>${loc}</loc>
-    <lastmod>${lastMod.toISOString()}</lastmod>
+    <lastmod>${formattedDate}</lastmod>
     <changefreq>${changeFreq}</changefreq>
     <priority>${priority.toFixed(1)}</priority>
   </url>`;
   };
 
+
   if (parsedId === 0) {
-    const now = new Date();
     // Core Static Pages
-    addUrl(baseUrl, now, 'weekly', 1.0);
-    addUrl(`${baseUrl}/pricing`, now, 'monthly', 0.9);
-    addUrl(`${baseUrl}/features`, now, 'monthly', 0.9);
-    addUrl(`${baseUrl}/features/google-maps-extractor`, now, 'monthly', 0.8);
-    addUrl(`${baseUrl}/features/email-enrichment`, now, 'monthly', 0.8);
-    addUrl(`${baseUrl}/features/bulk-keyword-generator`, now, 'monthly', 0.8);
-    addUrl(`${baseUrl}/use-cases`, now, 'monthly', 0.9);
-    addUrl(`${baseUrl}/blog`, now, 'weekly', 0.9);
-    addUrl(`${baseUrl}/company`, now, 'monthly', 0.7);
-    addUrl(`${baseUrl}/privacy`, now, 'yearly', 0.3);
-    addUrl(`${baseUrl}/terms`, now, 'yearly', 0.3);
+    addUrl(baseUrl, staticLastMod, 'weekly', 1.0);
+    addUrl(`${baseUrl}/pricing`, staticLastMod, 'monthly', 0.9);
+    addUrl(`${baseUrl}/features`, staticLastMod, 'monthly', 0.9);
+    addUrl(`${baseUrl}/features/google-maps-extractor`, staticLastMod, 'monthly', 0.8);
+    addUrl(`${baseUrl}/features/email-enrichment`, staticLastMod, 'monthly', 0.8);
+    addUrl(`${baseUrl}/features/bulk-keyword-generator`, staticLastMod, 'monthly', 0.8);
+    addUrl(`${baseUrl}/use-cases`, staticLastMod, 'monthly', 0.9);
+    addUrl(`${baseUrl}/blog`, staticLastMod, 'weekly', 0.9);
+    addUrl(`${baseUrl}/company`, staticLastMod, 'monthly', 0.7);
+    addUrl(`${baseUrl}/privacy`, staticLastMod, 'yearly', 0.3);
+    addUrl(`${baseUrl}/terms`, staticLastMod, 'yearly', 0.3);
 
     // Competitors
     const competitors = [
       'phantombuster', 'd7leadfinder', 'apollo', 'outscraper',
       'apify', 'zoominfo', 'lusha', 'hunter', 'snov'
     ];
-    competitors.forEach(comp => addUrl(`${baseUrl}/compare/leadspotter-vs-${comp}`, now, 'monthly', 0.8));
+    competitors.forEach(comp => addUrl(`${baseUrl}/compare/leadspotter-vs-${comp}`, staticLastMod, 'monthly', 0.8));
 
     // Blog
     try {
@@ -109,9 +118,9 @@ export async function GET(
 
   xml += `\n</urlset>`;
 
-  return new NextResponse(xml, {
+  return new NextResponse(xml.trim(), {
     headers: {
-      'Content-Type': 'application/xml',
+      'Content-Type': 'application/xml; charset=utf-8',
       'Cache-Control': 'public, max-age=3600, s-maxage=3600'
     },
   });
