@@ -7,16 +7,10 @@ export async function middleware(request: NextRequest) {
   let isValidSession = false;
 
   if (session) {
-    console.log(`[Middleware] Session cookie found: ${session.value.substring(0, 10)}...`);
     const payload = await verifyToken(session.value);
     if (payload) {
-      console.log("[Middleware] Session is VALID");
       isValidSession = true;
-    } else {
-      console.log("[Middleware] Session is INVALID (verifyToken returned null)");
     }
-  } else {
-    console.log("[Middleware] No session cookie found");
   }
 
   const path = request.nextUrl.pathname;

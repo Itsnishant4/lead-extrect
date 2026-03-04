@@ -5,6 +5,22 @@ import crypto from 'crypto';
 import { NotificationService } from './notification.service';
 
 export class SubscriptionService {
+  private static computeExpiry(period: string | null): Date | null {
+    if (!period) return null;
+    const lower = period.toLowerCase();
+    if (lower === 'month' || lower === 'monthly') {
+      return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    }
+    if (lower === 'year' || lower === 'yearly' || lower === 'annual') {
+      return new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    }
+    if (lower === 'lifetime') {
+      return new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000); // ~100 years
+    }
+    // Default: 30 days for unknown periods
+    return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  }
+
   static async createOrder(userId: number, planId: number) {
     const plan = await db.select().from(plans).where(eq(plans.id, planId)).limit(1).then(res => res[0]);
     if (!plan) throw new Error('Plan not found');
@@ -88,9 +104,7 @@ export class SubscriptionService {
       await tx.update(users).set({
         planType: plan.name.toLowerCase(),
         bonusCredits: sql`COALESCE(${users.bonusCredits}, 0) + ${plan.leadsCredits}`,
-        subscriptionExpiry: plan.period === 'month' 
-          ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) 
-          : null,
+        subscriptionExpiry: SubscriptionService.computeExpiry(plan.period),
       }).where(eq(users.id, transaction.userId!));
 
       // Notify user of successful payment (fire-and-forget, outside transaction)
@@ -198,9 +212,7 @@ export class SubscriptionService {
       await txDB.update(users).set({
         planType: plan.name.toLowerCase(),
         bonusCredits: sql`COALESCE(bonus_credits, 0) + ${plan.leadsCredits}`,
-        subscriptionExpiry: plan.period === 'month'
-          ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-          : null,
+        subscriptionExpiry: SubscriptionService.computeExpiry(plan.period),
       }).where(eq(users.id, tx.userId!));
     });
   }

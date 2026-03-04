@@ -54,6 +54,10 @@ export class TaskService {
     });
   }
 
+  static async updateLeadCount(userId: number, taskId: number, count: number) {
+    await TaskRepository.update(taskId, userId, { totalLeads: count });
+  }
+
   static async getTasks(userId: number) {
     return await TaskRepository.findAllByUserId(userId);
   }

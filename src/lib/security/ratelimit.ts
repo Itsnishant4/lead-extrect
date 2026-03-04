@@ -6,7 +6,7 @@ import { eq, sql } from 'drizzle-orm';
  * Checks rate limit for a given key.
  * @param strict If true, will fail-closed (return false) on database errors.
  */
-export async function checkRateLimit(key: string, limit: number, windowMs: number, strict: boolean = false): Promise<boolean> {
+export async function checkRateLimit(key: string, limit: number, windowMs: number, strict: boolean = true): Promise<boolean> {
   try {
     const resetTime = new Date(Date.now() + windowMs);
 

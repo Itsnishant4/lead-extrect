@@ -135,7 +135,7 @@ export function parseMapResponse(data: any): Lead[] {
           email,
           rating: typeof rating === 'number' ? rating : null,
           reviewsCount: typeof reviewsCount === 'number' ? reviewsCount : null,
-          category: Array.isArray(category) ? category[0] : category || null,
+          category: typeof category === 'string' ? category : (Array.isArray(category) ? String(category[0] ?? '') : null) || null,
           placeId: placeId || null,
           latitude: lat,
           longitude: lng,

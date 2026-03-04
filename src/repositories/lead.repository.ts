@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/index';
-import { leads, leadSources, taskLeads, savedListItems, searches } from '@/lib/db/schema';
+import { leads, leadSources, taskLeads, savedListItems, searches, tasks } from '@/lib/db/schema';
 import { eq, and, inArray, sql, notExists, desc } from 'drizzle-orm';
 
 export class LeadRepository {
@@ -21,6 +21,25 @@ export class LeadRepository {
     .where(eq(leadSources.searchId, searchId))
     .groupBy(leads.id)
     .orderBy(desc(leads.createdAt));
+  }
+
+  static async findByTaskId(userId: number, taskId: number, limit?: number, offset?: number, tx: any = db) {
+    // Ownership check
+    const taskCheck = await tx.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.id, taskId), eq(tasks.userId, userId))).limit(1);
+    if (taskCheck.length === 0) throw new Error('Unauthorized task access');
+
+    let query = tx.select({
+      lead: leads,
+      sourceCount: sql<number>`1`
+    }).from(leads)
+    .innerJoin(taskLeads, eq(taskLeads.leadId, leads.id))
+    .where(eq(taskLeads.taskId, taskId))
+    .orderBy(desc(leads.createdAt));
+
+    if (limit !== undefined) query = query.limit(limit);
+    if (offset !== undefined) query = query.offset(offset);
+
+    return await query;
   }
 
   static async findAllByUserId(userId: number, limit: number = 10, tx: any = db) {
@@ -69,5 +88,3 @@ export class LeadRepository {
     await tx.delete(tasks).where(eq(tasks.userId, userId));
   }
 }
-
-import { tasks } from '@/lib/db/schema';

@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/index';
 import { users, cityAreas, keywordHistory } from '@/lib/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 
 export class KeywordService {
   static async getCityAreas(country: string, state: string, city: string) {
@@ -30,10 +30,11 @@ export class KeywordService {
   }
 
   static async getBulkCityAreas(country: string, state: string, cities: string[]) {
+    if (cities.length === 0) return {};
     const results = await db.select().from(cityAreas).where(and(
       eq(cityAreas.country, country),
       eq(cityAreas.state, state),
-      sql`city IN ${cities}`
+      inArray(cityAreas.city, cities)
     ));
 
     const data: Record<string, string[]> = {};

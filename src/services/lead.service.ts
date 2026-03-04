@@ -308,7 +308,25 @@ export class LeadService {
           console.error('[LEAD SERVICE] Failed to update seo_hub_registry', seoErr);
         }
 
-        const inserted = await tx.select({ id: leads.id, placeId: leads.placeId }).from(leads).where(inArray(leads.placeId, leadsToInsert.map(l => l.placeId).filter(Boolean) as string[]));
+        const placeIds = leadsToInsert.map(l => l.placeId).filter(Boolean) as string[];
+        let inserted: { id: number; placeId: string | null }[] = [];
+
+        if (placeIds.length > 0) {
+          inserted = await tx.select({ id: leads.id, placeId: leads.placeId }).from(leads).where(inArray(leads.placeId, placeIds));
+        }
+
+        // For leads without placeId, find them by name+address match (they were just inserted)
+        if (inserted.length < leadsToInsert.length) {
+          const nullPlaceIdLeads = leadsToInsert.filter(l => !l.placeId);
+          for (const lead of nullPlaceIdLeads) {
+            const found = await tx.select({ id: leads.id, placeId: leads.placeId }).from(leads)
+              .where(and(eq(leads.name, lead.name), eq(leads.address, lead.address || '')))
+              .limit(1);
+            if (found.length > 0) {
+              inserted.push(found[0]);
+            }
+          }
+        }
         
         if (inserted.length > 0) {
           if (taskId) {
@@ -343,6 +361,10 @@ export class LeadService {
     } else {
       return await LeadRepository.findAllByUserId(userId);
     }
+  }
+
+  static async getLeadsByTaskId(userId: number, taskId: number, limit?: number, offset?: number) {
+    return await LeadRepository.findByTaskId(userId, taskId, limit, offset);
   }
 
   static async wipeLeadsForUser(userId: number) {

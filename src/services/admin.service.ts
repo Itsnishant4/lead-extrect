@@ -192,12 +192,12 @@ export class AdminService {
 
   static async updateUser(userId: number, data: any) {
     const updateData: any = {};
-    if (data.name) updateData.name = data.name;
-    if (data.planType) updateData.planType = data.planType;
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.planType !== undefined) updateData.planType = data.planType;
     if (data.is_admin !== undefined) updateData.isAdmin = data.is_admin;
     if (data.is_suspended !== undefined) updateData.isSuspended = data.is_suspended;
     if (data.bonusCredits !== undefined) updateData.bonusCredits = data.bonusCredits;
-    if (data.subscription_expiry) updateData.subscriptionExpiry = new Date(data.subscription_expiry);
+    if (data.subscription_expiry !== undefined) updateData.subscriptionExpiry = data.subscription_expiry ? new Date(data.subscription_expiry) : null;
 
     await db.update(users).set(updateData).where(eq(users.id, userId));
   }
