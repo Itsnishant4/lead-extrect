@@ -3,16 +3,17 @@
 import * as React from 'react';
 import {
   Download, LoaderCircle, Mail, Phone, Globe, Share2, Star, MapPin,
-  Filter, CheckCheck, X, Info,
+  Filter, CheckCheck, Info,
 } from 'lucide-react';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetFooter,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -107,6 +108,7 @@ const DEFAULT_FILTERS: FilterSettings = {
 export function ExportFilters({ onExport, isLoading, disabled, progress }: ExportFiltersProps) {
   const [filters, setFilters] = React.useState<FilterSettings>({ ...DEFAULT_FILTERS });
   const [isDownloading, setIsDownloading] = React.useState(false);
+  const [open, setOpen] = React.useState(false);
 
   const toggleFilter = (key: keyof FilterSettings) => {
     setFilters(prev => ({ ...prev, [key]: !prev[key] }));
@@ -136,8 +138,8 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
   const summary = getSummary();
 
   return (
-    <Sheet>
-      <SheetTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <Button
           variant="outline"
           size="sm"
@@ -152,21 +154,24 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
             </span>
           )}
         </Button>
-      </SheetTrigger>
+      </DialogTrigger>
 
-      <SheetContent side="right" className="sm:max-w-[420px] p-0 flex flex-col gap-0 border-l border-border">
+      <DialogContent
+        className="sm:max-w-[520px] p-0 gap-0 overflow-hidden rounded-2xl"
+        showCloseButton={!isDownloading}
+      >
         {/* Header */}
-        <SheetHeader className="p-6 pb-4 border-b border-border bg-muted/30">
-          <SheetTitle className="text-xl font-bold flex items-center gap-2.5">
+        <DialogHeader className="p-6 pb-4 border-b border-border bg-muted/30">
+          <DialogTitle className="text-xl font-bold flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-950/80 flex items-center justify-center">
               <Filter size={18} className="text-indigo-600 dark:text-indigo-400" />
             </div>
             Export Leads
-          </SheetTitle>
-          <p className="text-[13px] text-muted-foreground leading-relaxed mt-1">
+          </DialogTitle>
+          <DialogDescription className="text-[13px] text-muted-foreground leading-relaxed mt-1">
             Filter which leads to include in your CSV. Checked filters are combined — only leads matching <strong className="text-foreground">all</strong> selected criteria are exported.
-          </p>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         {/* Quick actions bar */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-muted/10">
@@ -192,30 +197,30 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
           </div>
         </div>
 
-        {/* Filter list */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="space-y-2.5">
+        {/* Filter grid - 2 columns on desktop, 1 on mobile */}
+        <div className="max-h-[50vh] overflow-y-auto px-6 py-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {FILTER_CONFIG.map((filter) => {
               const Icon = filter.icon;
               const isChecked = filters[filter.key];
               return (
                 <div
                   key={filter.key}
-                  className={`flex items-center gap-3.5 rounded-xl border p-3.5 transition-all duration-150 cursor-pointer group
+                  className={`flex items-center gap-3 rounded-xl border p-3 transition-all duration-150 cursor-pointer group
                     ${isChecked
                       ? `${filter.activeBorder} ${filter.activeBg} shadow-sm`
                       : 'border-border hover:border-slate-300 dark:hover:border-slate-600 hover:bg-accent/30'
                     }`}
                   onClick={() => toggleFilter(filter.key)}
                 >
-                  <div className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${isChecked ? filter.bg : 'bg-muted'}`}>
-                    <Icon size={17} className={isChecked ? filter.color : 'text-muted-foreground'} />
+                  <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isChecked ? filter.bg : 'bg-muted'}`}>
+                    <Icon size={16} className={isChecked ? filter.color : 'text-muted-foreground'} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-semibold leading-tight ${isChecked ? 'text-foreground' : 'text-foreground/80'}`}>
                       {filter.label}
                     </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug truncate">
                       {filter.description}
                     </p>
                   </div>
@@ -241,10 +246,10 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
         </div>
 
         {/* Footer */}
-        <SheetFooter className="p-6 pt-4 border-t border-border bg-muted/30">
+        <DialogFooter className="flex-col gap-3 p-6 pt-4 border-t border-border bg-muted/30 sm:flex-col">
           {/* Active filter summary */}
           {summary && (
-            <div className="w-full flex items-center gap-2 mb-3 px-1">
+            <div className="w-full flex items-center gap-2 px-1">
               <CheckCheck size={13} className="text-indigo-500 shrink-0" />
               <p className="text-[11px] text-muted-foreground leading-snug">{summary}</p>
             </div>
@@ -254,8 +259,12 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
             className="w-full gap-2.5 h-12 text-sm font-bold rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-blue-500 hover:from-indigo-700 hover:via-indigo-600 hover:to-blue-600 text-white shadow-md shadow-indigo-200/50 dark:shadow-indigo-900/30 transition-all"
             onClick={async () => {
               setIsDownloading(true);
-              await Promise.resolve(onExport(filters));
-              setIsDownloading(false);
+              try {
+                await Promise.resolve(onExport(filters));
+              } finally {
+                setIsDownloading(false);
+                setOpen(false);
+              }
             }}
             disabled={isDownloading}
           >
@@ -267,12 +276,12 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
                 : 'Download All Leads as CSV'
             }
           </Button>
-        </SheetFooter>
+        </DialogFooter>
 
-        {/* Full-screen loading overlay */}
+        {/* Loading overlay inside dialog */}
         {isDownloading && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <div className="flex flex-col items-center gap-4 bg-card/90 backdrop-blur-lg border border-border rounded-2xl px-10 py-8 shadow-2xl">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-2xl">
+            <div className="flex flex-col items-center gap-4 px-10 py-8">
               <LoaderCircle className="h-10 w-10 animate-spin text-indigo-500" />
               <p className="text-sm font-semibold text-foreground">
                 {progress !== undefined ? `Exporting... ${Math.round(progress)}%` : 'Preparing export...'}
@@ -294,7 +303,7 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
             </div>
           </div>
         )}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
