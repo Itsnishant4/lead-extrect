@@ -3,7 +3,7 @@
 import * as React from 'react';
 import {
   Download, LoaderCircle, Mail, Phone, Globe, Share2, Star, MapPin,
-  Filter, CheckCheck, Info,
+  Filter, CheckCheck, Info, ShieldCheck,
 } from 'lucide-react';
 import {
   Dialog,
@@ -36,8 +36,8 @@ interface ExportFiltersProps {
 const FILTER_CONFIG = [
   {
     key: 'hasEmail' as const,
-    label: 'With Email',
-    description: 'Has an email address (from Google or website)',
+    label: 'Email Required',
+    description: 'Only export leads that have an email address',
     icon: Mail,
     color: 'text-indigo-500',
     bg: 'bg-indigo-50 dark:bg-indigo-950/50',
@@ -46,8 +46,8 @@ const FILTER_CONFIG = [
   },
   {
     key: 'hasPhone' as const,
-    label: 'With Phone',
-    description: 'Has a phone number listed',
+    label: 'Phone Required',
+    description: 'Only export leads that have a phone number',
     icon: Phone,
     color: 'text-emerald-500',
     bg: 'bg-emerald-50 dark:bg-emerald-950/50',
@@ -56,8 +56,8 @@ const FILTER_CONFIG = [
   },
   {
     key: 'hasWebsite' as const,
-    label: 'With Website',
-    description: 'Has a business website URL',
+    label: 'Website Required',
+    description: 'Only export leads that have a website URL',
     icon: Globe,
     color: 'text-blue-500',
     bg: 'bg-blue-50 dark:bg-blue-950/50',
@@ -66,8 +66,8 @@ const FILTER_CONFIG = [
   },
   {
     key: 'hasSocials' as const,
-    label: 'With Social Profiles',
-    description: 'Has at least one social link (FB, IG, LinkedIn, etc.)',
+    label: 'Socials Required',
+    description: 'Only export leads that have social media links',
     icon: Share2,
     color: 'text-violet-500',
     bg: 'bg-violet-50 dark:bg-violet-950/50',
@@ -76,8 +76,8 @@ const FILTER_CONFIG = [
   },
   {
     key: 'hasRating' as const,
-    label: 'With Rating',
-    description: 'Has a Google rating above 0',
+    label: 'Rating Required',
+    description: 'Only export leads that have a Google rating',
     icon: Star,
     color: 'text-amber-500',
     bg: 'bg-amber-50 dark:bg-amber-950/50',
@@ -86,8 +86,8 @@ const FILTER_CONFIG = [
   },
   {
     key: 'hasAddress' as const,
-    label: 'With Address',
-    description: 'Has a physical street address',
+    label: 'Address Required',
+    description: 'Only export leads that have a street address',
     icon: MapPin,
     color: 'text-rose-500',
     bg: 'bg-rose-50 dark:bg-rose-950/50',
@@ -128,11 +128,11 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
   // Build human-readable summary
   const getSummary = () => {
     if (activeCount === 0) return null;
-    if (activeCount === 6) return 'All filters active -- only leads matching every criteria will be exported.';
-    const names = activeFilters.map(f => f.label.replace('With ', '').toLowerCase());
-    if (names.length === 1) return `Only leads with ${names[0]} will be exported.`;
+    if (activeCount === 6) return 'All fields required -- leads must have every field to be exported.';
+    const names = activeFilters.map(f => f.label.replace(' Required', '').toLowerCase());
+    if (names.length === 1) return `Leads must have ${names[0]} to be included in the export.`;
     const last = names.pop();
-    return `Only leads with ${names.join(', ')} and ${last} will be exported.`;
+    return `Leads must have ${names.join(', ')} and ${last} to be included in the export.`;
   };
 
   const summary = getSummary();
@@ -164,19 +164,19 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
         <DialogHeader className="p-6 pb-4 border-b border-border bg-muted/30">
           <DialogTitle className="text-xl font-bold flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-950/80 flex items-center justify-center">
-              <Filter size={18} className="text-indigo-600 dark:text-indigo-400" />
+              <Download size={18} className="text-indigo-600 dark:text-indigo-400" />
             </div>
             Export Leads
           </DialogTitle>
           <DialogDescription className="text-[13px] text-muted-foreground leading-relaxed mt-1">
-            Filter which leads to include in your CSV. Checked filters are combined — only leads matching <strong className="text-foreground">all</strong> selected criteria are exported.
+            Choose which fields a lead <strong className="text-foreground">must have</strong> to be included in the CSV export. Leads missing any checked field will be <strong className="text-foreground">excluded</strong>.
           </DialogDescription>
         </DialogHeader>
 
         {/* Quick actions bar */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-muted/10">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Filters{activeCount > 0 && ` (${activeCount})`}
+            Required Fields{activeCount > 0 && ` (${activeCount})`}
           </span>
           <div className="flex items-center gap-3">
             <button
@@ -184,7 +184,7 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
               disabled={activeCount === 6}
               className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              Select all
+              Require all
             </button>
             <span className="text-border">|</span>
             <button
@@ -237,10 +237,10 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
           </div>
 
           {/* Tip */}
-          <div className="mt-4 flex items-start gap-2.5 rounded-lg bg-muted/50 dark:bg-muted/30 px-3.5 py-3 border border-border">
-            <Info size={14} className="text-muted-foreground shrink-0 mt-0.5" />
+          <div className="mt-4 flex items-start gap-2.5 rounded-lg bg-amber-50/60 dark:bg-amber-950/20 px-3.5 py-3 border border-amber-200/60 dark:border-amber-800/40">
+            <Info size={14} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Leave all unchecked to export <strong className="text-foreground/70">every</strong> lead. Checking multiple filters narrows the results (AND logic).
+              <strong className="text-foreground/80">No fields checked?</strong> All leads will be exported as-is, even those with missing data. Check a field to make it compulsory.
             </p>
           </div>
         </div>
@@ -249,9 +249,9 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
         <DialogFooter className="flex-col gap-3 p-6 pt-4 border-t border-border bg-muted/30 sm:flex-col">
           {/* Active filter summary */}
           {summary && (
-            <div className="w-full flex items-center gap-2 px-1">
-              <CheckCheck size={13} className="text-indigo-500 shrink-0" />
-              <p className="text-[11px] text-muted-foreground leading-snug">{summary}</p>
+            <div className="w-full flex items-center gap-2 px-1 py-2 rounded-lg bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-200/50 dark:border-indigo-800/30">
+              <ShieldCheck size={14} className="text-indigo-500 shrink-0 ml-2" />
+              <p className="text-[12px] text-indigo-700 dark:text-indigo-300 leading-snug font-medium">{summary}</p>
             </div>
           )}
 
@@ -272,8 +272,8 @@ export function ExportFilters({ onExport, isLoading, disabled, progress }: Expor
             {isDownloading
               ? 'Preparing...'
               : activeCount > 0
-                ? `Download Filtered CSV (${activeCount} filter${activeCount > 1 ? 's' : ''})`
-                : 'Download All Leads as CSV'
+                ? `Export with ${activeCount} Required Field${activeCount > 1 ? 's' : ''}`
+                : 'Export All Leads as CSV'
             }
           </Button>
         </DialogFooter>
