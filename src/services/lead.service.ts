@@ -166,13 +166,9 @@ export class LeadService {
     const count = cachedLeadsRes.length;
 
     return await db.transaction(async (tx) => {
-      // FIX: Use row-level locking for credit limit check
-      const user = await tx.select().from(users).where(eq(users.id, userId)).for('update');
-      const lockedLimits = this.computeLimits(user[0]);
-      
-      if (lockedLimits.currentLimit !== Infinity && lockedLimits.remaining < count) {
-        return { success: false, error: 'Limit reached for cached results', limitReached: true };
-      }
+      // CRITICAL FIX: Do NOT charge credits for cached results
+      // These leads were already paid for in the original search
+      // Only charge credits for NEW leads, not cached ones
 
       if (taskId) {
         const tLeads = cachedLeadsRes.map(l => ({ taskId, leadId: l.id }));
@@ -184,10 +180,36 @@ export class LeadService {
       const lSources = cachedLeadsRes.map(l => ({ leadId: l.id, searchId, taskId: taskId || null }));
       await tx.insert(leadSources).values(lSources).onConflictDoNothing();
 
-      await tx.update(users).set({ leadsExtracted: sql`leads_extracted + ${count}` }).where(eq(users.id, userId));
-      return { success: true, count, searchId, cached: true, leads: [] };
+      // NOTE: Removed credit increment for cached leads
+      // await tx.update(users).set({ leadsExtracted: sql`leads_extracted + ${count}` }).where(eq(users.id, userId));
+
+      return { success: true, count, searchId, cached: true, leads: [], limitReached: false, error: undefined };
     });
   }
+
+  //   return await db.transaction(async (tx) => {
+  //     // FIX: Use row-level locking for credit limit check
+  //     const user = await tx.select().from(users).where(eq(users.id, userId)).for('update');
+  //     const lockedLimits = this.computeLimits(user[0]);
+      
+  //     if (lockedLimits.currentLimit !== Infinity && lockedLimits.remaining < count) {
+  //       return { success: false, error: 'Limit reached for cached results', limitReached: true };
+  //     }
+
+  //     if (taskId) {
+  //       const tLeads = cachedLeadsRes.map(l => ({ taskId, leadId: l.id }));
+  //       await tx.insert(taskLeads).values(tLeads).onConflictDoNothing();
+  //       const countRes = await tx.select({ count: sql<number>`count(*)` }).from(taskLeads).where(eq(taskLeads.taskId, taskId));
+  //       await tx.update(tasks).set({ totalLeads: Number(countRes[0].count) }).where(eq(tasks.id, taskId));
+  //     }
+
+  //     const lSources = cachedLeadsRes.map(l => ({ leadId: l.id, searchId, taskId: taskId || null }));
+  //     await tx.insert(leadSources).values(lSources).onConflictDoNothing();
+
+  //     await tx.update(users).set({ leadsExtracted: sql`leads_extracted + ${count}` }).where(eq(users.id, userId));
+  //     return { success: true, count, searchId, cached: true, leads: [] };
+  //   });
+  // }
 
   private static async enrichLeadsBatch(validLeads: any[]) {
     const limit = pLimit(10); // Max 10 concurrent enrichment requests
