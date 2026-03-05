@@ -8,24 +8,7 @@ import { LeadRepository } from '@/repositories/lead.repository';
 import { TaskRepository } from '@/repositories/task.repository';
 import { UserRepository } from '@/repositories/user.repository';
 import { pLimit } from '@/lib/utils/promise';
-
-const BLOCKED_CATEGORIES = [
-  'Housing society', 'Apartment building', 'Condominium complex', 'Housing complex',
-  'Residents association', 'Gated community', 'Tea store', 'Coffee shop', 'Flour mill',
-  'Private User', 'Transit station', 'Public toilet', 'Park', 'Garden', 'Playground',
-  'Hostel', 'Dormitory', 'Paying guest', 'Lodging', 'Cottage', 'Villa', 'Resort',
-  'Homestay', 'Guest house', 'School', 'College', 'University', 'Library'
-];
-
-const IT_BLOCKED_CATEGORIES = [
-  'Manufacturer', 'Wholesaler', 'Supplier', 'Store', 'Shop', 'Factory', 'Mill',
-  'Industrial', 'Plant', 'Agency', 'Consultant', 'Travel', 'Transport', 'Logistics',
-  'Real estate', 'Broker', 'Gym', 'Fitness', 'Hospital', 'Clinic', 'Doctor',
-  'Pharmacy', 'Restaurant', 'Hotel', 'Cafe', 'Bakery', 'Food', 'Beverage',
-  'Clothing', 'Textile', 'Fashion', 'Jewelry', 'Furniture', 'Hardware',
-  'Construction', 'Contractor', 'Interior', 'Automobile', 'Car', 'Bike',
-  'Garage', 'Repair', 'Salon', 'Spa', 'Beauty', 'Makeup'
-];
+import { CategoryFilter } from '@/lib/category-filter';
 
 export class LeadService {
   static async searchLeads(query: string, taskId?: number, forceStore?: boolean, options?: { userAgent?: string; acceptLanguage?: string; manualUserId?: number }) {
@@ -64,36 +47,25 @@ export class LeadService {
     await AuditService.saveServerLog(taskId || null, 'INFO', `Cache miss for "${query}". Calling fetchLeads...`, userId);
     const rawLeads = await fetchLeads(query, coords?.lat, coords?.lng, { userAgent: options.userAgent, acceptLanguage: options.acceptLanguage });
     console.log(`[LEAD SERVICE] fetchLeads returned ${rawLeads.length} leads for "${query}"`);
+
+    // Initialize category filter with query for smart filtering
+    CategoryFilter.initialize(trimmedQuery);
     
-    const validLeads = rawLeads.filter(lead => this.validateLead(lead, trimmedQuery));
+    // Use CategoryFilter for data-driven category filtering
+    const categoryFilteredLeads = CategoryFilter.filter(rawLeads);
+    
+    // Also validate lead quality (phone, address, etc.)
+    const validLeads = categoryFilteredLeads.filter(lead => CategoryFilter.validateLeadQuality(lead));
+    
     const filteredCount = rawLeads.length - validLeads.length;
     if (filteredCount > 0) {
-      await AuditService.saveServerLog(taskId || null, 'INFO', `Filtered out ${filteredCount} irrelevant leads.`, userId);
+      await AuditService.saveServerLog(taskId || null, 'INFO', `Filtered out ${filteredCount} irrelevant leads (category + quality).`, userId);
     }
 
     const enrichedLeads = await this.enrichLeadsBatch(validLeads);
     const uniqueLeads = this.deduplicateLeads(enrichedLeads);
 
     return await this.saveLeadsBatch(uniqueLeads, userId, trimmedQuery, taskId, shouldStoreLeads, limits, fastMode);
-  }
-
-  private static validateLead(lead: any, query: string): boolean {
-    if (!lead.category) return true;
-    const lowerCat = lead.category.toLowerCase();
-    const lowerQuery = query.toLowerCase();
-
-    if (BLOCKED_CATEGORIES.some(c => lowerCat.includes(c.toLowerCase()))) return false;
-
-    const isITIntent = ['it company', 'software', 'web', 'digital', 'tech', 'app dev', 'cyber'].some(k => lowerQuery.includes(k));
-    if (isITIntent) {
-      const isWhitelisted = ['computer', 'software', 'technology', 'web', 'digital', 'marketing', 'advertising', 'design', 'internet', 'data', 'security', 'cctv'].some(k => lowerCat.includes(k));
-      if (isWhitelisted) return true;
-      if (IT_BLOCKED_CATEGORIES.some(c => lowerCat.includes(c.toLowerCase()))) {
-        if (lowerCat.includes('agency') && (lowerCat.includes('web') || lowerCat.includes('digital') || lowerCat.includes('marketing'))) return true;
-        return false;
-      }
-    }
-    return true;
   }
 
   private static computeLimits(user: any) {
