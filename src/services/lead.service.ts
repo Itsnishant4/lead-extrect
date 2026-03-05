@@ -225,8 +225,18 @@ private static async tryGetCachedLeads(query: string, userId: number, taskId: nu
       const userRows = await tx.select().from(users).where(eq(users.id, userId)).for('update');
       const lockedLimits = this.computeLimits(userRows[0]);
 
-      const allowedCount = lockedLimits.currentLimit === Infinity ? uniqueLeads.length : Math.min(uniqueLeads.length, lockedLimits.remaining);
-      if (allowedCount <= 0) return { success: false, error: 'Limit reached', limitReached: true };
+    const allowedCount = lockedLimits.currentLimit === Infinity ? uniqueLeads.length : Math.min(uniqueLeads.length, lockedLimits.remaining);
+    
+    // CRITICAL FIX: Only return "limit reached" if user has no credits AND there are leads to save
+    // If uniqueLeads=0 (all filtered out), that's NOT a credit limit issue
+    if (uniqueLeads.length > 0 && allowedCount <= 0) {
+      return { success: false, error: 'Limit reached', limitReached: true };
+    }
+
+    // If no leads passed the filter, return success with 0 leads
+    if (uniqueLeads.length === 0) {
+      return { success: true, count: 0, searchId: -1, cached: false, limitReached: false, leads: [], fastMode };
+    }
 
       const leadsToInsert = uniqueLeads.slice(0, allowedCount);
       const searchRes = await tx.insert(searches).values({ userId, query, taskId: taskId || null }).returning({ id: searches.id });

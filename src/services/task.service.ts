@@ -47,8 +47,8 @@ export class TaskService {
   }
 
   static async updateStatus(userId: number, taskId: number, status: string, currentIndex?: number, statusReason?: string | null) {
-    await TaskRepository.update(taskId, userId, { 
-      status, 
+    await TaskRepository.update(taskId, userId, {
+      status,
       currentKeywordIndex: currentIndex,
       statusReason: statusReason !== undefined ? statusReason : null,
     });
@@ -82,7 +82,7 @@ export class TaskService {
     const tId = Number(taskId);
     const uId = Number(userId);
     console.log(`[TASK SERVICE] processTaskStep started for task ${tId}, user ${uId}`);
-    
+
     try {
       // CRITICAL: Atomically claim the next keyword index using row-level locking.
       // This prevents multiple workers from processing the same keyword concurrently.
@@ -106,17 +106,17 @@ export class TaskService {
         }
 
         // Atomically advance the index so no other worker can claim this keyword
-        await tx.update(tasks).set({ 
-          currentKeywordIndex: index + 1, 
-          lastHeartbeat: new Date(), 
-          statusReason: null, 
-          updatedAt: new Date() 
+        await tx.update(tasks).set({
+          currentKeywordIndex: index + 1,
+          lastHeartbeat: new Date(),
+          statusReason: null,
+          updatedAt: new Date()
         }).where(and(eq(tasks.id, tId), eq(tasks.userId, uId)));
 
-        return { 
-          claimed: true, 
-          keyword: keywords[index], 
-          index, 
+        return {
+          claimed: true,
+          keyword: keywords[index],
+          index,
           totalKeywords: keywords.length,
           userAgent: task.userAgent,
           acceptLanguage: task.acceptLanguage,
@@ -141,9 +141,9 @@ export class TaskService {
       const options = { userAgent: userAgent || undefined, acceptLanguage: acceptLanguage || undefined, manualUserId: uId };
 
       await AuditService.saveServerLog(tId, 'INFO', `Processing keyword ${index + 1}/${totalKeywords}: "${keyword}"`, uId);
-      
+
       const res = await LeadService.searchLeads(keyword, tId, true, options);
-      
+
       // RE-CHECK STATUS: Did the user pause the task while we were fetching?
       const freshTask = await TaskRepository.findById(tId, uId);
       if (!freshTask || freshTask.status !== 'running') {
@@ -212,7 +212,7 @@ export class TaskService {
     if (process.env.NEXT_PUBLIC_BASE_URL) {
       return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, '');
     }
-    
+
     if (process.env.NODE_ENV === 'production') {
       // Prefer the production domain if available
       if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
@@ -224,15 +224,15 @@ export class TaskService {
       }
       return 'https://leadspotter.in';
     }
-    
+
     return 'http://127.0.0.1:3000';
   }
 
   static async runTask(taskId: number, userId: number, statusReason?: string) {
     console.log(`[TASK SERVICE] runTask called for task ${taskId}. Updating status to pending for worker to pick up.`);
-    await TaskRepository.update(taskId, userId, { 
-      status: 'pending', 
-      statusReason: statusReason || 'Queued — waiting for worker' 
+    await TaskRepository.update(taskId, userId, {
+      status: 'pending',
+      statusReason: statusReason || 'Queued — waiting for worker'
     });
     return { success: true };
   }
@@ -284,7 +284,7 @@ export class TaskService {
     }
 
     const logContent = logs.map(l => `[${l.createdAt?.toISOString()}] [${l.level}] ${l.message}`).join('\n');
-    
+
     const form = new FormData();
     form.append('chat_id', chatId);
     form.append('document', new Blob([logContent], { type: 'text/plain' }), `${(task?.name || `Task_${taskId}`).replace(/\s+/g, '_')}_logs.txt`);
