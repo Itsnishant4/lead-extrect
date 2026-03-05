@@ -152,17 +152,18 @@ export class AuthService {
         throw new Error('Too many failed attempts. Please request a new OTP.');
       }
 
-      if (user.otpCode !== otp) {
-        await tx.update(users).set({ otpAttempts: sql`otp_attempts + 1` }).where(eq(users.id, user.id));
-        await AuditService.logAction('verify_otp', 'error', { email, reason: 'Invalid OTP', ip });
-        throw new Error('Invalid OTP. Please try again.');
-      }
+    if (user.otpCode !== otp) {
+      await tx.update(users).set({ otpAttempts: sql`otp_attempts + 1` }).where(eq(users.id, user.id));
+      await AuditService.logAction('verify_otp', 'error', { email, reason: 'Invalid OTP', ip });
+      throw new Error('Invalid OTP. Please try again.');
+    }
 
-      // Success: Wipe OTP
-      await tx.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
+    // CRITICAL FIX: Do NOT wipe OTP here - it needs to persist for resetPassword()
+    // The OTP will be wiped after successful password reset
+    // await tx.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
 
-      await AuditService.logAction('verify_otp', 'success', { email, ip });
-      return user.id;
+    await AuditService.logAction('verify_otp', 'success', { email, ip });
+    return user.id;
     });
   }
 
@@ -173,6 +174,9 @@ export class AuthService {
 
     await UserRepository.update(userId, {
       password: hashedPassword,
+      otpCode: null, // CRITICAL FIX: Wipe OTP after successful password reset
+      otpExpiry: null,
+      otpAttempts: 0,
     });
 
     await AuditService.logAction('reset_password', 'success', { email, ip });
