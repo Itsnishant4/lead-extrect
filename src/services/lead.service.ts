@@ -149,30 +149,26 @@ export class LeadService {
     return null;
   }
 
-  private static async tryGetCachedLeads(query: string, userId: number, taskId: number | undefined, limits: any) {
+private static async tryGetCachedLeads(query: string, userId: number, taskId: number | undefined, limits: any) {
     const existingSearches = await db.select().from(searches)
       .where(and(eq(searches.query, query), eq(searches.userId, userId), sql`created_at > NOW() - INTERVAL '30 days'`))
       .orderBy(desc(searches.createdAt)).limit(1);
-    
+
     if (existingSearches.length === 0) return null;
 
     const searchId = existingSearches[0].id;
     const cachedLeadsRes = await db.select({ id: leads.id }).from(leads)
       .innerJoin(leadSources, eq(leads.id, leadSources.leadId))
       .where(eq(leadSources.searchId, searchId));
-    
+
     if (cachedLeadsRes.length === 0) return null;
 
     const count = cachedLeadsRes.length;
 
     return await db.transaction(async (tx) => {
-      // FIX: Use row-level locking for credit limit check
-      const user = await tx.select().from(users).where(eq(users.id, userId)).for('update');
-      const lockedLimits = this.computeLimits(user[0]);
-      
-      if (lockedLimits.currentLimit !== Infinity && lockedLimits.remaining < count) {
-        return { success: false, error: 'Limit reached for cached results', limitReached: true };
-      }
+      // CRITICAL FIX: Do NOT charge credits for cached results
+      // These leads were already paid for in the original search
+      // Only charge credits for NEW leads, not cached ones
 
       if (taskId) {
         const tLeads = cachedLeadsRes.map(l => ({ taskId, leadId: l.id }));
@@ -184,8 +180,10 @@ export class LeadService {
       const lSources = cachedLeadsRes.map(l => ({ leadId: l.id, searchId, taskId: taskId || null }));
       await tx.insert(leadSources).values(lSources).onConflictDoNothing();
 
-      await tx.update(users).set({ leadsExtracted: sql`leads_extracted + ${count}` }).where(eq(users.id, userId));
-      return { success: true, count, searchId, cached: true, leads: [] };
+      // NOTE: Removed credit increment for cached leads
+      // await tx.update(users).set({ leadsExtracted: sql`leads_extracted + ${count}` }).where(eq(users.id, userId));
+
+      return { success: true, count, searchId, cached: true, leads: [], limitReached: false, error: undefined };
     });
   }
 
