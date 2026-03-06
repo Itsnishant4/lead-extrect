@@ -292,7 +292,11 @@ export class TaskService {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, { method: 'POST', body: form });
     const data: any = await res.json();
     if (data.ok) {
-      // Cleanup of server logs is usually handled by a maintenance cron to avoid race conditions
+      // Cleanup of server logs after they are safely in Telegram
+      await db.delete(serverLogs).where(eq(serverLogs.taskId, taskId));
+      console.log(`[TASK SERVICE] Successfully mailed logs to Telegram and cleared from DB for task ${taskId}`);
+    } else {
+      console.error(`[TASK SERVICE] Failed to send logs to Telegram for task ${taskId}:`, data);
     }
   }
 }
