@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/index';
-import { users, leads, tasks, searches, auditLogs, serverLogs, transactions, plans, taskLeads } from '@/lib/db/schema';
+import { users, leads, tasks, searches, auditLogs, serverLogs, transactions, plans, taskLeads, leadSources } from '@/lib/db/schema';
 import { eq, sql, desc, and, gt, count } from 'drizzle-orm';
 
 export class AdminService {
@@ -55,22 +55,22 @@ export class AdminService {
 
   static async getChartData() {
     const leadsGrowth = await db.select({
-      date: sql`DATE(created_at)`,
+      date: sql`date(created_at)`,
       count: sql<number>`count(*)`
     })
     .from(searches)
-    .where(sql`created_at > NOW() - INTERVAL '7 days'`)
-    .groupBy(sql`DATE(created_at)`)
-    .orderBy(sql`DATE(created_at) ASC`);
+    .where(sql`created_at > datetime('now', '-7 days')`)
+    .groupBy(sql`date(created_at)`)
+    .orderBy(sql`date(created_at) ASC`);
 
     const activityStats = await db.select({
-      date: sql`DATE(created_at)`,
+      date: sql`date(created_at)`,
       count: sql<number>`count(*)`
     })
     .from(auditLogs)
-    .where(sql`created_at > NOW() - INTERVAL '7 days'`)
-    .groupBy(sql`DATE(created_at)`)
-    .orderBy(sql`DATE(created_at) ASC`);
+    .where(sql`created_at > datetime('now', '-7 days')`)
+    .groupBy(sql`date(created_at)`)
+    .orderBy(sql`date(created_at) ASC`);
 
     return { leadsGrowth, activityStats };
   }
@@ -218,13 +218,15 @@ export class AdminService {
    * to fix inflated counters caused by duplicate worker processing.
    */
   static async recalculateUserUsage(userId: number) {
-    const result = await db.execute(sql`
-      SELECT COUNT(DISTINCT ls.lead_id) as actual_count
-      FROM lead_sources ls
-      INNER JOIN searches s ON ls.search_id = s.id
-      WHERE s.user_id = ${userId}
-    `);
-    const actualCount = Number(result[0]?.actual_count || 0);
+    // Use Drizzle's count with join instead of raw SQL
+    const result = await db.select({
+      actualCount: sql<number>`COUNT(DISTINCT ${leadSources.leadId})`,
+    })
+    .from(leadSources)
+    .innerJoin(searches, eq(leadSources.searchId, searches.id))
+    .where(eq(searches.userId, userId));
+    
+    const actualCount = Number(result[0]?.actualCount || 0);
     await db.update(users).set({ leadsExtracted: actualCount }).where(eq(users.id, userId));
     return actualCount;
   }

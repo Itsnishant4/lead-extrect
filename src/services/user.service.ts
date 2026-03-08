@@ -1,4 +1,4 @@
-import { db } from '@/lib/db/index';
+import { db, raw } from '@/lib/db/index';
 import { users, leads, tasks, searches, keywordHistory, taskLeads, leadSources, transactions, plans } from '@/lib/db/schema';
 import { eq, sql, lt, and, desc, gte, count } from 'drizzle-orm';
 import { AuditService } from './audit.service';
@@ -48,16 +48,17 @@ export class UserService {
     const totalSearchesRes = await db.select({ count: sql<number>`count(*)` }).from(searches);
     const totalHistoryRes = await db.select({ count: sql<number>`count(*)` }).from(keywordHistory);
     
-    // For pg_size_pretty, we still need a raw query or sql template
-    const sizeRes = await db.execute(sql`SELECT pg_size_pretty(pg_database_size(current_database())) as size`);
-    const size = (sizeRes[0] as any).size;
+    // SQLite doesn't have pg_size_pretty, use pragma to get file size
+    const sizeRes = raw.prepare(`SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()`).get() as { size: number };
+    const size = sizeRes?.size;
+    const dbSize = size ? `${Math.round(size / 1024 / 1024)} MB` : 'Unknown';
 
     return {
       totalLeads: Number(totalLeadsRes[0].count),
       totalTasks: Number(totalTasksRes[0].count),
       totalSearches: Number(totalSearchesRes[0].count),
       totalHistory: Number(totalHistoryRes[0].count),
-      dbSize: size
+      dbSize
     };
   }
 
@@ -90,13 +91,13 @@ export class UserService {
     // 3. Leads extracted per day (last 30 days) - based on search creation dates
     const leadsPerDay = await db
       .select({
-        date: sql<string>`TO_CHAR(${searches.createdAt}, 'YYYY-MM-DD')`,
+        date: sql<string>`strftime('%Y-%m-%d', ${searches.createdAt})`,
         count: count(),
       })
       .from(searches)
       .where(and(eq(searches.userId, userId), gte(searches.createdAt, thirtyDaysAgo)))
-      .groupBy(sql`TO_CHAR(${searches.createdAt}, 'YYYY-MM-DD')`)
-      .orderBy(sql`TO_CHAR(${searches.createdAt}, 'YYYY-MM-DD')`);
+      .groupBy(sql`strftime('%Y-%m-%d', ${searches.createdAt})`)
+      .orderBy(sql`strftime('%Y-%m-%d', ${searches.createdAt})`);
 
     // 4. Top categories from leads linked to this user's tasks
     const topCategories = await db

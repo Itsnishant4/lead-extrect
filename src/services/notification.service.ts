@@ -95,7 +95,7 @@ export class NotificationService {
    */
   static async cleanup() {
     await db.delete(notifications).where(
-      sql`${notifications.createdAt} < NOW() - INTERVAL '30 days'`
+      sql`${notifications.createdAt} < datetime('now', '-30 days')`
     );
   }
 

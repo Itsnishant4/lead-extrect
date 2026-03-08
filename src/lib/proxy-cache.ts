@@ -11,7 +11,7 @@ export async function getActiveProxies(): Promise<any[]> {
   if (cachedProxies && now - lastProxyFetch < CACHE_TTL_MS) {
     return cachedProxies;
   }
-  const proxyRows = await db.select().from(proxies).where(eq(proxies.isActive, 1));
+  const proxyRows = await db.select().from(proxies).where(eq(proxies.isActive, true));
   cachedProxies = Array.from(proxyRows);
   lastProxyFetch = now;
   return cachedProxies;

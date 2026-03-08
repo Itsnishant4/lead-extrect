@@ -23,7 +23,7 @@ export class AuthService {
       .where(and(
         or(
           eq(plans.period, 'free'),
-          sql`${plans.name} ILIKE '%free%'`,
+          sql`LOWER(${plans.name}) LIKE LOWER('%free%')`,
         ),
         eq(plans.isActive, true)
       ))
@@ -99,10 +99,10 @@ export class AuthService {
 
     const { generateOTP, sendOTPEmail } = await import('@/lib/mailer');
 
-    return await db.transaction(async (tx) => {
-      const userRows = await tx.select().from(users).where(eq(users.email, email)).for('update');
-      const user = userRows[0];
-      if (!user) throw new Error("You are not registered");
+  return await db.transaction(async (tx) => {
+    const userRows = await tx.select().from(users).where(eq(users.email, email));
+    const user = userRows[0];
+    if (!user) throw new Error("You are not registered");
 
       if (user.isSuspended) {
         throw new Error('Account suspended. Contact support.');
@@ -112,7 +112,7 @@ export class AuthService {
 
       await UserRepository.update(user.id, {
         otpCode: otp,
-        otpExpiry: sql`NOW() + INTERVAL '10 minutes'`,
+        otpExpiry: sql`datetime('now', '+10 minutes')`,
         otpAttempts: 0,
       }, tx);
 
@@ -131,13 +131,13 @@ export class AuthService {
       throw new Error('Too many verification attempts. Please wait a minute.');
     }
 
-    return await db.transaction(async (tx) => {
-      const userRows = await tx.select().from(users).where(eq(users.email, email)).for('update');
-      const user = userRows[0];
+  return await db.transaction(async (tx) => {
+    const userRows = await tx.select().from(users).where(eq(users.email, email));
+    const user = userRows[0];
 
-      if (!user) {
-        throw new Error('Invalid email or OTP.');
-      }
+    if (!user) {
+      throw new Error('Invalid email or OTP.');
+    }
 
       if (!user.otpCode || !user.otpExpiry) {
         throw new Error('No OTP requested. Please request a new one.');

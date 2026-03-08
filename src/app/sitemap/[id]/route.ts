@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/index';
-import { blogPosts, leads } from '@/lib/db/schema';
+import { blogPosts, leads, seoHubRegistry } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 
 export const revalidate = 3600;
@@ -82,18 +82,20 @@ export async function GET(
 
   // Lead Entries (SEO Hub)
   try {
-    const data = await db.execute(sql`
-      SELECT niche as category, city 
-      FROM seo_hub_registry 
-      ORDER BY niche ASC, city ASC
-      LIMIT ${limit} OFFSET ${offset}
-    `);
+    const data = await db.select({
+      category: seoHubRegistry.niche,
+      city: seoHubRegistry.city,
+    })
+    .from(seoHubRegistry)
+    .orderBy(seoHubRegistry.niche, seoHubRegistry.city)
+    .limit(limit)
+    .offset(offset);
 
     const uniqueSlugs = new Set<string>();
 
-    data.forEach((row: any) => {
-      const niche = String(row.category).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      const city = String(row.city).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    data.forEach((row) => {
+      const niche = String(row.category || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const city = String(row.city || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
       if (niche && city) {
         if (!uniqueSlugs.has(`niche-${niche}`)) {

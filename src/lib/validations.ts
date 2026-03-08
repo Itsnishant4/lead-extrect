@@ -81,7 +81,7 @@ export const createPlanSchema = z.object({
   maxConcurrentTasks: z.number().int().min(1).optional(),
   features: z.array(z.string()).optional(),
   unavailableFeatures: z.array(z.string()).optional(),
-  whatsappUrl: z.string().url().optional().nullable(),
+  whatsappUrl: z.string().url().optional().nullable().or(z.literal('')),
   badge: z.string().max(50).optional().nullable(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),

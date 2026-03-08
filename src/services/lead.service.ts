@@ -123,7 +123,7 @@ export class LeadService {
 
 private static async tryGetCachedLeads(query: string, userId: number, taskId: number | undefined, limits: any) {
     const existingSearches = await db.select().from(searches)
-      .where(and(eq(searches.query, query), eq(searches.userId, userId), sql`created_at > NOW() - INTERVAL '30 days'`))
+      .where(and(eq(searches.query, query), eq(searches.userId, userId), sql`created_at > datetime('now', '-30 days')`))
       .orderBy(desc(searches.createdAt)).limit(1);
 
     if (existingSearches.length === 0) return null;
@@ -194,7 +194,7 @@ private static async tryGetCachedLeads(query: string, userId: number, taskId: nu
   private static async saveLeadsBatch(uniqueLeads: any[], userId: number, query: string, taskId: number | undefined, shouldStoreLeads: boolean, limits: any, fastMode: boolean) {
     return await db.transaction(async (tx) => {
       // FIX: Use row-level locking for credit limit check
-      const userRows = await tx.select().from(users).where(eq(users.id, userId)).for('update');
+      const userRows = await tx.select().from(users).where(eq(users.id, userId));
       const lockedLimits = this.computeLimits(userRows[0]);
 
     const allowedCount = lockedLimits.currentLimit === Infinity ? uniqueLeads.length : Math.min(uniqueLeads.length, lockedLimits.remaining);
@@ -222,17 +222,17 @@ private static async tryGetCachedLeads(query: string, userId: number, taskId: nu
           websiteEmail: lead.websiteEmail || null, websitePhone: lead.websitePhone || null, leadScore: this.computeLeadScore(lead)
         }));
 
-        await tx.insert(leads).values(insertData).onConflictDoUpdate({
-          target: [leads.placeId],
-          set: { 
-            name: sql`EXCLUDED.name`,
-            rating: sql`EXCLUDED.rating`,
-            reviewsCount: sql`EXCLUDED.reviews_count`,
-            websiteEmail: sql`EXCLUDED.website_email`,
-            websitePhone: sql`EXCLUDED.website_phone`,
-            leadScore: sql`EXCLUDED.lead_score`
-          }
-        });
+      await tx.insert(leads).values(insertData).onConflictDoUpdate({
+        target: [leads.placeId],
+        set: {
+          name: sql`excluded.name`,
+          rating: sql`excluded.rating`,
+          reviewsCount: sql`excluded.reviews_count`,
+          websiteEmail: sql`excluded.website_email`,
+          websitePhone: sql`excluded.website_phone`,
+          leadScore: sql`excluded.lead_score`
+        }
+      });
 
         // Update SEO Hub Registry
         try {
@@ -276,11 +276,11 @@ private static async tryGetCachedLeads(query: string, userId: number, taskId: nu
             await tx.insert(seoHubRegistry).values(seoInsertData).onConflictDoUpdate({
               target: [seoHubRegistry.niche, seoHubRegistry.city],
               set: {
-                totalLeads: sql`seo_hub_registry.total_leads + EXCLUDED.total_leads`,
-                withEmail: sql`seo_hub_registry.with_email + EXCLUDED.with_email`,
-                withPhone: sql`seo_hub_registry.with_phone + EXCLUDED.with_phone`,
-                withWebsite: sql`seo_hub_registry.with_website + EXCLUDED.with_website`,
-                lastUpdated: sql`NOW()`
+                totalLeads: sql`seo_hub_registry.total_leads + excluded.total_leads`,
+                withEmail: sql`seo_hub_registry.with_email + excluded.with_email`,
+                withPhone: sql`seo_hub_registry.with_phone + excluded.with_phone`,
+                withWebsite: sql`seo_hub_registry.with_website + excluded.with_website`,
+                lastUpdated: sql`datetime('now')`
               }
             });
           }

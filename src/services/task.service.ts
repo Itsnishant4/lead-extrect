@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/index';
 import { tasks, leadSources, taskLeads, searches, leads, serverLogs } from '@/lib/db/schema';
-import { eq, and, sql, desc, inArray, count } from 'drizzle-orm';
+import { eq, and, or, sql, desc, inArray, count } from 'drizzle-orm';
 import { signToken } from '@/lib/auth';
 import { AuditService } from './audit.service';
 import { LeadService } from './lead.service';
@@ -38,12 +38,14 @@ export class TaskService {
   }
 
   static async appendKeywords(userId: number, taskId: number, keywords: string[]) {
-    await db.execute(sql`
-      UPDATE tasks 
-      SET keywords = (COALESCE(keywords, '[]'::jsonb) || ${JSON.stringify(keywords)}::jsonb),
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${taskId} AND user_id = ${userId}
-    `);
+    // Use Drizzle's update instead of raw SQL
+    const currentTask = await db.select({ keywords: tasks.keywords }).from(tasks).where(eq(tasks.id, taskId)).limit(1);
+    const currentKeywords = (currentTask[0]?.keywords as string[]) || [];
+    const newKeywords = [...currentKeywords, ...keywords];
+    
+    await db.update(tasks)
+      .set({ keywords: newKeywords, updatedAt: new Date() })
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)));
   }
 
   static async updateStatus(userId: number, taskId: number, status: string, currentIndex?: number, statusReason?: string | null) {
@@ -87,10 +89,9 @@ export class TaskService {
       // CRITICAL: Atomically claim the next keyword index using row-level locking.
       // This prevents multiple workers from processing the same keyword concurrently.
       const claimed = await db.transaction(async (tx) => {
-        const taskRows = await tx.select().from(tasks)
-          .where(and(eq(tasks.id, tId), eq(tasks.userId, uId)))
-          .for('update')
-          .limit(1);
+      const taskRows = await tx.select().from(tasks)
+        .where(and(eq(tasks.id, tId), eq(tasks.userId, uId)))
+        .limit(1);
         const task = taskRows[0];
 
         if (!task) return { claimed: false, reason: 'Task not found' } as const;
@@ -241,11 +242,11 @@ export class TaskService {
    * Count active (running + pending) tasks for a user.
    */
   static async countActiveTasks(userId: number): Promise<number> {
-    const result = await db.execute(sql`
-      SELECT COUNT(*) as count FROM tasks 
-      WHERE user_id = ${userId} 
-      AND status IN ('running', 'pending')
-    `);
+    // Use Drizzle's count with where clause
+    const result = await db
+      .select({ count: count() })
+      .from(tasks)
+      .where(and(eq(tasks.userId, userId), or(eq(tasks.status, 'running'), eq(tasks.status, 'pending'))));
     return Number(result[0]?.count || 0);
   }
 

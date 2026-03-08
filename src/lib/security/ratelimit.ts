@@ -1,4 +1,4 @@
-import { db } from '@/lib/db/index';
+import { db, raw } from '@/lib/db/index';
 import { rateLimits } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 
@@ -8,29 +8,43 @@ import { eq, sql } from 'drizzle-orm';
  */
 export async function checkRateLimit(key: string, limit: number, windowMs: number, strict: boolean = true): Promise<boolean> {
   try {
-    const resetTime = new Date(Date.now() + windowMs);
+    const resetTime = Math.floor((Date.now() + windowMs) / 1000); // Unix timestamp in seconds
 
-    const result = await db.insert(rateLimits).values({
-      key,
-      count: 1,
-      resetAt: resetTime,
-    }).onConflictDoUpdate({
-      target: [rateLimits.key],
-      set: {
-        count: sql`CASE WHEN rate_limits.reset_at < CURRENT_TIMESTAMP THEN 1 ELSE rate_limits.count + 1 END`,
-        resetAt: sql`CASE WHEN rate_limits.reset_at < CURRENT_TIMESTAMP THEN ${resetTime.toISOString()}::timestamp ELSE rate_limits.reset_at END`,
+    // Use raw SQL for better SQLite compatibility
+    const existing = await db.select().from(rateLimits).where(eq(rateLimits.key, key)).limit(1);
+    
+    if (existing.length === 0) {
+      // Insert new record
+      await db.insert(rateLimits).values({
+        key,
+        count: 1,
+        resetAt: new Date(resetTime * 1000),
+      });
+      return true;
+    }
 
+    const record = existing[0];
+    const currentReset = record.resetAt ? new Date(record.resetAt).getTime() / 1000 : 0;
+    const now = Math.floor(Date.now() / 1000);
 
-      },
-    }).returning({ count: rateLimits.count });
+    if (currentReset < now) {
+      // Reset the counter
+      await db.update(rateLimits)
+        .set({ count: 1, resetAt: new Date(resetTime * 1000) })
+        .where(eq(rateLimits.key, key));
+      return true;
+    }
 
-    const record = result[0];
-
-    if (record && record.count && record.count > limit) {
+    if (record.count >= limit) {
       return false; // Rate limit exceeded
     }
 
-    return true; // Request allowed
+    // Increment counter
+    await db.update(rateLimits)
+      .set({ count: record.count + 1 })
+      .where(eq(rateLimits.key, key));
+    
+    return true;
   } catch (error) {
     console.error('Rate limit error:', error);
     return !strict; // If strict, return false (fail-closed); otherwise true (fail-open)

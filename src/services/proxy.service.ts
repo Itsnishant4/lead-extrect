@@ -15,7 +15,7 @@ export class ProxyService {
       username: proxyData.username || null,
       password: proxyData.password || null,
       protocol: proxyData.protocol || 'http',
-      isActive: proxyData.is_active !== undefined ? (proxyData.is_active ? 1 : 0) : 1,
+      isActive: proxyData.is_active !== undefined ? Boolean(proxyData.is_active) : true,
     });
   }
 
@@ -24,6 +24,6 @@ export class ProxyService {
   }
 
   static async toggleProxy(userId: number, id: number, isActive: boolean) {
-    await db.update(proxies).set({ isActive: isActive ? 1 : 0 }).where(and(eq(proxies.id, id), eq(proxies.userId, userId)));
+    await db.update(proxies).set({ isActive }).where(and(eq(proxies.id, id), eq(proxies.userId, userId)));
   }
 }

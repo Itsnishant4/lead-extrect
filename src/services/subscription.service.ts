@@ -83,7 +83,7 @@ export class SubscriptionService {
     const { order_id, amount, utr } = data;
 
     await db.transaction(async (tx) => {
-      const transactionRows = await tx.select().from(transactions).where(eq(transactions.gatewayOrderId, order_id)).for('update').limit(1);
+      const transactionRows = await tx.select().from(transactions).where(eq(transactions.gatewayOrderId, order_id)).limit(1);
       const transaction = transactionRows[0];
       
       if (!transaction) throw new Error('Transaction not found');
@@ -152,7 +152,7 @@ export class SubscriptionService {
     const [stats] = await db
       .select({
         totalAttempts: count(),
-        totalPaid: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.status} = 'paid' THEN CAST(${transactions.amount} AS NUMERIC) ELSE 0 END), 0)`,
+        totalPaid: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.status} = 'paid' THEN CAST(${transactions.amount} AS REAL) ELSE 0 END), 0)`,
         successCount: sql<number>`COUNT(CASE WHEN ${transactions.status} = 'paid' THEN 1 END)`,
         failedCount: sql<number>`COUNT(CASE WHEN ${transactions.status} != 'paid' THEN 1 END)`,
       })
@@ -193,7 +193,7 @@ export class SubscriptionService {
 
   static async acceptPayment(transactionId: number) {
     await db.transaction(async (txDB) => {
-      const txRows = await txDB.select().from(transactions).where(eq(transactions.id, transactionId)).for('update').limit(1);
+      const txRows = await txDB.select().from(transactions).where(eq(transactions.id, transactionId)).limit(1);
       const tx = txRows[0];
       if (!tx) throw new Error('Transaction not found');
       if (tx.status === 'paid') throw new Error('Transaction already paid');
