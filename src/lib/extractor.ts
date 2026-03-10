@@ -39,7 +39,6 @@ export async function fetchLeads(
     }
 
     try {
-      console.log(`[EXTRACTOR] Fetching page offset ${offset} for query "${query}"`);
       const response = await fetch(url, fetchOptions);
       if (!response.ok) {
         console.error(`[EXTRACTOR] HTTP error! status: ${response.status} for offset ${offset}`);

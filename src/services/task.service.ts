@@ -10,7 +10,7 @@ import { TaskRepository } from '@/repositories/task.repository';
 
 export class TaskService {
   static async createTask(userId: number, name: string, keywords: string[], options: { userAgent: string | null, acceptLanguage: string | null }) {
-    const result = await db.insert(tasks).values({
+    await db.insert(tasks).values({
       userId,
       name,
       keywords,
@@ -19,12 +19,20 @@ export class TaskService {
       statusReason: 'Queued — waiting for worker',
       userAgent: options.userAgent,
       acceptLanguage: options.acceptLanguage,
-    }).returning({ id: tasks.id });
-    return result[0].id;
+    });
+
+    // Fetch the newly created task (order by desc id to get the latest)
+    const newTask = await db.select({ id: tasks.id })
+      .from(tasks)
+      .where(and(eq(tasks.userId, userId), eq(tasks.name, name)))
+      .orderBy(desc(tasks.id))
+      .limit(1);
+
+    return newTask[0].id;
   }
 
   static async createTaskShell(userId: number, name: string, totalKeywords: number, options: { userAgent: string | null, acceptLanguage: string | null }) {
-    const result = await db.insert(tasks).values({
+    await db.insert(tasks).values({
       userId,
       name,
       keywords: [],
@@ -33,8 +41,16 @@ export class TaskService {
       statusReason: 'Uploading keywords...',
       userAgent: options.userAgent,
       acceptLanguage: options.acceptLanguage,
-    }).returning({ id: tasks.id });
-    return result[0].id;
+    });
+
+    // Fetch the newly created task
+    const newTask = await db.select({ id: tasks.id })
+      .from(tasks)
+      .where(and(eq(tasks.userId, userId), eq(tasks.name, name)))
+      .orderBy(desc(tasks.id))
+      .limit(1);
+
+    return newTask[0].id;
   }
 
   static async appendKeywords(userId: number, taskId: number, keywords: string[]) {
@@ -42,7 +58,7 @@ export class TaskService {
     const currentTask = await db.select({ keywords: tasks.keywords }).from(tasks).where(eq(tasks.id, taskId)).limit(1);
     const currentKeywords = (currentTask[0]?.keywords as string[]) || [];
     const newKeywords = [...currentKeywords, ...keywords];
-    
+
     await db.update(tasks)
       .set({ keywords: newKeywords, updatedAt: new Date() })
       .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)));
@@ -69,15 +85,20 @@ export class TaskService {
   }
 
   static async deleteTask(userId: number, taskId: number) {
-    await db.transaction(async (tx) => {
-      const taskLeadIdsRes = await tx.select({ id: taskLeads.leadId }).from(taskLeads).where(eq(taskLeads.taskId, taskId));
-      const leadIds = taskLeadIdsRes.map((r: any) => r.id).filter((id: any): id is number => id !== null);
-      await TaskRepository.delete(taskId, userId, tx);
-      if (leadIds.length > 0) {
-        await LeadRepository.cleanupTargetedOrphans(tx, leadIds);
-      }
-      await AuditService.logAction('delete_task', 'success', { taskId }, tx);
-    });
+    // 1. Fetch leads associated with this task
+    const taskLeadIdsRes = await db.select({ id: taskLeads.leadId }).from(taskLeads).where(eq(taskLeads.taskId, taskId));
+    const leadIds = taskLeadIdsRes.map((r: any) => r.id).filter((id: any): id is number => id !== null);
+
+    // 2. Delete task and its direct relations first
+    await TaskRepository.delete(taskId, userId);
+
+    // 3. Delete orphaned leads in chunks if any exist
+    if (leadIds.length > 0) {
+      await LeadRepository.cleanupTargetedOrphans(db, leadIds);
+    }
+
+    // 4. Log the action
+    await AuditService.logAction('delete_task', 'success', { taskId }, db);
   }
 
   static async processTaskStep(taskId: number, userId: number) {
@@ -89,9 +110,9 @@ export class TaskService {
       // CRITICAL: Atomically claim the next keyword index using row-level locking.
       // This prevents multiple workers from processing the same keyword concurrently.
       const claimed = await db.transaction(async (tx) => {
-      const taskRows = await tx.select().from(tasks)
-        .where(and(eq(tasks.id, tId), eq(tasks.userId, uId)))
-        .limit(1);
+        const taskRows = await tx.select().from(tasks)
+          .where(and(eq(tasks.id, tId), eq(tasks.userId, uId)))
+          .limit(1);
         const task = taskRows[0];
 
         if (!task) return { claimed: false, reason: 'Task not found' } as const;

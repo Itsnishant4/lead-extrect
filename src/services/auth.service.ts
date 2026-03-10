@@ -33,14 +33,20 @@ export class AuthService {
       
     const initialCredits = freePlan?.leadsCredits || 0;
 
-    const result = await db.insert(users).values({
+    // Insert user (some remote SQLite environments have issues with returning())
+    await db.insert(users).values({
       name,
       email,
       password: hashedPassword,
       bonusCredits: initialCredits,
-    }).returning({ id: users.id });
+    });
 
-    const userId = result[0].id;
+    const newUser = await UserRepository.findByEmail(email);
+    if (!newUser) {
+      throw new Error('Failed to retrieve user after creation');
+    }
+
+    const userId = newUser.id;
     const token = await signToken({ id: userId, email, name });
 
     const cookieStore = await cookies();

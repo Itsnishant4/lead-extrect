@@ -1,13 +1,22 @@
-import Database from 'better-sqlite3';
-import { mkdirSync } from 'fs';
-import { dirname } from 'path';
+import { createClient } from '@libsql/client';
+import * as dotenv from 'dotenv';
+import { resolve } from 'path';
 
-const dbPath = process.argv[2] || './data/leads.db';
-mkdirSync(dirname(dbPath), { recursive: true });
+// Load environment variables from .env.local
+dotenv.config({ path: resolve(process.cwd(), '.env.local') });
 
-const db = new Database(dbPath);
+const url = process.env.DATABASE_URL;
+const authToken = process.env.DATABASE_AUTH_TOKEN;
 
-db.pragma('journal_mode = WAL');
+if (!url) {
+  console.error('DATABASE_URL is not set in .env.local');
+  process.exit(1);
+}
+
+const db = createClient({
+  url,
+  authToken,
+});
 
 const tables = [
   `CREATE TABLE IF NOT EXISTS users (
@@ -26,7 +35,7 @@ const tables = [
     otp_attempts INTEGER DEFAULT 0,
     created_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id),
@@ -48,7 +57,7 @@ const tables = [
     created_at INTEGER DEFAULT (unixepoch()),
     updated_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS server_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
@@ -57,7 +66,7 @@ const tables = [
     message TEXT,
     created_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS searches (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id),
@@ -65,7 +74,7 @@ const tables = [
     task_id INTEGER REFERENCES tasks(id),
     created_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS leads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -100,7 +109,7 @@ const tables = [
     lead_score INTEGER DEFAULT 0,
     created_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS lead_sources (
     lead_id INTEGER REFERENCES leads(id),
     search_id INTEGER REFERENCES searches(id),
@@ -108,7 +117,7 @@ const tables = [
     created_at INTEGER DEFAULT (unixepoch()),
     UNIQUE(lead_id, search_id)
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS city_areas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     country TEXT NOT NULL,
@@ -118,7 +127,7 @@ const tables = [
     last_updated INTEGER DEFAULT (unixepoch()),
     UNIQUE(country, state, city)
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS keyword_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id),
@@ -130,21 +139,21 @@ const tables = [
     keywords_truncated INTEGER DEFAULT 0,
     created_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS task_leads (
     task_id INTEGER REFERENCES tasks(id),
     lead_id INTEGER REFERENCES leads(id),
     created_at INTEGER DEFAULT (unixepoch()),
     UNIQUE(task_id, lead_id)
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS settings (
     user_id INTEGER REFERENCES users(id),
     key TEXT NOT NULL,
     value TEXT NOT NULL,
     UNIQUE(user_id, key)
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS saved_lists (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id),
@@ -152,14 +161,14 @@ const tables = [
     description TEXT,
     created_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS saved_list_items (
     list_id INTEGER REFERENCES saved_lists(id),
     lead_id INTEGER REFERENCES leads(id),
     created_at INTEGER DEFAULT (unixepoch()),
     UNIQUE(list_id, lead_id)
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS export_templates (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id),
@@ -167,7 +176,7 @@ const tables = [
     columns TEXT NOT NULL,
     created_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS proxies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id),
@@ -179,7 +188,7 @@ const tables = [
     is_active INTEGER DEFAULT 1,
     created_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS audit_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id),
@@ -188,7 +197,7 @@ const tables = [
     metadata TEXT,
     created_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS pincode_coords (
     country TEXT NOT NULL,
     pincode TEXT NOT NULL,
@@ -197,7 +206,7 @@ const tables = [
     created_at INTEGER DEFAULT (unixepoch()),
     UNIQUE(country, pincode)
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS blog_posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     slug TEXT UNIQUE NOT NULL,
@@ -215,13 +224,13 @@ const tables = [
     created_at INTEGER DEFAULT (unixepoch()),
     updated_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS rate_limits (
     key TEXT PRIMARY KEY,
     count INTEGER DEFAULT 1,
     reset_at INTEGER NOT NULL
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS plans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -240,7 +249,7 @@ const tables = [
     created_at INTEGER DEFAULT (unixepoch()),
     updated_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS transactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id),
@@ -252,13 +261,13 @@ const tables = [
     created_at INTEGER DEFAULT (unixepoch()),
     updated_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS site_config (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
     updated_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS seo_hub_registry (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     niche TEXT NOT NULL,
@@ -271,7 +280,7 @@ const tables = [
     last_updated INTEGER DEFAULT (unixepoch()),
     UNIQUE(niche, city)
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS notifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -282,7 +291,7 @@ const tables = [
     metadata TEXT,
     created_at INTEGER DEFAULT (unixepoch())
   )`,
-  
+
   `CREATE TABLE IF NOT EXISTS push_subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -317,15 +326,25 @@ const indexes = [
   'CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id ON push_subscriptions(user_id)'
 ];
 
-for (const table of tables) {
-  db.exec(table);
-  console.log('Created table');
+async function init() {
+  console.log('Initializing libSQL database...');
+
+  try {
+    for (const table of tables) {
+      await db.execute(table);
+      console.log('Created table');
+    }
+
+    for (const idx of indexes) {
+      await db.execute(idx);
+      console.log('Created index');
+    }
+
+    console.log('Database initialized successfully!');
+  } catch (error) {
+    console.error('Error initializing database:', error);
+    process.exit(1);
+  }
 }
 
-for (const idx of indexes) {
-  db.exec(idx);
-  console.log('Created index');
-}
-
-console.log('Database initialized successfully!');
-db.close();
+init();

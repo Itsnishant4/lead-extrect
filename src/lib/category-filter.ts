@@ -141,10 +141,10 @@ export class CategoryFilter {
       categoryScores.slice(0, 5).map(c => `${c.category}: ${c.score}`).join(', ')
     );
 
-    // Keep categories with score >= 40
+    // Keep categories with score >= 20
     const includedCategories = new Set(
       categoryScores
-        .filter(c => c.score >= 40)
+        .filter(c => c.score >= 20)
         .map(c => c.category)
     );
 
@@ -164,7 +164,6 @@ export class CategoryFilter {
     const hasPhone = lead.phone && 
       lead.phone.length > 5 && 
       lead.phone.length < 50 &&
-      !lead.phone.includes(' ') &&
       /\d/.test(lead.phone);
     
     const hasWebsite = lead.website && 
