@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { plans } from '@/lib/db/schema';
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, desc } from 'drizzle-orm';
 
 export class PlanService {
   static async getAllPlans() {
@@ -25,6 +25,7 @@ export class PlanService {
   }
 
   static async createPlan(data: any) {
+    const now = new Date();
     const result = await db.insert(plans).values({
       name: data.name,
       description: data.description,
@@ -39,7 +40,19 @@ export class PlanService {
       badge: data.badge || null,
       sortOrder: data.sortOrder ?? 0,
       isActive: data.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
     }).returning({ id: plans.id });
+    
+    // Fallback for libSQL HTTP client if returning() is empty
+    if (!result || result.length === 0) {
+      const lastInsert = await db.select({ id: plans.id })
+        .from(plans)
+        .orderBy(desc(plans.id))
+        .limit(1);
+      return lastInsert[0]?.id;
+    }
+    
     return result[0].id;
   }
 
