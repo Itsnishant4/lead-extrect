@@ -152,8 +152,8 @@ export class AdminService {
       userPlan: users.planType,
       userLeadsExtracted: users.leadsExtracted,
       userBonusCredits: users.bonusCredits,
-      // Credits consumed = leads extracted by this task (counted from task_leads)
-      creditsConsumed: sql<number>`(SELECT COUNT(*) FROM task_leads WHERE task_leads.task_id = ${tasks.id})`,
+      // Credits consumed = total leads extracted by this task
+      creditsConsumed: tasks.totalLeads,
     })
     .from(tasks)
     .innerJoin(users, eq(tasks.userId, users.id))
