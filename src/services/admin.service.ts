@@ -1,6 +1,6 @@
-import { db } from '@/lib/db/index';
+import { db, raw } from '@/lib/db/index';
 import { users, leads, tasks, searches, auditLogs, serverLogs, transactions, plans, taskLeads, leadSources } from '@/lib/db/schema';
-import { eq, sql, desc, and, gt, count } from 'drizzle-orm';
+import { eq, sql, desc, and, gt, count, inArray } from 'drizzle-orm';
 
 export class AdminService {
   static async checkAdmin(userId: number) {
@@ -135,30 +135,58 @@ export class AdminService {
    * keyword progress, status reason, timestamps, and user plan/credit details.
    */
   static async getAdminTasksDetailed() {
-    const rows = await db.select({
-      id: tasks.id,
-      name: tasks.name,
-      status: tasks.status,
-      statusReason: tasks.statusReason,
-      totalKeywords: tasks.totalKeywords,
-      currentKeywordIndex: tasks.currentKeywordIndex,
-      totalLeads: tasks.totalLeads,
-      createdAt: tasks.createdAt,
-      updatedAt: tasks.updatedAt,
-      // User info
-      userId: users.id,
-      userName: users.name,
-      userEmail: users.email,
-      userPlan: users.planType,
-      userLeadsExtracted: users.leadsExtracted,
-      userBonusCredits: users.bonusCredits,
-      // Credits consumed = total leads extracted by this task
-      creditsConsumed: tasks.totalLeads,
-    })
-    .from(tasks)
-    .innerJoin(users, eq(tasks.userId, users.id))
-    .orderBy(desc(tasks.createdAt))
-    .limit(500);
+    // Use raw query to avoid Drizzle mapping issues with joined SQLite tables
+    const result = await raw.execute(`
+      SELECT 
+        t.id, t.name, t.status, t.status_reason, t.total_keywords, t.current_keyword_index, t.total_leads, t.created_at, t.updated_at,
+        u.id as u_id, u.name as u_name, u.email as u_email, u.plan_type as u_plan, u.leads_extracted as u_leads_extracted, u.bonus_credits as u_bonus_credits
+      FROM tasks t
+      JOIN users u ON t.user_id = u.id
+      ORDER BY t.created_at DESC
+      LIMIT 500
+    `);
+
+    const taskRows = result.rows.map(row => ({
+      id: Number(row.id),
+      name: String(row.name),
+      status: String(row.status),
+      statusReason: row.status_reason ? String(row.status_reason) : null,
+      totalKeywords: Number(row.total_keywords),
+      currentKeywordIndex: Number(row.current_keyword_index),
+      totalLeads: Number(row.total_leads),
+      // SQLite unixepoch() returns seconds, JS needs ms. Handle both just in case.
+      createdAt: row.created_at ? new Date(Number(row.created_at) < 10000000000 ? Number(row.created_at) * 1000 : Number(row.created_at)) : null,
+      updatedAt: row.updated_at ? new Date(Number(row.updated_at) < 10000000000 ? Number(row.updated_at) * 1000 : Number(row.updated_at)) : null,
+      userId: Number(row.u_id),
+      userName: String(row.u_name),
+      userEmail: String(row.u_email),
+      userPlan: String(row.u_plan),
+      userLeadsExtracted: Number(row.u_leads_extracted),
+      userBonusCredits: Number(row.u_bonus_credits),
+    }));
+
+    // Get actual lead counts from task_leads table for each task
+    const taskIds = taskRows.map(row => row.id);
+    const leadCountMap = new Map<number, number>();
+    
+    if (taskIds.length > 0) {
+      // Use raw SQL for SQLite IN clause compatibility
+      const placeholders = taskIds.map(() => '?').join(',');
+      const leadCountResult = await raw.execute(
+        `SELECT task_id, COUNT(*) as count FROM task_leads WHERE task_id IN (${placeholders}) GROUP BY task_id`,
+        taskIds
+      );
+      
+      for (const row of leadCountResult.rows) {
+        leadCountMap.set(row.task_id as number, row.count as number);
+      }
+    }
+
+    // Map the results with actual lead counts
+    const rows = taskRows.map(task => ({
+      ...task,
+      creditsConsumed: leadCountMap.get(task.id) || task.totalLeads || 0,
+    }));
 
     return rows;
   }

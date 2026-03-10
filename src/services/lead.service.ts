@@ -214,6 +214,8 @@ private static async tryGetCachedLeads(query: string, userId: number, taskId: nu
       const searchRes = await tx.insert(searches).values({ userId, query, taskId: taskId || null }).returning({ id: searches.id });
       const searchId = searchRes[0].id;
 
+      let inserted: { id: number; placeId: string | null }[] = [];
+
       if (shouldStoreLeads && leadsToInsert.length > 0) {
         const insertData = leadsToInsert.map(lead => ({
           name: lead.name, address: lead.address, city: lead.city, website: lead.website, phone: lead.phone, email: lead.email, rating: lead.rating, reviewsCount: lead.reviewsCount, category: lead.category, placeId: lead.placeId, latitude: lead.latitude, longitude: lead.longitude, directionUrl: lead.directionUrl,
@@ -280,7 +282,7 @@ private static async tryGetCachedLeads(query: string, userId: number, taskId: nu
                 withEmail: sql`seo_hub_registry.with_email + excluded.with_email`,
                 withPhone: sql`seo_hub_registry.with_phone + excluded.with_phone`,
                 withWebsite: sql`seo_hub_registry.with_website + excluded.with_website`,
-                lastUpdated: sql`datetime('now')`
+                lastUpdated: sql`(unixepoch())`
               }
             });
           }
@@ -321,7 +323,23 @@ private static async tryGetCachedLeads(query: string, userId: number, taskId: nu
         }
       }
 
-      await tx.update(users).set({ leadsExtracted: sql`leads_extracted + ${leadsToInsert.length}` }).where(eq(users.id, userId));
+      // CALCULATE NEW LEADS COUNT (Leads that this user hasn't extracted before)
+      let newLeadsCount = leadsToInsert.length;
+      if (shouldStoreLeads && inserted.length > 0) {
+        const existingForUser = await tx.select({ leadId: leadSources.leadId })
+          .from(leadSources)
+          .innerJoin(searches, eq(leadSources.searchId, searches.id))
+          .where(and(
+            eq(searches.userId, userId),
+            inArray(leadSources.leadId, inserted.map(l => l.id)),
+            sql`${leadSources.searchId} != ${searchId}`
+          ))
+          .groupBy(leadSources.leadId);
+        
+        newLeadsCount = Math.max(0, inserted.length - existingForUser.length);
+      }
+
+      await tx.update(users).set({ leadsExtracted: sql`leads_extracted + ${newLeadsCount}` }).where(eq(users.id, userId));
 
       return {
         success: true,
