@@ -35,13 +35,13 @@ export async function checkRateLimit(key: string, limit: number, windowMs: numbe
       return true;
     }
 
-    if (record.count >= limit) {
+    if ((record.count ?? 0) >= limit) {
       return false; // Rate limit exceeded
     }
 
     // Increment counter
     await db.update(rateLimits)
-      .set({ count: record.count + 1 })
+      .set({ count: (record.count ?? 0) + 1 })
       .where(eq(rateLimits.key, key));
     
     return true;

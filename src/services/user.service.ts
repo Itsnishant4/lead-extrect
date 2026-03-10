@@ -49,8 +49,8 @@ export class UserService {
     const totalHistoryRes = await db.select({ count: sql<number>`count(*)` }).from(keywordHistory);
     
     // SQLite doesn't have pg_size_pretty, use pragma to get file size
-    const sizeRes = raw.prepare(`SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()`).get() as { size: number };
-    const size = sizeRes?.size;
+    const sizeRes = await raw.execute(`SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()`);
+    const size = sizeRes.rows[0]?.size as unknown as number;
     const dbSize = size ? `${Math.round(size / 1024 / 1024)} MB` : 'Unknown';
 
     return {
