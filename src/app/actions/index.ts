@@ -116,6 +116,7 @@ export {
   createPlanAction,
   updatePlanAction,
   deletePlanAction,
+  permanentDeletePlanAction,
   createCheckoutSessionAction,
   checkOrderStatusAction,
   getPaymentHistoryAction,

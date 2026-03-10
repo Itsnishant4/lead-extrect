@@ -66,6 +66,18 @@ export async function deletePlanAction(id: number) {
   }
 }
 
+export async function permanentDeletePlanAction(id: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    await PlanService.permanentDeletePlan(id);
+    return { success: true };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
 export async function createCheckoutSessionAction(planId: number) {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };

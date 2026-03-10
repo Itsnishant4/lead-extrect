@@ -78,4 +78,8 @@ export class PlanService {
   static async deletePlan(id: number) {
     await db.update(plans).set({ isActive: false }).where(eq(plans.id, id));
   }
+
+  static async permanentDeletePlan(id: number) {
+    await db.delete(plans).where(eq(plans.id, id));
+  }
 }

@@ -75,7 +75,7 @@ export const createPlanSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(500).optional().nullable(),
   price: z.number().min(0).optional(),
-  discount: z.number().min(0).max(100).optional(),
+  discount: z.number().min(0).optional(),
   period: z.string().min(1).max(50),
   leadsCredits: z.number().int().min(0),
   maxConcurrentTasks: z.number().int().min(1).optional(),
