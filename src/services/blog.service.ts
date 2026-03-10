@@ -24,8 +24,11 @@ export class BlogService {
       publishedAt: data.is_published ? (data.published_at ? new Date(data.published_at) : new Date()) : null,
     }).returning({ id: blogPosts.id });
 
+    // libSQL fallback
+    const insertedId = result?.[0]?.id ?? (await db.select({ id: blogPosts.id }).from(blogPosts).orderBy(desc(blogPosts.id)).limit(1))[0]?.id;
+
     await AuditService.logAction('blog_post_created', 'success', { slug: data.slug });
-    return result[0].id;
+    return insertedId;
   }
 
   static async updatePost(id: number, data: any) {

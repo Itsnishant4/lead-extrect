@@ -41,7 +41,8 @@ export class ListService {
       name,
       columns: JSON.stringify(columns),
     }).returning({ id: exportTemplates.id });
-    return result[0].id;
+    
+    return result?.[0]?.id ?? (await db.select({ id: exportTemplates.id }).from(exportTemplates).where(eq(exportTemplates.userId, userId)).orderBy(desc(exportTemplates.createdAt)).limit(1))[0]?.id;
   }
 
   static async getExportTemplates(userId: number) {
@@ -56,7 +57,8 @@ export class ListService {
         description: description || null,
       }).returning({ id: savedLists.id });
       
-      const listId = result[0].id;
+      const listId = result?.[0]?.id ?? (await tx.select({ id: savedLists.id }).from(savedLists).where(eq(savedLists.userId, userId)).orderBy(desc(savedLists.createdAt)).limit(1))[0]?.id;
+      
       if (leadIds.length > 0) {
         const items = leadIds.map(id => ({ listId, leadId: id }));
         await tx.insert(savedListItems).values(items).onConflictDoNothing();

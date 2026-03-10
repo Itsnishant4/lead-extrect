@@ -24,7 +24,7 @@ export class NotificationService {
    * Create a notification for a user
    */
   static async create(params: CreateNotificationParams) {
-    const [result] = await db.insert(notifications).values({
+    const result = await db.insert(notifications).values({
       userId: params.userId,
       type: params.type,
       title: params.title,
@@ -32,17 +32,19 @@ export class NotificationService {
       metadata: params.metadata || null,
     }).returning({ id: notifications.id });
 
+    const notificationId = result?.[0]?.id ?? (await db.select({ id: notifications.id }).from(notifications).where(eq(notifications.userId, params.userId)).orderBy(desc(notifications.id)).limit(1))[0]?.id;
+
     // Fire-and-forget browser push notification
     PushService.sendToUser(params.userId, {
       title: params.title,
       body: params.message,
-      tag: `${params.type}-${result.id}`,
+      tag: `${params.type}-${notificationId}`,
       url: '/leads',
     }).catch((err) => {
       console.error('[NOTIFICATION] Push send error:', err.message || err);
     });
 
-    return result.id;
+    return notificationId;
   }
 
   /**
