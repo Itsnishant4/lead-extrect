@@ -84,39 +84,40 @@ export class SubscriptionService {
   static async handleSuccessfulPayment(data: any) {
     const { order_id, amount, utr } = data;
 
-    await db.transaction(async (tx) => {
-      const transactionRows = await tx.select().from(transactions).where(eq(transactions.gatewayOrderId, order_id)).limit(1);
-      const transaction = transactionRows[0];
-      
-      if (!transaction) throw new Error('Transaction not found');
-      if (transaction.status === 'paid') return; // Already processed
+    // 1. Fetch transaction and plan first (non-transactional read is fine here)
+    const transactionRows = await db.select().from(transactions).where(eq(transactions.gatewayOrderId, order_id)).limit(1);
+    const transaction = transactionRows[0];
+    
+    if (!transaction) throw new Error('Transaction not found');
+    if (transaction.status === 'paid') return; // Already processed
 
-      const planRows = await tx.select().from(plans).where(eq(plans.id, transaction.planId!)).limit(1);
-      const plan = planRows[0];
-      if (!plan) throw new Error('Plan not found');
+    const planRows = await db.select().from(plans).where(eq(plans.id, transaction.planId!)).limit(1);
+    const plan = planRows[0];
+    if (!plan) throw new Error('Plan not found');
 
-      // Update transaction
-      await tx.update(transactions).set({
+    // 2. Perform updates atomically using db.batch()
+    // This is much more compatible with libSQL HTTP gateways like sqlhost
+    await db.batch([
+      db.update(transactions).set({
         status: 'paid',
         utr: utr,
         updatedAt: new Date(),
-      }).where(eq(transactions.id, transaction.id));
+      }).where(eq(transactions.id, transaction.id)),
 
-      // Update user credits and plan
-      await tx.update(users).set({
+      db.update(users).set({
         planType: plan.name.toLowerCase(),
         bonusCredits: sql`COALESCE(${users.bonusCredits}, 0) + ${plan.leadsCredits}`,
         subscriptionExpiry: SubscriptionService.computeExpiry(plan.period),
-      }).where(eq(users.id, transaction.userId!));
+      }).where(eq(users.id, transaction.userId!))
+    ]);
 
-      // Notify user of successful payment (fire-and-forget, outside transaction)
-      const uid = transaction.userId!;
-      const pName = plan.name;
-      const pAmount = amount || transaction.amount;
-      setTimeout(() => {
-        void NotificationService.notifyPaymentSuccess(uid, pName, String(pAmount));
-      }, 0);
-    });
+    // 3. Notify user (fire-and-forget)
+    const uid = transaction.userId!;
+    const pName = plan.name;
+    const pAmount = amount || transaction.amount;
+    setTimeout(() => {
+      void NotificationService.notifyPaymentSuccess(uid, pName, String(pAmount));
+    }, 0);
   }
 
   static async getPaymentHistory(userId: number, cursor?: number, limit = 10) {
@@ -194,29 +195,28 @@ export class SubscriptionService {
   }
 
   static async acceptPayment(transactionId: number) {
-    await db.transaction(async (txDB) => {
-      const txRows = await txDB.select().from(transactions).where(eq(transactions.id, transactionId)).limit(1);
-      const tx = txRows[0];
-      if (!tx) throw new Error('Transaction not found');
-      if (tx.status === 'paid') throw new Error('Transaction already paid');
+    const txRows = await db.select().from(transactions).where(eq(transactions.id, transactionId)).limit(1);
+    const tx = txRows[0];
+    if (!tx) throw new Error('Transaction not found');
+    if (tx.status === 'paid') throw new Error('Transaction already paid');
 
-      const planRows = await txDB.select().from(plans).where(eq(plans.id, tx.planId!)).limit(1);
-      const plan = planRows[0];
-      if (!plan) throw new Error('Plan not found');
+    const planRows = await db.select().from(plans).where(eq(plans.id, tx.planId!)).limit(1);
+    const plan = planRows[0];
+    if (!plan) throw new Error('Plan not found');
 
-      // Mark transaction as paid
-      await txDB.update(transactions).set({
+    // Perform updates atomically using db.batch()
+    await db.batch([
+      db.update(transactions).set({
         status: 'paid',
         updatedAt: new Date(),
-      }).where(eq(transactions.id, transactionId));
+      }).where(eq(transactions.id, transactionId)),
 
-      // Update user credits and plan
-      await txDB.update(users).set({
+      db.update(users).set({
         planType: plan.name.toLowerCase(),
         bonusCredits: sql`COALESCE(bonus_credits, 0) + ${plan.leadsCredits}`,
         subscriptionExpiry: SubscriptionService.computeExpiry(plan.period),
-      }).where(eq(users.id, tx.userId!));
-    });
+      }).where(eq(users.id, tx.userId!))
+    ]);
   }
 
   static async rejectPayment(transactionId: number) {
