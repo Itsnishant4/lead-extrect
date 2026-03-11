@@ -191,7 +191,7 @@ export default function TasksPage() {
                                   task.status === 'paused' ? "bg-amber-500/10 text-amber-600" :
                                     "bg-slate-500/10 text-slate-500"
                           )}>
-                            {task.status} {task.totalKeywords > 0 ? `• ${Math.round((task.currentKeywordIndex / task.totalKeywords) * 100)}%` : ''}
+                            {task.status} {task.totalKeywords > 0 ? `• ${Math.min(100, Math.round((task.currentKeywordIndex / task.totalKeywords) * 100))}%` : ''}
                           </Badge>
                           <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider whitespace-nowrap">
                             <Clock size={12} className="text-slate-300" /> {task.updatedAt ? format(new Date(task.updatedAt), 'MMM dd, HH:mm') : 'N/A'}
