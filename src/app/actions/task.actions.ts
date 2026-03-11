@@ -71,10 +71,10 @@ export async function getTasksAction() {
     // AUTO-RECOVERY LOGIC:
     // Check if any task is 'running' but hasn't had a heartbeat in 3 minutes.
     // If so, it might be stalled due to a server restart or network issue.
-    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+    const threeMinutesAgoSeconds = Math.floor(Date.now() / 1000) - (3 * 60);
     const stalledTasks = data.filter((t: any) => 
       t.status === 'running' && 
-      (!t.lastHeartbeat || new Date(t.lastHeartbeat) < threeMinutesAgo)
+      (!t.lastHeartbeat || Math.floor(new Date(t.lastHeartbeat).getTime() / 1000) < threeMinutesAgoSeconds)
     );
 
     if (stalledTasks.length > 0) {
