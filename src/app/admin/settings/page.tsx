@@ -37,18 +37,16 @@ export default function AdminSettingsPage() {
   });
 
   const [maxRetries, setMaxRetries] = useState(3);
-  const [maxConcurrentTasks, setMaxConcurrentTasks] = useState(3);
 
   useEffect(() => {
     if (settings) {
       setMaxRetries(settings.maxRetries);
-      setMaxConcurrentTasks(settings.maxConcurrentTasks);
     }
   }, [settings]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const res = await updateSystemSettingsAction({ maxRetries, maxConcurrentTasks });
+      const res = await updateSystemSettingsAction({ maxRetries });
       if (!res.success) throw new Error((res as any).error || "Failed to save");
       return res;
     },
@@ -91,7 +89,7 @@ export default function AdminSettingsPage() {
             <div>
               <h2 className="text-3xl font-bold tracking-tight">System Settings</h2>
               <p className="text-muted-foreground mt-1">
-                Configure global system parameters, task retries, and concurrency limits.
+                Configure global system parameters that affect worker behavior.
               </p>
             </div>
 
@@ -99,9 +97,9 @@ export default function AdminSettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Gear className="h-5 w-5 text-primary" />
-                  General Configuration
+                  Task Configuration
                 </CardTitle>
-                <CardDescription>System-wide settings that affect worker behavior and task processing.</CardDescription>
+                <CardDescription>Settings that control how tasks behave when they fail.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
@@ -115,19 +113,6 @@ export default function AdminSettingsPage() {
                     className="bg-muted/5 max-w-[200px]"
                   />
                   <p className="text-[10px] text-muted-foreground">Number of times a task will automatically retry if it crashes. Default is 3.</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Max Concurrent Tasks (Per User)</Label>
-                  <Input
-                    type="number"
-                    value={maxConcurrentTasks}
-                    onChange={(e) => setMaxConcurrentTasks(parseInt(e.target.value, 10))}
-                    min={1}
-                    max={20}
-                    className="bg-muted/5 max-w-[200px]"
-                  />
-                  <p className="text-[10px] text-muted-foreground">Limit the number of tasks a single user can run simultaneously. Default is 3.</p>
                 </div>
 
                 <div className="pt-4 border-t">
