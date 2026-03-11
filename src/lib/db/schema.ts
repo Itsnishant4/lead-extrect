@@ -36,6 +36,7 @@ export const tasks = sqliteTable('tasks', {
   exportStatus: text('export_status'),
   exportCreatedAt: integer('export_created_at', { mode: 'timestamp' }),
   exportedLeadsCount: integer('exported_leads_count').default(0),
+  retryCount: integer('retry_count').default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 }, (table) => ({

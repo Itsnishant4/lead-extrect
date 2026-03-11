@@ -65,4 +65,14 @@ export class SiteConfigService {
   static async setMaxConcurrentTasks(limit: number) {
     await this.set('max_concurrent_tasks', String(limit));
   }
+
+  static async getMaxRetries(): Promise<number> {
+    const val = await this.get('max_task_retries');
+    const parsed = val ? parseInt(val, 10) : NaN;
+    return isNaN(parsed) ? 3 : parsed; // Default: 3
+  }
+
+  static async setMaxRetries(limit: number) {
+    await this.set('max_task_retries', String(limit));
+  }
 }

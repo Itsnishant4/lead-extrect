@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   CreditCard,
   Megaphone,
-  ListChecks
+  ListChecks,
+  Gear
 } from 'phosphor-react';
 import { logoutAction } from '@/app/actions';
 import { toast } from 'sonner';
@@ -84,6 +85,11 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
       title: 'Banner Settings',
       icon: Megaphone,
       url: '/admin/banner',
+    },
+    {
+      title: 'System Settings',
+      icon: Gear,
+      url: '/admin/settings',
     },
     {
       title: 'System Logs',

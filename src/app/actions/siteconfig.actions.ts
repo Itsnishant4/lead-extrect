@@ -36,3 +36,30 @@ export async function updateBannerAdminAction(data: {
     return handleActionError(error);
   }
 }
+
+export async function getSystemSettingsAction() {
+  try {
+    const maxRetries = await SiteConfigService.getMaxRetries();
+    const maxConcurrentTasks = await SiteConfigService.getMaxConcurrentTasks();
+    return { success: true, data: { maxRetries, maxConcurrentTasks } };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function updateSystemSettingsAction(data: {
+  maxRetries: number;
+  maxConcurrentTasks: number;
+}) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    await SiteConfigService.setMaxRetries(data.maxRetries);
+    await SiteConfigService.setMaxConcurrentTasks(data.maxConcurrentTasks);
+    revalidatePath('/admin/settings');
+    return { success: true };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
