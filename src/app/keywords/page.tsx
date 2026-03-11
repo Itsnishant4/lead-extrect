@@ -180,7 +180,7 @@ export default function KeywordsPage() {
             
             {keywords.length === 0 ? (
               <button onClick={generateKeywords} disabled={isGenerating} className="w-full gradient-button text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg">
-                {isGenerating ? <Loader2 className="animate-spin" /> : <Rocket />} Generate
+                {isGenerating ? <Loader2 className="animate-spin size-5" /> : <Rocket />} Generate
               </button>
             ) : (
               <div className="space-y-4">

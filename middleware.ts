@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyToken } from '@/lib/auth-edge';
+import { db } from '@/lib/db/index';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function middleware(request: NextRequest) {
   const session = request.cookies.get('session');
@@ -8,8 +11,20 @@ export async function middleware(request: NextRequest) {
 
   if (session) {
     const payload = await verifyToken(session.value);
-    if (payload) {
-      isValidSession = true;
+    if (payload && payload.id) {
+       // Check if account still exists in DB
+       try {
+         const user = await db.select({ id: users.id }).from(users).where(eq(users.id, Number(payload.id))).limit(1);
+         if (user.length > 0) {
+           isValidSession = true;
+         }
+       } catch (err) {
+         console.error('[Middleware] DB Check error:', err);
+         // If DB is down, we might want to still trust the JWT if it's signed? 
+         // But "matching with any account" implies being strict.
+         // However, high-availability usually favors trusting the JWT if DB is unreachable.
+         // For now, let's stick to the user's request: must match an account.
+       }
     }
   }
 
@@ -63,13 +78,22 @@ export async function middleware(request: NextRequest) {
   } else {
     // If user is NOT logged in:
 
+    let response;
     // Allow access to guest-only paths and public paths
     if (isGuestOnlyPath || isPublicPath) {
-      return NextResponse.next();
+      response = NextResponse.next();
+    } else {
+      // Redirect everything else (protected routes) to /login
+      response = NextResponse.redirect(new URL('/login', request.url));
     }
 
-    // Redirect everything else (protected routes) to /login
-    return NextResponse.redirect(new URL('/login', request.url));
+    // CRITICAL: If a session cookie exists but is invalid (e.g. account deleted, token expired),
+    // remove it to prevent "ghost" sessions or flickering.
+    if (session && !isValidSession) {
+      response.cookies.delete('session');
+    }
+
+    return response;
   }
 }
 

@@ -4,19 +4,14 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldSeparator,
-} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { loginAction } from "@/app/actions"
 import { toast } from "sonner"
-import { Eye, EyeSlash, Sparkle, ShieldCheck, Lightning } from "phosphor-react"
+import { Eye, EyeSlash } from "phosphor-react"
 import { LoaderCircle } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
+import { Logo } from "./Logo"
+import { QuoteCarousel } from "./quote-carousel"
 
 export function LoginForm({
   className,
@@ -51,112 +46,95 @@ export function LoginForm({
   }
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden border-border/60">
-        <CardContent className="grid p-0 md:grid-cols-[1.05fr_0.95fr]">
-          <form className="p-6 md:p-8" onSubmit={handleSubmit}>
-            <FieldGroup>
-              <div className="flex flex-col items-center gap-2 text-center mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Sparkle className="h-5 w-5" />
-                </div>
-                <h1 className="text-2xl font-semibold">Welcome back</h1>
-                <p className="text-muted-foreground text-balance">
-                  Login to your account to start extracting leads
-                </p>
-              </div>
-              <Field>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
+    <div className={cn("grid min-h-screen grid-cols-1 md:grid-cols-[1fr_1.6fr] relative", className)} {...props}>
+      
+      <div className="bg-[#F8F8F8] z-1  shadow-2xl broder-r border flex h-screen justify-center items-center">
+
+      <div className="absolute top-8 left-8 z-50">
+        <div className="flex items-center gap-2">
+          <Logo className="w-8 h-8 text-[#6366f1]" />
+          <span className="text-xl font-bold tracking-tight text-slate-900">leadspotter</span>
+        </div>
+      </div>
+
+      {/* Left Column: Form */}
+      <div className="flex flex-col p-8  md:p-12 lg:p-16 justify-center">
+        <div className="flex flex-col  justify-center max-w-sm mx-auto w-full my-12 md:my-16 lg:my-20">
+          <div className="mb-10">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">Welcome back</h1>
+            <p className="text-slate-500 font-medium">Sign in to your account</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-semibold text-slate-700">Email</label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
                 />
-              </Field>
-              <Field>
-                <div className="flex items-center">
-                  <FieldLabel htmlFor="password">Password</FieldLabel>
-                  <a
-                    href="/forgot-password"
-                    className="ml-auto text-sm underline-offset-2 hover:underline text-primary"
-                  >
-                    Forgot your password?
-                  </a>
-                </div>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    placeholder="********"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading}
-                    className="pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeSlash className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </Field>
-              <Field>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Login"
-                  )}
-                </Button>
-              </Field>
-              <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card my-4">
-                Connect and Go
-              </FieldSeparator>
-              <div className="text-center text-sm">
-                Don&apos;t have an account?{" "}
-                <a href="/signup" className="underline underline-offset-4 font-semibold text-primary">
-                  Sign up
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="text-sm font-semibold text-slate-700">Password</label>
+                <a href="/forgot-password" title="Forgot password" className="text-xs font-semibold text-slate-400 hover:text-[#6366f1] transition-colors">
+                  Forgot password?
                 </a>
               </div>
-            </FieldGroup>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  onClick={() => setShowPassword(!showPassword)}
+                  >
+                  {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full py-2 bg-[#6366f1] hover:bg-[#4f46e5] text-white font-bold rounded-lg transition-all shadow-sm shadow-[#6366f1]/20"
+              disabled={isLoading}
+              >
+              {isLoading ? <LoaderCircle className="animate-spin" size={20} /> : "Sign in"}
+            </Button>
+
+            <p className="text-sm text-center text-slate-500 font-medium pt-4">
+              Don't have an account?{" "}
+              <a href="/signup" className="text-slate-900 border-b border-slate-300 pb-0.5 font-bold hover:border-slate-900 transition-all">Sign up</a>
+            </p>
           </form>
-          <div className="hidden md:flex flex-col justify-between gap-6 border-l border-border/60 bg-muted/20 p-8">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Why teams choose us</p>
-              <h2 className="text-2xl font-semibold">Faster lead generation</h2>
-              <p className="text-sm text-muted-foreground">
-                Build, run, and export campaigns with a clean workflow built for speed.
-              </p>
-            </div>
-            <div className="space-y-4 text-sm">
-              <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/60 p-3">
-                <Lightning className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium">Instant results</p>
-                  <p className="text-muted-foreground text-xs">Extract leads and export CSV files in seconds.</p>
-                </div>
+        </div>
+
+
+        <div className="">
+          <p className="text-[10px] leading-relaxed text-slate-400 max-w-sm mx-auto text-center">
+            By continuing, you agree to LeadSpotter's <a href="/terms" className="underline hover:text-slate-600">Terms of Service</a> and <a href="/privacy" className="underline hover:text-slate-600">Privacy Policy</a>, and to receive periodic emails with updates.
+          </p>
+        </div>
+      </div>
               </div>
-              <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/60 p-3">
-                <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium">Secure by default</p>
-                  <p className="text-muted-foreground text-xs">Your data stays private and encrypted.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+              
+      
+      <div className="hidden z-0 md:flex bg-transparent flex-col bg-white border-l border-slate-100 p-12 lg:p-20 justify-center relative overflow-hidden">
+        <QuoteCarousel pagetype="login" />
+      </div>
+
     </div>
   )
 }
