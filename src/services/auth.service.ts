@@ -105,31 +105,31 @@ export class AuthService {
 
     const { generateOTP, sendOTPEmail } = await import('@/lib/mailer');
 
-  return await db.transaction(async (tx) => {
-    const userRows = await tx.select().from(users).where(eq(users.email, email));
+    // db.transaction is currently failing on the sqlhost proxy.
+    // We use sequential updates. This is safe for OTP request.
+    const userRows = await db.select().from(users).where(eq(users.email, email));
     const user = userRows[0];
     if (!user) throw new Error("You are not registered");
 
-      if (user.isSuspended) {
-        throw new Error('Account suspended. Contact support.');
-      }
+    if (user.isSuspended) {
+      throw new Error('Account suspended. Contact support.');
+    }
 
-      const otp = generateOTP();
+    const otp = generateOTP();
 
-      await UserRepository.update(user.id, {
-        otpCode: otp,
-        otpExpiry: sql`datetime('now', '+10 minutes')`,
-        otpAttempts: 0,
-      }, tx);
-
-      const sent = await sendOTPEmail(email, otp);
-      if (!sent) {
-        throw new Error('Failed to send OTP email. Please try again.');
-      }
-
-      await AuditService.logAction('request_otp', 'success', { email, ip });
-      return true;
+    await UserRepository.update(user.id, {
+      otpCode: otp,
+      otpExpiry: sql`datetime('now', '+10 minutes')`,
+      otpAttempts: 0,
     });
+
+    const sent = await sendOTPEmail(email, otp);
+    if (!sent) {
+      throw new Error('Failed to send OTP email. Please try again.');
+    }
+
+    await AuditService.logAction('request_otp', 'success', { email, ip });
+    return true;
   }
 
   static async verifyOTP(email: string, otp: string, ip: string): Promise<number> {
@@ -137,42 +137,37 @@ export class AuthService {
       throw new Error('Too many verification attempts. Please wait a minute.');
     }
 
-  return await db.transaction(async (tx) => {
-    const userRows = await tx.select().from(users).where(eq(users.email, email));
+    // Sequential verification to avoid db.transaction issues with LibSQL proxy
+    const userRows = await db.select().from(users).where(eq(users.email, email));
     const user = userRows[0];
 
     if (!user) {
       throw new Error('Invalid email or OTP.');
     }
 
-      if (!user.otpCode || !user.otpExpiry) {
-        throw new Error('No OTP requested. Please request a new one.');
-      }
+    if (!user.otpCode || !user.otpExpiry) {
+      throw new Error('No OTP requested. Please request a new one.');
+    }
 
-      const isExpired = new Date(user.otpExpiry) < new Date();
-      if (isExpired) {
-        await tx.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
-        throw new Error('OTP has expired. Please request a new one.');
-      }
+    const isExpired = new Date(user.otpExpiry) < new Date();
+    if (isExpired) {
+      await db.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
+      throw new Error('OTP has expired. Please request a new one.');
+    }
 
-      if ((user.otpAttempts || 0) >= 5) {
-        await tx.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
-        throw new Error('Too many failed attempts. Please request a new OTP.');
-      }
+    if ((user.otpAttempts || 0) >= 5) {
+      await db.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
+      throw new Error('Too many failed attempts. Please request a new OTP.');
+    }
 
     if (user.otpCode !== otp) {
-      await tx.update(users).set({ otpAttempts: sql`otp_attempts + 1` }).where(eq(users.id, user.id));
+      await db.update(users).set({ otpAttempts: sql`otp_attempts + 1` }).where(eq(users.id, user.id));
       await AuditService.logAction('verify_otp', 'error', { email, reason: 'Invalid OTP', ip });
       throw new Error('Invalid OTP. Please try again.');
     }
 
-    // CRITICAL FIX: Do NOT wipe OTP here - it needs to persist for resetPassword()
-    // The OTP will be wiped after successful password reset
-    // await tx.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
-
     await AuditService.logAction('verify_otp', 'success', { email, ip });
     return user.id;
-    });
   }
 
   static async resetPassword(email: string, otp: string, newPassword: string, ip: string) {

@@ -95,21 +95,20 @@ export class SubscriptionService {
     const plan = planRows[0];
     if (!plan) throw new Error('Plan not found');
 
-    // 2. Perform updates atomically using db.batch()
-    // This is much more compatible with libSQL HTTP gateways like sqlhost
-    await db.batch([
-      db.update(transactions).set({
-        status: 'paid',
-        utr: utr,
-        updatedAt: new Date(),
-      }).where(eq(transactions.id, transaction.id)),
+    // 2. Perform updates sequentially
+    // db.batch/db.transaction are currently failing on the sqlhost proxy with LibsqlBatchError
+    // We use sequential updates with idempotency checks as a fallback.
+    await db.update(transactions).set({
+      status: 'paid',
+      utr: utr,
+      updatedAt: new Date(),
+    }).where(eq(transactions.id, transaction.id));
 
-      db.update(users).set({
-        planType: plan.name.toLowerCase(),
-        bonusCredits: sql`COALESCE(${users.bonusCredits}, 0) + ${plan.leadsCredits}`,
-        subscriptionExpiry: SubscriptionService.computeExpiry(plan.period),
-      }).where(eq(users.id, transaction.userId!))
-    ]);
+    await db.update(users).set({
+      planType: plan.name.toLowerCase(),
+      bonusCredits: sql`COALESCE(${users.bonusCredits}, 0) + ${plan.leadsCredits}`,
+      subscriptionExpiry: SubscriptionService.computeExpiry(plan.period),
+    }).where(eq(users.id, transaction.userId!));
 
     // 3. Notify user (fire-and-forget)
     const uid = transaction.userId!;
@@ -204,19 +203,17 @@ export class SubscriptionService {
     const plan = planRows[0];
     if (!plan) throw new Error('Plan not found');
 
-    // Perform updates atomically using db.batch()
-    await db.batch([
-      db.update(transactions).set({
-        status: 'paid',
-        updatedAt: new Date(),
-      }).where(eq(transactions.id, transactionId)),
+    // Perform updates sequentially due to LibSQL proxy batch issues
+    await db.update(transactions).set({
+      status: 'paid',
+      updatedAt: new Date(),
+    }).where(eq(transactions.id, transactionId));
 
-      db.update(users).set({
-        planType: plan.name.toLowerCase(),
-        bonusCredits: sql`COALESCE(bonus_credits, 0) + ${plan.leadsCredits}`,
-        subscriptionExpiry: SubscriptionService.computeExpiry(plan.period),
-      }).where(eq(users.id, tx.userId!))
-    ]);
+    await db.update(users).set({
+      planType: plan.name.toLowerCase(),
+      bonusCredits: sql`COALESCE(bonus_credits, 0) + ${plan.leadsCredits}`,
+      subscriptionExpiry: SubscriptionService.computeExpiry(plan.period),
+    }).where(eq(users.id, tx.userId!));
   }
 
   static async rejectPayment(transactionId: number) {

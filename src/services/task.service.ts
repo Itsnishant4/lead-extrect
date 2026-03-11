@@ -107,59 +107,49 @@ export class TaskService {
     console.log(`[TASK SERVICE] processTaskStep started for task ${tId}, user ${uId}`);
 
     try {
-      // CRITICAL: Atomically claim the next keyword index using row-level locking.
-      // This prevents multiple workers from processing the same keyword concurrently.
-      const claimed = await db.transaction(async (tx) => {
-        const taskRows = await tx.select().from(tasks)
-          .where(and(eq(tasks.id, tId), eq(tasks.userId, uId)))
-          .limit(1);
-        const task = taskRows[0];
-
-        if (!task) return { claimed: false, reason: 'Task not found' } as const;
-        if (task.status !== 'running') return { claimed: false, reason: `Task not running (${task.status})` } as const;
-
-        const keywords = task.keywords as string[];
-        const index = task.currentKeywordIndex || 0;
-
-        if (index >= keywords.length) {
-          await tx.update(tasks).set({ status: 'completed', statusReason: 'All keywords processed', updatedAt: new Date() })
-            .where(and(eq(tasks.id, tId), eq(tasks.userId, uId)));
-          return { claimed: false, reason: 'completed' } as const;
-        }
-
-        // Atomically advance the index so no other worker can claim this keyword
-        await tx.update(tasks).set({
-          currentKeywordIndex: index + 1,
+      // CRITICAL: Atomically claim the next keyword index using a single UPDATE with returning().
+      // This is atomic in SQLite and avoids the buggy db.transaction() on LibSQL proxies.
+      const claimedRows = await db.update(tasks)
+        .set({
+          currentKeywordIndex: sql`${tasks.currentKeywordIndex} + 1`,
           lastHeartbeat: new Date(),
           statusReason: null,
           updatedAt: new Date()
-        }).where(and(eq(tasks.id, tId), eq(tasks.userId, uId)));
+        })
+        .where(and(
+          eq(tasks.id, tId),
+          eq(tasks.userId, uId),
+          eq(tasks.status, 'running'),
+          sql`json_array_length(${tasks.keywords}) > ${tasks.currentKeywordIndex}`
+        ))
+        .returning();
 
-        return {
-          claimed: true,
-          keyword: keywords[index],
-          index,
-          totalKeywords: keywords.length,
-          userAgent: task.userAgent,
-          acceptLanguage: task.acceptLanguage,
-        } as const;
-      });
-
-      if (!claimed.claimed) {
-        if (claimed.reason === 'completed') {
-          await AuditService.saveServerLog(tId, 'SUCCESS', 'Task completed', uId);
-          await this.sendLogsToTelegram(tId, uId);
-          // Notify user
-          const taskInfo = await TaskRepository.findById(tId, uId);
-          const leadCount = taskInfo ? await this.getTaskLeadCount(tId) : 0;
-          void NotificationService.notifyTaskCompleted(uId, taskInfo?.name || `Task #${tId}`, leadCount, tId);
+      const task = claimedRows[0];
+      if (!task) {
+        // Fallback check to see why it failed (is it just completed?)
+        const finalCheck = await db.select().from(tasks).where(eq(tasks.id, tId)).limit(1);
+        const t = finalCheck[0];
+        if (!t) return { success: false, error: 'Task not found' };
+        
+        const kw = t.keywords as string[];
+        if ((t.currentKeywordIndex || 0) >= kw.length) {
+          await db.update(tasks).set({ 
+            status: 'completed', 
+            statusReason: 'All keywords processed', 
+            updatedAt: new Date() 
+          }).where(and(eq(tasks.id, tId), eq(tasks.userId, uId), eq(tasks.status, 'running')));
+          
           return { success: true, completed: true };
         }
-        console.log(`[TASK SERVICE] Task ${tId}: ${claimed.reason}. Aborting step.`);
-        return { success: false, error: claimed.reason };
+        return { success: false, error: 'Task not running or already claimed' };
       }
 
-      const { keyword, index, totalKeywords, userAgent, acceptLanguage } = claimed;
+      const index = (task.currentKeywordIndex || 1) - 1; // It was already incremented
+      const keywords = task.keywords as string[];
+      const keyword = keywords[index];
+      const totalKeywords = keywords.length;
+      const { userAgent, acceptLanguage } = task;
+      
       const options = { userAgent: userAgent || undefined, acceptLanguage: acceptLanguage || undefined, manualUserId: uId };
 
       await AuditService.saveServerLog(tId, 'INFO', `Processing keyword ${index + 1}/${totalKeywords}: "${keyword}"`, uId);
