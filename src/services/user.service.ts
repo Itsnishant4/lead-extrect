@@ -206,4 +206,8 @@ export class UserService {
       contactStats: contactStats || { withEmail: 0, withPhone: 0, withWebsite: 0 },
     };
   }
+
+  static async updateLeadQualityThreshold(userId: number, threshold: number) {
+    await db.update(users).set({ leadQualityThreshold: threshold }).where(eq(users.id, userId));
+  }
 }

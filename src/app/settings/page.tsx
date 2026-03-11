@@ -14,7 +14,7 @@ import { useAutomation } from '@/context/AutomationContext';
 import {
   Bell, BellOff, Download, Shield, Trash2, AlertTriangle,
   CheckCircle2, XCircle, CreditCard, Loader2, Settings, Zap, Database,
-  RotateCcw,
+  RotateCcw, Filter, User
 } from 'lucide-react';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
@@ -31,15 +31,22 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export default function SettingsPage() {
-  const { settings: appSettings, updateSetting, user, isLoadingUser } = useAutomation();
+  const { settings: appSettings, updateSetting, user, isLoadingUser, updateLeadQuality } = useAutomation();
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [leadQuality, setLeadQuality] = useState(50);
 
   // Push notification state
   const [pushSupported, setPushSupported] = useState(false);
   const [pushPermission, setPushPermission] = useState<NotificationPermission | 'unsupported'>('unsupported');
   const [pushSubscribed, setPushSubscribed] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.leadQualityThreshold !== undefined) {
+      setLeadQuality(Math.round(user.leadQualityThreshold / 0.4));
+    }
+  }, [user]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -130,10 +137,28 @@ export default function SettingsPage() {
     toast.success('Setting updated');
   };
 
-  const handleReplayTour = async () => {
-    await updateSetting('onboardingCompleted', false);
-    router.push('/leads');
+  const handleUpdateLeadQuality = (value: number) => {
+    setLeadQuality(value);
   };
+
+  // Debounce lead quality update
+  useEffect(() => {
+    if (user?.leadQualityThreshold === undefined) return;
+    
+    // Initial sync
+    if (Math.round(user.leadQualityThreshold / 0.4) === leadQuality) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        await updateLeadQuality(Math.round(leadQuality * 0.4));
+        toast.success('Lead matching strictness updated');
+      } catch (err) {
+        toast.error('Failed to update quality setting');
+      }
+    }, 1300);
+
+    return () => clearTimeout(timer);
+  }, [leadQuality, updateLeadQuality, user?.leadQualityThreshold]);
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-indigo-100 dark:selection:bg-indigo-900 bg-gradient-to-br from-indigo-50 via-indigo-100 to-violet-50 dark:from-background dark:via-background dark:to-background text-foreground">
@@ -309,33 +334,50 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* ── General ── */}
               <div className="glass-card rounded-3xl p-8">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 rounded-full bg-indigo-100/80 dark:bg-indigo-950/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                    <Settings size={20} />
+                    <Filter size={20} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-foreground">General</h3>
-                    <p className="text-sm text-slate-400 dark:text-slate-500">App preferences and help.</p>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-foreground">Lead Quality</h2>
+                    <p className="text-sm text-slate-400 dark:text-slate-500">Adjust the strictness of lead matching.</p>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-4 bg-white/40 dark:bg-white/5 rounded-2xl border border-white/60 dark:border-slate-700 p-4 md:flex-row md:items-center md:justify-between">
-                  <div className="flex items-center gap-3">
-                    <RotateCcw size={18} className="text-slate-400 dark:text-slate-500" />
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Replay onboarding tour</p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500">Walk through the app features again.</p>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Quality Threshold</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">Higher leads to more precise matching.</p>
+                    </div>
+                    <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1 rounded-full border border-indigo-200/50 dark:border-indigo-800/50">
+                      {leadQuality}%
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    <input
+                      type="range"
+                      value={leadQuality}
+                      onChange={(e) => handleUpdateLeadQuality(parseInt(e.target.value, 10))}
+                      min={0}
+                      max={100}
+                      step={1}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-800 transition-all accent-indigo-600 rounded-lg appearance-none cursor-pointer hover:bg-slate-300 dark:hover:bg-slate-700"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-400 dark:text-slate-500 font-bold ">
+                      <span>Speed</span>
+                      <span>Balanced</span>
+                      <span>Precision</span>
                     </div>
                   </div>
-                  <button
-                    onClick={handleReplayTour}
-                    className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-950 border border-indigo-200/50 dark:border-indigo-800/50 transition-colors"
-                  >
-                    <RotateCcw size={14} />
-                    Replay Tour
-                  </button>
+
+                  <div className="p-4 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-2xl border border-indigo-100 dark:border-indigo-900/50">
+                    <p className="text-xs text-indigo-600 dark:text-indigo-300 leading-relaxed">
+                      <strong className="font-bold">Pro Tip:</strong> Higher quality scores require more keyword matches in the lead's description or services. Use "Speed" for broad discovery or "Precision" for highly targeted results.
+                    </p>
+                  </div>
                 </div>
               </div>
 

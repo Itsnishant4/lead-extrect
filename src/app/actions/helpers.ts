@@ -5,6 +5,8 @@ import { fromZodError } from 'zod-validation-error';
 import { AuditService } from '@/services/audit.service';
 import { getSession } from '@/lib/auth';
 
+import { maskError } from '@/lib/utils/error.utils';
+
 export async function getClientInfo() {
   const headerList = await headers();
   const forwardedFor = headerList.get('x-forwarded-for');
@@ -18,7 +20,7 @@ export async function handleActionError(error: any) {
   if (error.name === 'ZodError') {
     return { success: false, error: fromZodError(error).message };
   }
-  return { success: false, error: error.message || 'Something went wrong' };
+  return { success: false, error: maskError(error) };
 }
 
 export async function logAction(action: string, status: 'success' | 'error' | 'info', metadata: any = {}) {

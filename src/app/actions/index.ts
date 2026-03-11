@@ -82,6 +82,7 @@ export {
   addProxyAction,
   deleteProxyAction,
   toggleProxyAction,
+  updateLeadQualityAction,
 } from './settings.actions';
 
 // Keywords
