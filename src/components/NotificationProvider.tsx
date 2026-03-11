@@ -26,33 +26,32 @@ function urlBase64ToUint8Array(base64String: string) {
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user, settings } = useAutomation();
   const hasPrompted = useRef(false);
-  const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
 
-  // Register service worker
+  // Register service worker on mount
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
     navigator.serviceWorker
       .register('/sw.js')
-      .then((reg) => {
-        registrationRef.current = reg;
-      })
       .catch((err) => {
         console.error('[SW] Registration failed:', err);
       });
   }, []);
 
-  // Subscribe to push notifications
+  // Subscribe to push notifications — uses navigator.serviceWorker.ready
+  // to avoid a race condition where the registration isn't ready yet.
   const subscribeToPush = useCallback(async () => {
     if (!VAPID_PUBLIC_KEY) {
       console.warn('[PUSH] VAPID public key not set');
       return;
     }
 
-    const reg = registrationRef.current;
-    if (!reg) return;
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
     try {
+      // This resolves only when the SW is active — no race condition
+      const reg = await navigator.serviceWorker.ready;
+
       // Check if already subscribed
       let subscription = await reg.pushManager.getSubscription();
 

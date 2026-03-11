@@ -110,13 +110,15 @@ export class SubscriptionService {
       subscriptionExpiry: SubscriptionService.computeExpiry(plan.period),
     }).where(eq(users.id, transaction.userId!));
 
-    // 3. Notify user (fire-and-forget)
+    // 3. Notify user (awaited — serverless functions exit after response, so setTimeout won't work)
     const uid = transaction.userId!;
     const pName = plan.name;
     const pAmount = amount || transaction.amount;
-    setTimeout(() => {
-      void NotificationService.notifyPaymentSuccess(uid, pName, String(pAmount));
-    }, 0);
+    try {
+      await NotificationService.notifyPaymentSuccess(uid, pName, String(pAmount));
+    } catch (notifErr) {
+      console.error('[WEBHOOK] Failed to send payment notification:', notifErr);
+    }
   }
 
   static async getPaymentHistory(userId: number, cursor?: number, limit = 10) {
