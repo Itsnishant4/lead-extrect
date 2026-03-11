@@ -15,7 +15,6 @@ export const users = sqliteTable('users', {
   otpCode: text('otp_code'),
   otpExpiry: integer('otp_expiry', { mode: 'timestamp' }),
   otpAttempts: integer('otp_attempts').default(0),
-  leadQualityThreshold: integer('lead_quality_threshold').default(20),
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 });
 

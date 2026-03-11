@@ -13,7 +13,6 @@ import {
   getUserAction,
   triggerTaskAutomationAction,
   updateSettingAction,
-  updateLeadQualityAction,
   startAllPendingTasksAction
 } from '@/app/actions';
 import { toast } from 'sonner';
@@ -50,7 +49,6 @@ interface AutomationContextType {
   clearKeywordSession: () => void;
   settings: Record<string, any>;
   updateSetting: (key: string, value: any) => Promise<void>;
-  updateLeadQuality: (threshold: number) => Promise<void>;
   startAllPendingTasks: () => Promise<void>;
 }
 
@@ -115,10 +113,6 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     queryClient.invalidateQueries({ queryKey: ['settings'] });
   };
 
-  const updateLeadQuality = async (threshold: number) => {
-    await updateLeadQualityAction(threshold);
-    queryClient.invalidateQueries({ queryKey: ['user'] });
-  };
 
   const loadTasksAsync = async () => {
     await loadTasks();
@@ -287,7 +281,6 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       clearKeywordSession,
       settings,
       updateSetting,
-      updateLeadQuality,
       startAllPendingTasks
     }}>
       {children}

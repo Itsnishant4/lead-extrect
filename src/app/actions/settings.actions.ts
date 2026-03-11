@@ -73,14 +73,3 @@ export async function toggleProxyAction(id: number, isActive: boolean) {
     return handleActionError(error);
   }
 }
-export async function updateLeadQualityAction(threshold: number) {
-  const session = await getSession();
-  if (!session) return { success: false, error: 'Unauthorized' };
-  try {
-    const { UserService } = await import('@/services/user.service');
-    await UserService.updateLeadQualityThreshold(session.id, threshold);
-    return { success: true };
-  } catch (error: any) {
-    return handleActionError(error);
-  }
-}
