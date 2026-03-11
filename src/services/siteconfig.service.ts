@@ -75,4 +75,14 @@ export class SiteConfigService {
   static async setMaxRetries(limit: number) {
     await this.set('max_task_retries', String(limit));
   }
+
+  static async getLeadQualityThreshold(): Promise<number> {
+    const val = await this.get('lead_quality_threshold');
+    const parsed = val ? parseInt(val, 10) : NaN;
+    return isNaN(parsed) ? 20 : parsed; // Default: 20 (corresponds to 50 UI)
+  }
+
+  static async setLeadQualityThreshold(threshold: number) {
+    await this.set('lead_quality_threshold', String(threshold));
+  }
 }

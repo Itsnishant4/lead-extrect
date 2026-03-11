@@ -1,6 +1,6 @@
 import { db, raw } from '@/lib/db/index';
 import { users, leads, tasks, searches, auditLogs, serverLogs, transactions, plans, taskLeads, leadSources } from '@/lib/db/schema';
-import { eq, sql, desc, and, gt, count, inArray } from 'drizzle-orm';
+import { eq, sql, desc, and, or, gt, count, inArray } from 'drizzle-orm';
 
 export class AdminService {
   static async checkAdmin(userId: number) {
@@ -231,8 +231,16 @@ export class AdminService {
   }
 
   static async startAllPendingTasks(userId: number) {
-    await db.update(tasks).set({ status: 'running', updatedAt: new Date() })
-      .where(and(eq(tasks.status, 'pending'), eq(tasks.userId, userId)));
+    // We update status to 'pending' with a specific reason to trigger the worker
+    await db.update(tasks).set({ 
+      status: 'pending', 
+      statusReason: 'Queued — started by admin',
+      updatedAt: new Date() 
+    })
+      .where(and(
+        or(eq(tasks.status, 'paused'), eq(tasks.status, 'failed')), 
+        eq(tasks.userId, userId)
+      ));
   }
 
   static async updateUserCredits(userId: number, amount: number) {

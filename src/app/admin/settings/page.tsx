@@ -37,16 +37,21 @@ export default function AdminSettingsPage() {
   });
 
   const [maxRetries, setMaxRetries] = useState(3);
+  const [leadQuality, setLeadQuality] = useState(50);
 
   useEffect(() => {
     if (settings) {
       setMaxRetries(settings.maxRetries);
+      setLeadQuality(Math.round((settings.leadQuality || 20) / 0.4));
     }
   }, [settings]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const res = await updateSystemSettingsAction({ maxRetries });
+      const res = await updateSystemSettingsAction({ 
+        maxRetries, 
+        leadQuality: Math.round(leadQuality * 0.4) 
+      });
       if (!res.success) throw new Error((res as any).error || "Failed to save");
       return res;
     },
@@ -113,6 +118,37 @@ export default function AdminSettingsPage() {
                     className="bg-muted/5 max-w-[200px]"
                   />
                   <p className="text-[10px] text-muted-foreground">Number of times a task will automatically retry if it crashes. Default is 3.</p>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Lead Quality Threshold</Label>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Adjust strictness of lead matching.</p>
+                    </div>
+                    <span className="text-sm font-bold text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">{leadQuality}%</span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <input
+                      type="range"
+                      value={leadQuality}
+                      onChange={(e) => setLeadQuality(parseInt(e.target.value, 10))}
+                      min={0}
+                      max={100}
+                      step={1}
+                      className="w-full h-2 bg-muted transition-all accent-indigo-600 rounded-lg appearance-none cursor-pointer hover:bg-muted/80"
+                    />
+                    <div className="flex justify-between text-[10px] text-muted-foreground font-medium px-0.5">
+                      <span>Low (Full Speed)</span>
+                      <span>Balanced</span>
+                      <span>High (Strict)</span>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-muted-foreground leading-relaxed italic">
+                    <strong className="text-indigo-500 not-italic">Pro Tip:</strong> Higher quality means stricter keyword matching. Lower quality allows more leads but may include less relevant results.
+                  </p>
                 </div>
 
                 <div className="pt-4 border-t">

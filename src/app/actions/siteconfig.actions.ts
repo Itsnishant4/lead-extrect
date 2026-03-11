@@ -40,7 +40,8 @@ export async function updateBannerAdminAction(data: {
 export async function getSystemSettingsAction() {
   try {
     const maxRetries = await SiteConfigService.getMaxRetries();
-    return { success: true, data: { maxRetries } };
+    const leadQuality = await SiteConfigService.getLeadQualityThreshold();
+    return { success: true, data: { maxRetries, leadQuality } };
   } catch (error: any) {
     return handleActionError(error);
   }
@@ -48,12 +49,14 @@ export async function getSystemSettingsAction() {
 
 export async function updateSystemSettingsAction(data: {
   maxRetries: number;
+  leadQuality: number;
 }) {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
     await AdminService.checkAdmin(session.id);
     await SiteConfigService.setMaxRetries(data.maxRetries);
+    await SiteConfigService.setLeadQualityThreshold(data.leadQuality);
     revalidatePath('/admin/settings');
     return { success: true };
   } catch (error: any) {

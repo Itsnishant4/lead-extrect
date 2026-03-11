@@ -24,13 +24,6 @@ export const resetPasswordSchema = z.object({
   newPassword: z.string().min(8).max(100),
 });
 
-// --- Leads ---
-
-export const searchLeadsSchema = z.object({
-  query: z.string().min(1).max(500),
-  taskId: z.number().optional(),
-  forceStore: z.boolean().optional(),
-});
 
 // --- Tasks ---
 

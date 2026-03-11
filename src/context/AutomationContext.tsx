@@ -7,9 +7,7 @@ import {
   createTaskShellAction,
   appendTaskKeywordsAction,
   updateTaskStatusAction,
-  updateTaskLeadCountAction,
   deleteTaskAction,
-  searchLeadsAction,
   uploadTaskExportChunkAction,
   getSettingsAction,
   getUserAction,
@@ -119,14 +117,24 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     await loadTasks();
   };
 
-  const handleSearch = async (e?: React.FormEvent, searchOverride?: string, taskId?: number) => {
+  const handleSearch = async (e?: React.FormEvent, searchOverride?: string) => {
     e?.preventDefault();
     const finalQuery = searchOverride;
     if (!finalQuery?.trim()) return;
 
-    const res = await searchLeadsAction(finalQuery, taskId);
-    if (res.success) {
-      refreshUser();
+    // Convert legacy search to a one-keyword task
+    const taskName = `Search: ${finalQuery.slice(0, 30)}${finalQuery.length > 30 ? '...' : ''}`;
+    const res = await createTaskAction(taskName, [finalQuery]);
+    if (res.success && 'taskId' in res) {
+      const triggerRes = await triggerTaskAutomationAction(Number(res.taskId));
+      if (triggerRes.success) {
+        toast.success(`Search started for "${finalQuery}"`);
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      } else {
+        toast.error((triggerRes as any).error || "Failed to start search");
+      }
+    } else {
+      toast.error((res as any).error || "Failed to create search task");
     }
     return res;
   };

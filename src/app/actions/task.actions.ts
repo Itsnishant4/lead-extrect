@@ -129,16 +129,6 @@ export async function saveServerLogAction(taskId: number | null, level: 'INFO' |
   return await AuditService.saveServerLog(taskId, level, message, session?.id || null);
 }
 
-export async function sendLogsToTelegramAction(taskId: number) {
-  const session = await getSession();
-  if (!session) return { success: false, error: 'Unauthorized' };
-  try {
-    await TaskService.sendLogsToTelegram(taskId, session.id);
-    return { success: true };
-  } catch (error: any) {
-    return handleActionError(error);
-  }
-}
 
 export async function triggerTaskAutomationAction(taskId: number) {
   const session = await getSession();
@@ -155,7 +145,6 @@ export async function triggerTaskAutomationAction(taskId: number) {
     const maxConcurrent = plan?.maxConcurrentTasks || 1;
 
     const activeCount = await TaskService.countActiveTasks(session.id);
-    // Only subtract 1 if the current task is in a state that countActiveTasks includes
     const isCurrentTaskActive = task.status === 'pending' || task.status === 'running';
     const otherActive = isCurrentTaskActive ? Math.max(activeCount - 1, 0) : activeCount;
     if (otherActive >= maxConcurrent) {
@@ -197,13 +186,4 @@ export async function uploadTaskExportChunkAction(taskId: number, name: string, 
   } catch (error: any) {
     return handleActionError(error);
   }
-}
-
-export async function processTaskStepAction(taskId: number, userId: number) {
-  const session = await getSession();
-  if (!session) return { success: false, error: 'Unauthorized' };
-  if (!session.is_admin && session.id !== userId) {
-    return { success: false, error: 'Forbidden' };
-  }
-  return await TaskService.processTaskStep(taskId, userId);
 }

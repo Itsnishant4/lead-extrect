@@ -5,7 +5,6 @@ import { useAutomation } from '@/context/AutomationContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import {
-  searchLeadsAction,
   getLeadsAction,
   createSavedListFromLeadsAction,
   createSavedListAction
@@ -61,32 +60,18 @@ export default function LeadsPage() {
     enabled: !!searchId && liveLeads.length === 0
   });
 
-  const searchMutation = useMutation({
-    mutationFn: async (q: string) => {
-      const res = await searchLeadsAction(q);
-      if (!res.success) throw new Error((res as any).error);
-      return res;
-    },
-    onSuccess: (res: any) => {
-      toast.success(`Found ${res.count} leads`);
-      setSearchId(res.searchId as number);
-      setLiveLeads(res.leads || []);
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-      queryClient.invalidateQueries({ queryKey: ['user'] });
-    },
-    onError: (error: any) => {
-      toast.error(`Search failed: ${error.message}`);
-    }
-  });
+  const { handleSearch: contextHandleSearch } = useAutomation();
 
-  const isLoading = searchMutation.isPending || isLoadingLeads;
+  const isLoading = isLoadingLeads;
   const leads = liveLeads.length > 0 ? liveLeads : storedLeads;
 
-  const handleSearchInternal = (q: string) => {
+  const handleSearchInternal = async (q: string) => {
     if (!q.trim()) return;
     setHasSearched(true);
-    setLiveLeads([]);
-    searchMutation.mutate(q);
+    const res: any = await contextHandleSearch(undefined, q);
+    if (res.success) {
+      toast.success("Search task created. You can track progress in the Tasks tab.");
+    }
   };
 
   const handleSearch = (e: React.FormEvent) => {

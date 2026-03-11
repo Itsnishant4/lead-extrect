@@ -142,13 +142,7 @@ export async function startAllPendingTasksAction() {
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
     await AdminService.checkAdmin(session.id);
-    const tasks = await AdminService.startAllPendingTasks(session.id);
-    // Kick off processing for the first task if found
-    const userTasks = await TaskService.getTasks(session.id);
-    const firstRunning = userTasks.find((t: any) => t.status === 'running');
-    if (firstRunning) {
-      void TaskService.processTaskStep(firstRunning.id, session.id);
-    }
+    await AdminService.startAllPendingTasks(session.id);
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);

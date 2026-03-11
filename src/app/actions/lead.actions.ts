@@ -2,25 +2,7 @@
 
 import { getSession } from '@/lib/auth';
 import { LeadService } from '@/services/lead.service';
-import { searchLeadsSchema } from '@/lib/validations';
-import { getClientInfo, handleActionError } from './helpers';
-
-export async function searchLeadsAction(query: string, taskId?: number, forceStore?: boolean) {
-  try {
-    searchLeadsSchema.parse({ query, taskId, forceStore });
-    const session = await getSession();
-    if (!session) return { success: false, error: 'Unauthorized' };
-    const { userAgent, acceptLanguage } = await getClientInfo();
-    const result = await LeadService.searchLeads(query, taskId, forceStore, { 
-      userAgent: userAgent || undefined, 
-      acceptLanguage: acceptLanguage || undefined, 
-      manualUserId: session.id 
-    });
-    return result;
-  } catch (error: any) {
-    return handleActionError(error);
-  }
-}
+import { handleActionError } from './helpers';
 
 export async function getLeadsAction(searchId?: number) {
   const session = await getSession();
