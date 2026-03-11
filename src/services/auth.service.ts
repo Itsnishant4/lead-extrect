@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { AuditService } from './audit.service';
 import { checkRateLimit } from '@/lib/security/ratelimit';
 import { UserRepository } from '@/repositories/user.repository';
+import { maskError, AppError } from '@/lib/utils/error.utils';
 
 export class AuthService {
   static async signup(name: string, email: string, password: string) {
@@ -99,90 +100,105 @@ export class AuthService {
   }
 
   static async requestOTP(email: string, ip: string) {
-    if (!(await checkRateLimit(`otp:email:${email}`, 3, 60000, true))) {
-      throw new Error('Too many OTP requests for this account.');
+    try {
+      if (!(await checkRateLimit(`otp:email:${email}`, 3, 60000, true))) {
+        throw new Error('Too many OTP requests for this account.');
+      }
+
+      const { generateOTP, sendOTPEmail } = await import('@/lib/mailer');
+
+      // db.transaction is currently failing on the sqlhost proxy.
+      // We use sequential updates. This is safe for OTP request.
+      const userRows = await db.select().from(users).where(eq(users.email, email));
+      const user = userRows[0];
+      if (!user) throw new Error("You are not registered");
+
+      if (user.isSuspended) {
+        throw new Error('Account suspended. Contact support.');
+      }
+
+      const otp = generateOTP();
+
+      await UserRepository.update(user.id, {
+        otpCode: otp,
+        otpExpiry: sql`datetime('now', '+10 minutes')`,
+        otpAttempts: 0,
+      });
+
+      const sent = await sendOTPEmail(email, otp);
+      if (!sent) {
+        throw new Error('Failed to send OTP email. Please try again.');
+      }
+
+      await AuditService.logAction('request_otp', 'success', { email, ip });
+      return true;
+    } catch (err) {
+      console.error('[AUTH SERVICE] requestOTP error:', err);
+      throw new Error(maskError(err));
     }
-
-    const { generateOTP, sendOTPEmail } = await import('@/lib/mailer');
-
-    // db.transaction is currently failing on the sqlhost proxy.
-    // We use sequential updates. This is safe for OTP request.
-    const userRows = await db.select().from(users).where(eq(users.email, email));
-    const user = userRows[0];
-    if (!user) throw new Error("You are not registered");
-
-    if (user.isSuspended) {
-      throw new Error('Account suspended. Contact support.');
-    }
-
-    const otp = generateOTP();
-
-    await UserRepository.update(user.id, {
-      otpCode: otp,
-      otpExpiry: sql`datetime('now', '+10 minutes')`,
-      otpAttempts: 0,
-    });
-
-    const sent = await sendOTPEmail(email, otp);
-    if (!sent) {
-      throw new Error('Failed to send OTP email. Please try again.');
-    }
-
-    await AuditService.logAction('request_otp', 'success', { email, ip });
-    return true;
   }
 
   static async verifyOTP(email: string, otp: string, ip: string): Promise<number> {
-    if (!(await checkRateLimit(`verify:email:${email}`, 5, 60000, true))) {
-      throw new Error('Too many verification attempts. Please wait a minute.');
+    try {
+      if (!(await checkRateLimit(`verify:email:${email}`, 5, 60000, true))) {
+        throw new Error('Too many verification attempts. Please wait a minute.');
+      }
+
+      // Sequential verification to avoid db.transaction issues with LibSQL proxy
+      const userRows = await db.select().from(users).where(eq(users.email, email));
+      const user = userRows[0];
+
+      if (!user) {
+        throw new Error('Invalid email or OTP.');
+      }
+
+      if (!user.otpCode || !user.otpExpiry) {
+        throw new Error('No OTP requested. Please request a new one.');
+      }
+
+      const isExpired = new Date(user.otpExpiry) < new Date();
+      if (isExpired) {
+        await db.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
+        throw new Error('OTP has expired. Please request a new one.');
+      }
+
+      if ((user.otpAttempts || 0) >= 5) {
+        await db.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
+        throw new Error('Too many failed attempts. Please request a new OTP.');
+      }
+
+      if (user.otpCode !== otp) {
+        await db.update(users).set({ otpAttempts: sql`otp_attempts + 1` }).where(eq(users.id, user.id));
+        await AuditService.logAction('verify_otp', 'error', { email, reason: 'Invalid OTP', ip });
+        throw new Error('Invalid OTP. Please try again.');
+      }
+
+      await AuditService.logAction('verify_otp', 'success', { email, ip });
+      return user.id;
+    } catch (err) {
+      console.error('[AUTH SERVICE] verifyOTP error:', err);
+      throw new Error(maskError(err));
     }
-
-    // Sequential verification to avoid db.transaction issues with LibSQL proxy
-    const userRows = await db.select().from(users).where(eq(users.email, email));
-    const user = userRows[0];
-
-    if (!user) {
-      throw new Error('Invalid email or OTP.');
-    }
-
-    if (!user.otpCode || !user.otpExpiry) {
-      throw new Error('No OTP requested. Please request a new one.');
-    }
-
-    const isExpired = new Date(user.otpExpiry) < new Date();
-    if (isExpired) {
-      await db.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
-      throw new Error('OTP has expired. Please request a new one.');
-    }
-
-    if ((user.otpAttempts || 0) >= 5) {
-      await db.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
-      throw new Error('Too many failed attempts. Please request a new OTP.');
-    }
-
-    if (user.otpCode !== otp) {
-      await db.update(users).set({ otpAttempts: sql`otp_attempts + 1` }).where(eq(users.id, user.id));
-      await AuditService.logAction('verify_otp', 'error', { email, reason: 'Invalid OTP', ip });
-      throw new Error('Invalid OTP. Please try again.');
-    }
-
-    await AuditService.logAction('verify_otp', 'success', { email, ip });
-    return user.id;
   }
 
   static async resetPassword(email: string, otp: string, newPassword: string, ip: string) {
-    const userId = await this.verifyOTP(email, otp, ip);
+    try {
+      const userId = await this.verifyOTP(email, otp, ip);
 
-    const hashedPassword = await hashPassword(newPassword);
+      const hashedPassword = await hashPassword(newPassword);
 
-    await UserRepository.update(userId, {
-      password: hashedPassword,
-      otpCode: null, // CRITICAL FIX: Wipe OTP after successful password reset
-      otpExpiry: null,
-      otpAttempts: 0,
-    });
+      await UserRepository.update(userId, {
+        password: hashedPassword,
+        otpCode: null, // CRITICAL FIX: Wipe OTP after successful password reset
+        otpExpiry: null,
+        otpAttempts: 0,
+      });
 
-    await AuditService.logAction('reset_password', 'success', { email, ip });
-    return true;
+      await AuditService.logAction('reset_password', 'success', { email, ip });
+      return true;
+    } catch (err) {
+      console.error('[AUTH SERVICE] resetPassword error:', err);
+      throw new Error(maskError(err));
+    }
   }
 }

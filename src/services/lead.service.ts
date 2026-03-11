@@ -9,63 +9,69 @@ import { TaskRepository } from '@/repositories/task.repository';
 import { UserRepository } from '@/repositories/user.repository';
 import { pLimit } from '@/lib/utils/promise';
 import { CategoryFilter } from '@/lib/category-filter';
+import { maskError } from '@/lib/utils/error.utils';
 
 export class LeadService {
   static async searchLeads(query: string, taskId?: number, forceStore?: boolean, options?: { userAgent?: string; acceptLanguage?: string; manualUserId?: number }) {
-    if (!options?.manualUserId) throw new Error('Unauthorized');
-    const userId = options.manualUserId;
+    try {
+      if (!options?.manualUserId) throw new Error('Unauthorized');
+      const userId = options.manualUserId;
 
-    const user = await UserRepository.findById(userId);
-    if (!user || user.isSuspended) throw new Error('Account suspended or not found.');
+      const user = await UserRepository.findById(userId);
+      if (!user || user.isSuspended) throw new Error('Account suspended or not found.');
 
-    if (taskId) {
-      const taskCheck = await TaskRepository.findById(taskId, userId);
-      if (!taskCheck) throw new Error('Unauthorized task access');
-      if (taskCheck.status !== 'running') {
-        console.log(`[LEAD SERVICE] Task ${taskId} is no longer running (status: ${taskCheck.status}). Aborting search.`);
-        return { success: false, error: 'Task paused or stopped' };
+      if (taskId) {
+        const taskCheck = await TaskRepository.findById(taskId, userId);
+        if (!taskCheck) throw new Error('Unauthorized task access');
+        if (taskCheck.status !== 'running') {
+          console.log(`[LEAD SERVICE] Task ${taskId} is no longer running (status: ${taskCheck.status}). Aborting search.`);
+          return { success: false, error: 'Task paused or stopped' };
+        }
       }
+
+      const limits = this.computeLimits(user);
+      if (limits.currentLimit !== Infinity && limits.remaining <= 0) {
+        return { success: false, error: 'Limit reached', limitReached: true };
+      }
+
+      const trimmedQuery = query.trim();
+      const coords = await this.getCoordinatesForPincode(trimmedQuery);
+
+      const settingRows = await db.select({ value: settings.value }).from(settings).where(and(eq(settings.userId, userId), eq(settings.key, 'fastMode'))).limit(1);
+      const fastMode = settingRows[0] ? JSON.parse(settingRows[0].value) : true;
+      const shouldStoreLeads = forceStore ? true : !fastMode;
+
+      if (shouldStoreLeads) {
+        const cached = await this.tryGetCachedLeads(trimmedQuery, userId, taskId, limits);
+        if (cached) return cached;
+      }
+
+      await AuditService.saveServerLog(taskId || null, 'INFO', `Cache miss for "${query}". Calling fetchLeads...`, userId);
+      const rawLeads = await fetchLeads(query, coords?.lat, coords?.lng, { userAgent: options.userAgent, acceptLanguage: options.acceptLanguage });
+      console.log(`[LEAD SERVICE] fetchLeads returned ${rawLeads.length} leads for "${query}"`);
+
+      // Initialize category filter with query for smart filtering
+      CategoryFilter.initialize(trimmedQuery);
+      
+      // Use CategoryFilter for data-driven category filtering
+      const categoryFilteredLeads = CategoryFilter.filter(rawLeads);
+      
+      // Also validate lead quality (phone, address, etc.)
+      const validLeads = categoryFilteredLeads.filter(lead => CategoryFilter.validateLeadQuality(lead));
+      
+      const filteredCount = rawLeads.length - validLeads.length;
+      if (filteredCount > 0) {
+        await AuditService.saveServerLog(taskId || null, 'INFO', `Filtered out ${filteredCount} irrelevant leads (category + quality).`, userId);
+      }
+
+      const enrichedLeads = await this.enrichLeadsBatch(validLeads);
+      const uniqueLeads = this.deduplicateLeads(enrichedLeads);
+
+      return await this.saveLeadsBatch(uniqueLeads, userId, trimmedQuery, taskId, shouldStoreLeads, limits, fastMode);
+    } catch (error) {
+      console.error('[LEAD SERVICE] searchLeads error:', error);
+      return { success: false, error: maskError(error) };
     }
-
-    const limits = this.computeLimits(user);
-    if (limits.currentLimit !== Infinity && limits.remaining <= 0) {
-      return { success: false, error: 'Limit reached', limitReached: true };
-    }
-
-    const trimmedQuery = query.trim();
-    const coords = await this.getCoordinatesForPincode(trimmedQuery);
-
-    const settingRows = await db.select({ value: settings.value }).from(settings).where(and(eq(settings.userId, userId), eq(settings.key, 'fastMode'))).limit(1);
-    const fastMode = settingRows[0] ? JSON.parse(settingRows[0].value) : true;
-    const shouldStoreLeads = forceStore ? true : !fastMode;
-
-    if (shouldStoreLeads) {
-      const cached = await this.tryGetCachedLeads(trimmedQuery, userId, taskId, limits);
-      if (cached) return cached;
-    }
-
-    await AuditService.saveServerLog(taskId || null, 'INFO', `Cache miss for "${query}". Calling fetchLeads...`, userId);
-    const rawLeads = await fetchLeads(query, coords?.lat, coords?.lng, { userAgent: options.userAgent, acceptLanguage: options.acceptLanguage });
-    console.log(`[LEAD SERVICE] fetchLeads returned ${rawLeads.length} leads for "${query}"`);
-
-    // Initialize category filter with query for smart filtering
-    CategoryFilter.initialize(trimmedQuery);
-    
-    // Use CategoryFilter for data-driven category filtering
-    const categoryFilteredLeads = CategoryFilter.filter(rawLeads);
-    
-    // Also validate lead quality (phone, address, etc.)
-    const validLeads = categoryFilteredLeads.filter(lead => CategoryFilter.validateLeadQuality(lead));
-    
-    const filteredCount = rawLeads.length - validLeads.length;
-    if (filteredCount > 0) {
-      await AuditService.saveServerLog(taskId || null, 'INFO', `Filtered out ${filteredCount} irrelevant leads (category + quality).`, userId);
-    }
-
-    const enrichedLeads = await this.enrichLeadsBatch(validLeads);
-    const uniqueLeads = this.deduplicateLeads(enrichedLeads);
-
-    return await this.saveLeadsBatch(uniqueLeads, userId, trimmedQuery, taskId, shouldStoreLeads, limits, fastMode);
   }
 
   private static computeLimits(user: any) {
@@ -192,67 +198,128 @@ private static async tryGetCachedLeads(query: string, userId: number, taskId: nu
   }
 
   private static async saveLeadsBatch(uniqueLeads: any[], userId: number, query: string, taskId: number | undefined, shouldStoreLeads: boolean, limits: any, fastMode: boolean) {
-    return await db.transaction(async (tx) => {
-      // FIX: Use row-level locking for credit limit check
-      const userRows = await tx.select().from(users).where(eq(users.id, userId));
+    try {
+      // Use raw/db normally - transactions are currently problematic on proxy
+      const userRows = await db.select().from(users).where(eq(users.id, userId)).limit(1);
       const lockedLimits = this.computeLimits(userRows[0]);
 
-    const allowedCount = lockedLimits.currentLimit === Infinity ? uniqueLeads.length : Math.min(uniqueLeads.length, lockedLimits.remaining);
-    
-    // CRITICAL FIX: Only return "limit reached" if user has no credits AND there are leads to save
-    // If uniqueLeads=0 (all filtered out), that's NOT a credit limit issue
-    if (uniqueLeads.length > 0 && allowedCount <= 0) {
-      return { success: false, error: 'Limit reached', limitReached: true };
-    }
+      const allowedCount = lockedLimits.currentLimit === Infinity ? uniqueLeads.length : Math.min(uniqueLeads.length, lockedLimits.remaining);
+      
+      if (uniqueLeads.length > 0 && allowedCount <= 0) {
+        return { success: false, error: 'Limit reached', limitReached: true };
+      }
 
-    // If no leads passed the filter, return success with 0 leads
-    if (uniqueLeads.length === 0) {
-      return { success: true, count: 0, searchId: -1, cached: false, limitReached: false, leads: [], fastMode };
-    }
+      if (uniqueLeads.length === 0) {
+        return { success: true, count: 0, searchId: -1, cached: false, limitReached: false, leads: [], fastMode };
+      }
 
       const leadsToInsert = uniqueLeads.slice(0, allowedCount);
-      const searchRes = await tx.insert(searches).values({ userId, query, taskId: taskId || null }).returning({ id: searches.id });
+      const searchRes = await db.insert(searches).values({
+        userId,
+        query,
+        taskId: taskId || null,
+        createdAt: new Date()
+      }).returning({ id: searches.id });
       const searchId = searchRes[0].id;
 
-      let inserted: { id: number; placeId: string | null }[] = [];
+      const insertedIds: number[] = [];
 
       if (shouldStoreLeads && leadsToInsert.length > 0) {
-        const insertData = leadsToInsert.map(lead => ({
-          name: lead.name, address: lead.address, city: lead.city, website: lead.website, phone: lead.phone, email: lead.email, rating: lead.rating, reviewsCount: lead.reviewsCount, category: lead.category, placeId: lead.placeId, latitude: lead.latitude, longitude: lead.longitude, directionUrl: lead.directionUrl,
-          mondayHours: lead.hours?.monday || null, tuesdayHours: lead.hours?.tuesday || null, wednesdayHours: lead.hours?.wednesday || null, thursdayHours: lead.hours?.thursday || null, fridayHours: lead.hours?.friday || null, saturdayHours: lead.hours?.saturday || null, sundayHours: lead.hours?.sunday || null,
-          facebook: lead.socials?.facebook || null, instagram: lead.socials?.instagram || null, linkedin: lead.socials?.linkedin || null, twitter: lead.socials?.twitter || null, youtube: lead.socials?.youtube || null, pinterest: lead.socials?.pinterest || null, tiktok: lead.socials?.tiktok || null,
-          websiteEmail: lead.websiteEmail || null, websitePhone: lead.websitePhone || null, leadScore: this.computeLeadScore(lead)
-        }));
+        const CHUNK_SIZE = 100;
 
-      await tx.insert(leads).values(insertData).onConflictDoUpdate({
-        target: [leads.placeId],
-        set: {
-          name: sql`excluded.name`,
-          rating: sql`excluded.rating`,
-          reviewsCount: sql`excluded.reviews_count`,
-          websiteEmail: sql`excluded.website_email`,
-          websitePhone: sql`excluded.website_phone`,
-          leadScore: sql`excluded.lead_score`
+        for (let i = 0; i < leadsToInsert.length; i += CHUNK_SIZE) {
+          const chunk = leadsToInsert.slice(i, i + CHUNK_SIZE).map(lead => ({
+            name: lead.name,
+            address: lead.address,
+            city: lead.city,
+            website: lead.website,
+            phone: lead.phone,
+            email: lead.email,
+            rating: lead.rating ? Number(lead.rating) : null,
+            reviewsCount: lead.reviewsCount,
+            category: lead.category,
+            placeId: lead.placeId,
+            latitude: lead.latitude ? Number(lead.latitude) : null,
+            longitude: lead.longitude ? Number(lead.longitude) : null,
+            directionUrl: lead.directionUrl,
+            mondayHours: lead.hours?.monday || null,
+            tuesdayHours: lead.hours?.tuesday || null,
+            wednesdayHours: lead.hours?.wednesday || null,
+            thursdayHours: lead.hours?.thursday || null,
+            fridayHours: lead.hours?.friday || null,
+            saturdayHours: lead.hours?.saturday || null,
+            sundayHours: lead.hours?.sunday || null,
+            facebook: lead.socials?.facebook || null,
+            instagram: lead.socials?.instagram || null,
+            linkedin: lead.socials?.linkedin || null,
+            twitter: lead.socials?.twitter || null,
+            youtube: lead.socials?.youtube || null,
+            pinterest: lead.socials?.pinterest || null,
+            tiktok: lead.socials?.tiktok || null,
+            websiteEmail: lead.websiteEmail || null,
+            websitePhone: lead.websitePhone || null,
+            leadScore: this.computeLeadScore(lead)
+          }));
+
+          await db.insert(leads).values(chunk)
+            .onConflictDoUpdate({
+              target: [leads.placeId],
+              set: {
+                name: sql`excluded.name`,
+                rating: sql`excluded.rating`,
+                reviewsCount: sql`excluded.reviews_count`,
+                websiteEmail: sql`excluded.website_email`,
+                websitePhone: sql`excluded.website_phone`,
+                leadScore: sql`excluded.lead_score`,
+              }
+            });
+
+          const placeIds = chunk.map(c => c.placeId).filter(Boolean) as string[];
+          if (placeIds.length > 0) {
+            const insertedChunk = await db.select({ id: leads.id }).from(leads).where(inArray(leads.placeId, placeIds));
+            insertedIds.push(...insertedChunk.map(r => r.id));
+          }
+
+          if (insertedIds.length < (i + chunk.length)) {
+            const nullPlaceIdLeads = chunk.filter(l => !l.placeId);
+            for (const lead of nullPlaceIdLeads) {
+              const found = await db.select({ id: leads.id }).from(leads)
+                .where(and(eq(leads.name, lead.name), eq(leads.address, lead.address || '')))
+                .limit(1);
+              if (found.length > 0) {
+                insertedIds.push(found[0].id);
+              }
+            }
+          }
         }
-      });
+
+        if (insertedIds.length > 0) {
+          if (taskId) {
+            const taskLeadsData = insertedIds.map(id => ({ taskId, leadId: id }));
+            for (let i = 0; i < taskLeadsData.length; i += CHUNK_SIZE) {
+              await db.insert(taskLeads).values(taskLeadsData.slice(i, i + CHUNK_SIZE)).onConflictDoNothing();
+            }
+          }
+          const leadSourcesData = insertedIds.map(id => ({ searchId, leadId: id, taskId: taskId || null }));
+          for (let i = 0; i < leadSourcesData.length; i += CHUNK_SIZE) {
+            await db.insert(leadSources).values(leadSourcesData.slice(i, i + CHUNK_SIZE)).onConflictDoNothing();
+          }
+        }
 
         // Update SEO Hub Registry
         try {
           const seoStats = new Map<string, any>();
-          
           for (const lead of leadsToInsert) {
             if (!lead.category || !lead.city) continue;
-            
-            // Basic normalization
             const niche = String(lead.category).trim();
             const city = String(lead.city).trim();
             if (!niche || !city) continue;
-            
+
             const key = `${niche}::${city}`;
             if (!seoStats.has(key)) {
               seoStats.set(key, { niche, city, count: 0, withEmail: 0, withPhone: 0, withWebsite: 0, totalRating: 0, ratingCount: 0 });
             }
-            
+
             const stat = seoStats.get(key);
             stat.count += 1;
             if (lead.email || lead.websiteEmail) stat.withEmail += 1;
@@ -265,81 +332,54 @@ private static async tryGetCachedLeads(query: string, userId: number, taskId: nu
           }
 
           if (seoStats.size > 0) {
-            const seoInsertData = Array.from(seoStats.values()).map(stat => ({
-              niche: stat.niche,
-              city: stat.city,
-              totalLeads: stat.count,
-              withEmail: stat.withEmail,
-              withPhone: stat.withPhone,
-              withWebsite: stat.withWebsite,
-              avgRating: stat.ratingCount > 0 ? (stat.totalRating / stat.ratingCount) : 0,
-            }));
-
-            await tx.insert(seoHubRegistry).values(seoInsertData).onConflictDoUpdate({
-              target: [seoHubRegistry.niche, seoHubRegistry.city],
-              set: {
-                totalLeads: sql`seo_hub_registry.total_leads + excluded.total_leads`,
-                withEmail: sql`seo_hub_registry.with_email + excluded.with_email`,
-                withPhone: sql`seo_hub_registry.with_phone + excluded.with_phone`,
-                withWebsite: sql`seo_hub_registry.with_website + excluded.with_website`,
-                lastUpdated: sql`(unixepoch())`
-              }
-            });
+            for (const stat of seoStats.values()) {
+              await db.insert(seoHubRegistry).values({
+                niche: stat.niche,
+                city: stat.city,
+                totalLeads: stat.count,
+                withEmail: stat.withEmail,
+                withPhone: stat.withPhone,
+                withWebsite: stat.withWebsite,
+                avgRating: stat.ratingCount > 0 ? (stat.totalRating / stat.ratingCount) : 0,
+              }).onConflictDoUpdate({
+                target: [seoHubRegistry.niche, seoHubRegistry.city],
+                set: {
+                  totalLeads: sql`seo_hub_registry.total_leads + excluded.total_leads`,
+                  withEmail: sql`seo_hub_registry.with_email + excluded.with_email`,
+                  withPhone: sql`seo_hub_registry.with_phone + excluded.with_phone`,
+                  withWebsite: sql`seo_hub_registry.with_website + excluded.with_website`,
+                  lastUpdated: sql`(unixepoch())`
+                }
+              });
+            }
           }
         } catch (seoErr) {
           console.error('[LEAD SERVICE] Failed to update seo_hub_registry', seoErr);
         }
-
-        const placeIds = leadsToInsert.map(l => l.placeId).filter(Boolean) as string[];
-        let inserted: { id: number; placeId: string | null }[] = [];
-
-        if (placeIds.length > 0) {
-          inserted = await tx.select({ id: leads.id, placeId: leads.placeId }).from(leads).where(inArray(leads.placeId, placeIds));
-        }
-
-        // For leads without placeId, find them by name+address match (they were just inserted)
-        if (inserted.length < leadsToInsert.length) {
-          const nullPlaceIdLeads = leadsToInsert.filter(l => !l.placeId);
-          for (const lead of nullPlaceIdLeads) {
-            const found = await tx.select({ id: leads.id, placeId: leads.placeId }).from(leads)
-              .where(and(eq(leads.name, lead.name), eq(leads.address, lead.address || '')))
-              .limit(1);
-            if (found.length > 0) {
-              inserted.push(found[0]);
-            }
-          }
-        }
-        
-        if (inserted.length > 0) {
-          if (taskId) {
-            await tx.insert(taskLeads).values(inserted.map(l => ({ taskId, leadId: l.id }))).onConflictDoNothing();
-          }
-          await tx.insert(leadSources).values(inserted.map(l => ({ leadId: l.id, searchId, taskId: taskId || null }))).onConflictDoNothing();
-        }
-
-        if (taskId) {
-          const countRes = await tx.select({ count: sql<number>`count(*)` }).from(taskLeads).where(eq(taskLeads.taskId, taskId));
-          await tx.update(tasks).set({ totalLeads: Number(countRes[0].count) }).where(eq(tasks.id, taskId));
-        }
       }
 
-      // CALCULATE NEW LEADS COUNT (Leads that this user hasn't extracted before)
+      if (taskId) {
+        const countRes = await db.select({ count: sql<number>`count(*)` }).from(taskLeads).where(eq(taskLeads.taskId, taskId));
+        await db.update(tasks).set({ totalLeads: Number(countRes[0].count) }).where(eq(tasks.id, taskId));
+      }
+
+      // CALCULATE NEW LEADS COUNT
       let newLeadsCount = leadsToInsert.length;
-      if (shouldStoreLeads && inserted.length > 0) {
-        const existingForUser = await tx.select({ leadId: leadSources.leadId })
+      if (shouldStoreLeads && insertedIds.length > 0) {
+        const existingForUser = await db.select({ leadId: leadSources.leadId })
           .from(leadSources)
           .innerJoin(searches, eq(leadSources.searchId, searches.id))
           .where(and(
             eq(searches.userId, userId),
-            inArray(leadSources.leadId, inserted.map(l => l.id)),
+            inArray(leadSources.leadId, insertedIds),
             sql`${leadSources.searchId} != ${searchId}`
           ))
           .groupBy(leadSources.leadId);
         
-        newLeadsCount = Math.max(0, inserted.length - existingForUser.length);
+        newLeadsCount = Math.max(0, insertedIds.length - existingForUser.length);
       }
 
-      await tx.update(users).set({ leadsExtracted: sql`leads_extracted + ${newLeadsCount}` }).where(eq(users.id, userId));
+      await db.update(users).set({ leadsExtracted: sql`leads_extracted + ${newLeadsCount}` }).where(eq(users.id, userId));
 
       return {
         success: true,
@@ -350,7 +390,10 @@ private static async tryGetCachedLeads(query: string, userId: number, taskId: nu
         leads: shouldStoreLeads ? [] : leadsToInsert,
         fastMode
       };
-    });
+    } catch (error) {
+      console.error('[LEAD SERVICE] saveLeadsBatch error:', error);
+      throw new Error(maskError(error));
+    }
   }
 
   static async getLeads(userId: number, searchId?: number) {

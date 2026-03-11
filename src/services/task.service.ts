@@ -7,6 +7,7 @@ import { LeadService } from './lead.service';
 import { NotificationService } from './notification.service';
 import { LeadRepository } from '@/repositories/lead.repository';
 import { TaskRepository } from '@/repositories/task.repository';
+import { maskError } from '@/lib/utils/error.utils';
 
 export class TaskService {
   static async createTask(userId: number, name: string, keywords: string[], options: { userAgent: string | null, acceptLanguage: string | null }) {
@@ -206,17 +207,18 @@ export class TaskService {
       return { success: true };
     } catch (error) {
       console.error(`[TASK SERVICE] Critical error processing task ${tId}:`, error);
+      const friendlyError = maskError(error);
       try {
-        await TaskRepository.update(tId, uId, { status: 'failed', statusReason: `Crashed: ${(error as Error).message}` });
+        await TaskRepository.update(tId, uId, { status: 'failed', statusReason: `Crashed: ${friendlyError}` });
         await AuditService.saveServerLog(tId, 'ERROR', `Task crashed: ${(error as Error).message}`, uId);
         await this.sendLogsToTelegram(tId, uId);
         // Notify user of crash
         const crashedTask = await TaskRepository.findById(tId, uId);
-        void NotificationService.notifyTaskFailed(uId, crashedTask?.name || `Task #${tId}`, (error as Error).message, tId);
+        void NotificationService.notifyTaskFailed(uId, crashedTask?.name || `Task #${tId}`, friendlyError, tId);
       } catch (logErr) {
         console.error('[TASK SERVICE] Failed to log task crash:', logErr);
       }
-      return { success: false, error: (error as Error).message };
+      return { success: false, error: friendlyError };
     }
   }
 

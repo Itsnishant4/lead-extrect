@@ -1,6 +1,6 @@
-
 import { NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/security/ratelimit';
+import { handleApiError } from '@/lib/utils/api-error-handler';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -35,6 +35,6 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: false, error: 'No pincodes found' }, { status: 404 });
         }
     } catch (error) {
-        return NextResponse.json({ error: 'Failed to fetch pincodes' }, { status: 500 });
+        return handleApiError(error);
     }
 }
