@@ -15,8 +15,17 @@ async function query() {
       id: schema.tasks.id, 
       name: schema.tasks.name, 
       status: schema.tasks.status, 
-      totalLeads: schema.tasks.totalLeads
+      statusReason: schema.tasks.statusReason,
+      currentKeywordIndex: schema.tasks.currentKeywordIndex,
+      totalKeywords: schema.tasks.totalKeywords,
+      totalLeads: schema.tasks.totalLeads,
+      lastHeartbeat: schema.tasks.lastHeartbeat
   }).from(schema.tasks);
+  
+  console.log('Tasks in DB:');
+  tasks.forEach(t => {
+      console.log(`[Task ${t.id}] ${t.name} - ${t.status} (${t.statusReason}) - Keywords: ${t.currentKeywordIndex}/${t.totalKeywords} - Heartbeat: ${t.lastHeartbeat}`);
+  });
   
   const tables = ['seo_hub_registry', 'notifications', 'push_subscriptions'];
   for (const table of tables) {

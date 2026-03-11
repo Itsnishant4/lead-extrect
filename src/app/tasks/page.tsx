@@ -236,7 +236,7 @@ export default function TasksPage() {
                         </Button>
                       )}
                       {/* Starting... spinner for queued tasks waiting for worker */}
-                      {task.status === 'pending' && (task.statusReason?.startsWith('Queued') || task.statusReason?.startsWith('Uploading') || task.statusReason?.startsWith('Auto-recovered')) && (
+                      {task.status === 'pending' && (task.statusReason?.startsWith('Queued') || task.statusReason?.startsWith('Uploading')) && (
                         <Button size="sm" variant="outline" disabled className="flex-1 md:flex-none justify-center">
                           <Loader2 size={14} className="mr-2 animate-spin" /> Starting...
                         </Button>
@@ -264,8 +264,8 @@ export default function TasksPage() {
                           Pause
                         </Button>
                       )}
-                      {/* Resume button for paused tasks */}
-                      {task.status === 'paused' && (
+                      {/* Resume button for paused or auto-recovered tasks */}
+                      {(task.status === 'paused' || (task.status === 'pending' && task.statusReason?.startsWith('Auto-recovered'))) && (
                         <Button
                           size="sm"
                           variant="outline"
