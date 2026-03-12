@@ -151,7 +151,6 @@ export class SubscriptionService {
       }
 
       const isExpired = user.subscriptionExpiry && new Date(user.subscriptionExpiry) < new Date();
-      const hasCredits = user.bonusCredits >= plan.leadsCredits;
       const hasCorrectPlan = user.planType?.toLowerCase() === plan.name.toLowerCase();
 
       if (!hasCorrectPlan || isExpired) {
