@@ -3,10 +3,22 @@ import { db } from '@/lib/db/index';
 import { tasks, leads as leadsTable, taskLeads } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getSession } from '@/lib/auth';
-import { handleApiError } from '@/lib/utils/api-error-handler';
+import { handleApiError, validateRequest } from '@/lib/utils/api-error-handler';
+import { z } from 'zod';
+
+const exportFiltersSchema = z.object({
+  hasEmail: z.coerce.boolean().optional(),
+  hasPhone: z.coerce.boolean().optional(),
+  hasWebsite: z.coerce.boolean().optional(),
+  hasSocials: z.coerce.boolean().optional(),
+  hasRating: z.coerce.boolean().optional(),
+  hasAddress: z.coerce.boolean().optional(),
+});
+
+const validateExportFilters = validateRequest(exportFiltersSchema);
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
@@ -15,16 +27,17 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const url = new URL(_request.url);
+    const url = new URL(request.url);
     const resolvedParams = await params;
     const rawId = resolvedParams?.taskId ?? url.pathname.split('/').pop() ?? '';
     const taskId = Number.parseInt(rawId, 10);
 
-    if (!taskId || Number.isNaN(taskId)) {
-      return NextResponse.json({ error: 'Invalid task' }, { status: 400 });
+    if (!taskId || Number.isNaN(taskId) || taskId <= 0) {
+      return NextResponse.json({ error: 'Invalid task ID' }, { status: 400 });
     }
 
-    // 1. Verify Task Ownership
+    const filters = validateExportFilters(Object.fromEntries(url.searchParams));
+
     const taskRows = await db.select({ 
       name: tasks.name, 
       exportFileIds: tasks.exportFileIds 
@@ -36,17 +49,16 @@ export async function GET(
 
     const task = taskRows[0];
 
-    // 2. Parse Filters
-    const hasEmail = url.searchParams.get('hasEmail') === '1';
-    const hasPhone = url.searchParams.get('hasPhone') === '1';
-    const hasWebsite = url.searchParams.get('hasWebsite') === '1';
-    const hasSocials = url.searchParams.get('hasSocials') === '1';
-    const hasRating = url.searchParams.get('hasRating') === '1';
-    const hasAddress = url.searchParams.get('hasAddress') === '1';
+    const { hasEmail, hasPhone, hasWebsite, hasSocials, hasRating, hasAddress } = filters;
     const hasFilters = hasEmail || hasPhone || hasWebsite || hasSocials || hasRating || hasAddress;
 
-    // --- TELEGRAM EXPORT MERGE & FILTER LOGIC ---
-    const fileIds = task.exportFileIds ? JSON.parse(task.exportFileIds) : [];
+    const fileIds = task.exportFileIds ? (() => {
+      try {
+        return JSON.parse(task.exportFileIds);
+      } catch {
+        return [];
+      }
+    })() : [];
     const token = process.env.TELEGRAM_BOT_TOKEN;
 
     if (fileIds.length > 0 && token) {

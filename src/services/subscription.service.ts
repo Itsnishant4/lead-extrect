@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { transactions, users, plans } from '@/lib/db/schema';
-import { eq, sql, desc, ne, lt, count } from 'drizzle-orm';
+import { eq, sql, desc, ne, lt, count, and } from 'drizzle-orm';
 import crypto from 'crypto';
 import { NotificationService } from './notification.service';
 
@@ -84,41 +84,91 @@ export class SubscriptionService {
   static async handleSuccessfulPayment(data: any) {
     const { order_id, amount, utr } = data;
 
-    // 1. Fetch transaction and plan first (non-transactional read is fine here)
     const transactionRows = await db.select().from(transactions).where(eq(transactions.gatewayOrderId, order_id)).limit(1);
     const transaction = transactionRows[0];
     
     if (!transaction) throw new Error('Transaction not found');
-    if (transaction.status === 'paid') return; // Already processed
+    
+    if (transaction.status === 'paid') {
+      console.log(`[WEBHOOK] Transaction ${order_id} already processed, skipping`);
+      return { alreadyProcessed: true, transactionId: transaction.id };
+    }
 
     const planRows = await db.select().from(plans).where(eq(plans.id, transaction.planId!)).limit(1);
     const plan = planRows[0];
     if (!plan) throw new Error('Plan not found');
 
-    // 2. Perform updates sequentially
-    // db.batch/db.transaction are currently failing on the sqlhost proxy with LibsqlBatchError
-    // We use sequential updates with idempotency checks as a fallback.
-    await db.update(transactions).set({
-      status: 'paid',
-      utr: utr,
-      updatedAt: new Date(),
-    }).where(eq(transactions.id, transaction.id));
-
-    await db.update(users).set({
-      planType: plan.name.toLowerCase(),
-      bonusCredits: sql`COALESCE(${users.bonusCredits}, 0) + ${plan.leadsCredits}`,
-      subscriptionExpiry: SubscriptionService.computeExpiry(plan.period),
-    }).where(eq(users.id, transaction.userId!));
-
-    // 3. Notify user (awaited — serverless functions exit after response, so setTimeout won't work)
-    const uid = transaction.userId!;
-    const pName = plan.name;
-    const pAmount = amount || transaction.amount;
     try {
-      await NotificationService.notifyPaymentSuccess(uid, pName, String(pAmount));
-    } catch (notifErr) {
-      console.error('[WEBHOOK] Failed to send payment notification:', notifErr);
+      await db.update(transactions).set({
+        status: 'paid',
+        utr: utr,
+        updatedAt: new Date(),
+      }).where(eq(transactions.id, transaction.id));
+
+      await db.update(users).set({
+        planType: plan.name.toLowerCase(),
+        bonusCredits: sql`COALESCE(${users.bonusCredits}, 0) + ${plan.leadsCredits}`,
+        subscriptionExpiry: SubscriptionService.computeExpiry(plan.period),
+      }).where(eq(users.id, transaction.userId!));
+
+      const uid = transaction.userId!;
+      const pName = plan.name;
+      const pAmount = amount || transaction.amount;
+      try {
+        await NotificationService.notifyPaymentSuccess(uid, pName, String(pAmount));
+      } catch (notifErr) {
+        console.error('[WEBHOOK] Failed to send payment notification:', notifErr);
+      }
+
+      return { success: true, transactionId: transaction.id };
+    } catch (error) {
+      console.error('[WEBHOOK] Payment processing failed:', error);
+      await db.update(transactions).set({
+        status: 'failed',
+        updatedAt: new Date(),
+      }).where(eq(transactions.id, transaction.id));
+      throw error;
     }
+  }
+
+  static async reconcilePayments() {
+    const paidTransactions = await db.select().from(transactions).where(eq(transactions.status, 'paid'));
+    
+    const reconciled: number[] = [];
+    const errors: string[] = [];
+
+    for (const tx of paidTransactions) {
+      const user = await db.select().from(users).where(eq(users.id, tx.userId!)).limit(1).then(r => r[0]);
+      if (!user) {
+        errors.push(`TX ${tx.id}: User ${tx.userId} not found`);
+        continue;
+      }
+
+      const plan = await db.select().from(plans).where(eq(plans.id, tx.planId!)).limit(1).then(r => r[0]);
+      if (!plan) {
+        errors.push(`TX ${tx.id}: Plan ${tx.planId} not found`);
+        continue;
+      }
+
+      const isExpired = user.subscriptionExpiry && new Date(user.subscriptionExpiry) < new Date();
+      const hasCredits = user.bonusCredits >= plan.leadsCredits;
+      const hasCorrectPlan = user.planType?.toLowerCase() === plan.name.toLowerCase();
+
+      if (!hasCorrectPlan || isExpired) {
+        try {
+          await db.update(users).set({
+            planType: plan.name.toLowerCase(),
+            bonusCredits: sql`COALESCE(${users.bonusCredits}, 0) + ${plan.leadsCredits}`,
+            subscriptionExpiry: SubscriptionService.computeExpiry(plan.period),
+          }).where(eq(users.id, tx.userId!));
+          reconciled.push(tx.id);
+        } catch (e: any) {
+          errors.push(`TX ${tx.id}: Reconciliation failed - ${e.message}`);
+        }
+      }
+    }
+
+    return { reconciled: reconciled.length, errors };
   }
 
   static async getPaymentHistory(userId: number, cursor?: number, limit = 10) {
@@ -227,5 +277,51 @@ export class SubscriptionService {
       status: 'rejected',
       updatedAt: new Date(),
     }).where(eq(transactions.id, transactionId));
+  }
+
+  static async checkAndDowngradeExpired(userId: number): Promise<{ downgraded: boolean; previousPlan: string } | null> {
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1).then(r => r[0]);
+    if (!user) return null;
+    if (user.planType === 'free') return null;
+    if (!user.subscriptionExpiry) return null;
+
+    if (new Date(user.subscriptionExpiry) < new Date()) {
+      const previousPlan = user.planType || 'free';
+      await db.update(users).set({ planType: 'free' }).where(eq(users.id, userId));
+      return { downgraded: true, previousPlan };
+    }
+    return null;
+  }
+
+  static async checkExpiringSoon(userId: number): Promise<number | null> {
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1).then(r => r[0]);
+    if (!user || user.planType === 'free' || !user.subscriptionExpiry) return null;
+
+    const expiryDate = new Date(user.subscriptionExpiry);
+    const now = new Date();
+    const msLeft = expiryDate.getTime() - now.getTime();
+    const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+
+    if (daysLeft <= 3 && daysLeft > 0) {
+      return daysLeft;
+    }
+    return null;
+  }
+
+  static async processAllExpiredSubscriptions(): Promise<number> {
+    const expiredUsers = await db.select({ id: users.id })
+      .from(users)
+      .where(and(
+        sql`${users.planType} != 'free'`,
+        sql`${users.subscriptionExpiry} IS NOT NULL`,
+        sql`${users.subscriptionExpiry} < datetime('now')`
+      ));
+
+    let count = 0;
+    for (const user of expiredUsers) {
+      await db.update(users).set({ planType: 'free' }).where(eq(users.id, user.id));
+      count++;
+    }
+    return count;
   }
 }

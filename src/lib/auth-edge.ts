@@ -1,12 +1,9 @@
 import { SignJWT, jwtVerify } from 'jose';
 
-if (!process.env.JWT_SECRET) {
-    if (process.env.NODE_ENV === 'production') {
-        throw new Error('JWT_SECRET must be defined in production environment');
-    }
-    console.warn('[Auth-Edge] JWT_SECRET is not set. Using insecure dev-only fallback. DO NOT use in production.');
-}
-const SECRET_KEY = process.env.JWT_SECRET || 'dev-secret-key-change-in-prod';
+const SECRET_KEY = process.env.JWT_SECRET ?? (() => {
+  throw new Error('JWT_SECRET environment variable is required');
+})();
+
 const key = new TextEncoder().encode(SECRET_KEY);
 
 export async function signToken(payload: { id: number; email: string; name: string; is_admin?: boolean }): Promise<string> {

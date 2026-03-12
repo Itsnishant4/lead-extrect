@@ -66,6 +66,7 @@ export const searches = sqliteTable('searches', {
 }, (table) => ({
   userIdIdx: index('idx_searches_user_id').on(table.userId),
   queryIdx: index('idx_searches_query').on(table.query),
+  userCreatedIdx: index('idx_searches_user_created').on(table.userId, table.createdAt),
 }));
 
 export const leads = sqliteTable('leads', {
@@ -141,7 +142,9 @@ export const keywordHistory = sqliteTable('keyword_history', {
   totalKeywords: integer('total_keywords'),
   keywordsTruncated: integer('keywords_truncated', { mode: 'boolean' }).default(false),
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-});
+}, (table) => ({
+  userIdIdx: index('idx_keyword_history_user_id').on(table.userId),
+}));
 
 export const taskLeads = sqliteTable('task_leads', {
   taskId: integer('task_id').references(() => tasks.id),
@@ -206,7 +209,10 @@ export const auditLogs = sqliteTable('audit_logs', {
   status: text('status'),
   metadata: text('metadata'),
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-});
+}, (table) => ({
+  userIdIdx: index('idx_audit_logs_user_id').on(table.userId),
+  createdAtIdx: index('idx_audit_logs_user_created').on(table.userId, table.createdAt),
+}));
 
 export const pincodeCoords = sqliteTable('pincode_coords', {
   country: text('country').notNull(),
@@ -271,7 +277,11 @@ export const transactions = sqliteTable('transactions', {
   utr: text('utr'),
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-});
+}, (table) => ({
+  userIdIdx: index('idx_transactions_user_id').on(table.userId),
+  statusIdx: index('idx_transactions_status').on(table.status),
+  gatewayOrderIdIdx: index('idx_transactions_gateway_order_id').on(table.gatewayOrderId),
+}));
 
 export const siteConfig = sqliteTable('site_config', {
   key: text('key').primaryKey(),

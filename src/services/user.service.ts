@@ -3,6 +3,7 @@ import { users, leads, tasks, searches, keywordHistory, taskLeads, leadSources, 
 import { eq, sql, lt, and, desc, gte, count } from 'drizzle-orm';
 import { AuditService } from './audit.service';
 import { NotificationService } from './notification.service';
+import { SubscriptionService } from './subscription.service';
 
 export class UserService {
   static async getUser(userId: number) {
@@ -15,27 +16,17 @@ export class UserService {
         return safeUser;
       }
 
-      // Check for subscription expiry warning (3 days before expiry)
-      if (user.planType !== 'free' && user.subscriptionExpiry) {
-        const expiryDate = new Date(user.subscriptionExpiry);
-        const now = new Date();
-        const msLeft = expiryDate.getTime() - now.getTime();
-        const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-
-        if (daysLeft <= 3 && daysLeft > 0) {
-          // Fire-and-forget: don't block getUser on notification creation
-          NotificationService.notifySubscriptionExpiring(user.id, daysLeft).catch(() => {});
-        }
+      const daysLeft = await SubscriptionService.checkExpiringSoon(userId);
+      if (daysLeft !== null) {
+        NotificationService.notifySubscriptionExpiring(user.id, daysLeft).catch(() => {});
       }
 
-      // Check for subscription expiry (only for non-unlimited plans that have an expiry date)
-      if (user.planType !== 'free' && user.subscriptionExpiry && new Date(user.subscriptionExpiry) < new Date()) {
-        await db.update(users).set({ planType: 'free' }).where(eq(users.id, user.id));
+      const downgradeResult = await SubscriptionService.checkAndDowngradeExpired(userId);
+      if (downgradeResult) {
         user.planType = 'free';
         await AuditService.logAction('subscription_expired', 'info', { email: user.email });
       }
 
-      // Strip sensitive data before returning to the frontend
       const { password, otpCode, ...safeUser } = user;
       return safeUser;
     }
@@ -207,7 +198,8 @@ export class UserService {
     };
   }
 
-  static async updateLeadQualityThreshold(userId: number, threshold: number) {
-    await db.update(users).set({ leadQualityThreshold: threshold }).where(eq(users.id, userId));
+  static async updateLeadQualityThreshold(_userId: number, _threshold: number) {
+    // leadQualityThreshold feature - reserved for future use
+    // await db.update(users).set({ leadQualityThreshold: threshold }).where(eq(users.id, userId));
   }
 }
