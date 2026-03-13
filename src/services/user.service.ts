@@ -134,29 +134,7 @@ export class UserService {
       .orderBy(desc(tasks.createdAt))
       .limit(5);
 
-    // 7. Lead quality breakdown (lead score ranges)
-    const leadQuality = await db
-      .select({
-        range: sql<string>`CASE 
-          WHEN ${leads.leadScore} >= 80 THEN 'Excellent'
-          WHEN ${leads.leadScore} >= 60 THEN 'Good'
-          WHEN ${leads.leadScore} >= 40 THEN 'Average'
-          WHEN ${leads.leadScore} >= 20 THEN 'Low'
-          ELSE 'Poor'
-        END`,
-        count: count(),
-      })
-      .from(leads)
-      .innerJoin(taskLeads, eq(leads.id, taskLeads.leadId))
-      .innerJoin(tasks, eq(taskLeads.taskId, tasks.id))
-      .where(eq(tasks.userId, userId))
-      .groupBy(sql`CASE 
-          WHEN ${leads.leadScore} >= 80 THEN 'Excellent'
-          WHEN ${leads.leadScore} >= 60 THEN 'Good'
-          WHEN ${leads.leadScore} >= 40 THEN 'Average'
-          WHEN ${leads.leadScore} >= 20 THEN 'Low'
-          ELSE 'Poor'
-        END`);
+
 
     // 8. Total leads count for this user
     const [totalLeads] = await db
@@ -192,7 +170,6 @@ export class UserService {
       topCategories,
       topCities,
       recentTasks,
-      leadQuality,
       totalLeads: totalLeads.count,
       contactStats: contactStats || { withEmail: 0, withPhone: 0, withWebsite: 0 },
     };

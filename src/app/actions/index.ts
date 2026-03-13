@@ -84,6 +84,11 @@ export {
   addProxyAction,
   deleteProxyAction,
   toggleProxyAction,
+  getAllProxiesAdminAction,
+  addProxyAdminAction,
+  deleteProxyAdminAction,
+  toggleProxyAdminAction,
+  bulkAddProxiesAdminAction,
 } from './settings.actions';
 
 // Keywords

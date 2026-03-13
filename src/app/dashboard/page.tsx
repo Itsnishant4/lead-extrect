@@ -16,13 +16,7 @@ import {
   ResponsiveContainer, CartesianGrid, Cell, PieChart, Pie,
 } from 'recharts';
 
-const QUALITY_COLORS: Record<string, string> = {
-  Excellent: '#22c55e',
-  Good: '#3b82f6',
-  Average: '#f59e0b',
-  Low: '#f97316',
-  Poor: '#ef4444',
-};
+
 
 const STATUS_CONFIG: Record<string, { icon: any; color: string; bg: string }> = {
   running: { icon: Play, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/50' },
@@ -205,10 +199,9 @@ export default function DashboardPage() {
           })}
         </div>
 
-        {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 gap-6 mb-8">
           {/* Searches Over Time - Area Chart */}
-          <div className="lg:col-span-2 glass-card rounded-2xl p-5">
+          <div className="glass-card rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <TrendingUp size={16} className="text-indigo-500" />
@@ -258,59 +251,6 @@ export default function DashboardPage() {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-          </div>
-
-          {/* Lead Quality - Pie Chart */}
-          <div className="glass-card rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Target size={16} className="text-indigo-500" />
-              <h3 className="text-sm font-bold text-slate-900 dark:text-foreground">Lead Quality</h3>
-            </div>
-            {stats.leadQuality && stats.leadQuality.length > 0 ? (
-              <>
-                <div className="h-36 flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={stats.leadQuality}
-                        dataKey="count"
-                        nameKey="range"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={35}
-                        outerRadius={60}
-                        strokeWidth={2}
-                        stroke="rgba(255,255,255,0.8)"
-                      >
-                        {stats.leadQuality.map((entry: any, i: number) => (
-                          <Cell key={i} fill={QUALITY_COLORS[entry.range] || '#94a3b8'} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'rgba(255,255,255,0.95)',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '12px',
-                          fontSize: '12px',
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
-                  {stats.leadQuality.map((entry: any) => (
-                    <div key={entry.range} className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: QUALITY_COLORS[entry.range] || '#94a3b8' }} />
-                      <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{entry.range}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="h-36 flex items-center justify-center">
-                <p className="text-xs text-slate-400">No data yet</p>
-              </div>
-            )}
           </div>
         </div>
 
