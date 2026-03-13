@@ -124,12 +124,29 @@ export async function generateKeywordsAction(niche: string, country: string, sta
 
       if (mode === 'slow') {
         let areasFetched = false;
-        let retries = 3;
         
+        // 1. Try DB Cache first
+        try {
+          const cachedAreas = await KeywordService.getCityAreas(country, state, targetCity.name);
+          if (cachedAreas && cachedAreas.length > 0) {
+            console.log(`[ACTIONS] DB Cache hit for ${targetCity.name}: found ${cachedAreas.length} areas`);
+            cachedAreas.forEach(areaName => {
+              allKeywords.push(`${niche} in ${areaName}, ${baseString}`);
+            });
+            areasFetched = true;
+          }
+        } catch (dbErr) {
+          console.error(`[ACTIONS] DB Cache error for ${targetCity.name}:`, dbErr);
+        }
+
+        if (areasFetched) continue;
+
+        // 2. Fallback to API
+        let retries = 3;
         while (retries > 0 && !areasFetched) {
           try {
             if (retries < 3) console.log(`[ACTIONS] Retrying areas for ${targetCity.name} (${3 - retries}/3)...`);
-            else console.log(`[ACTIONS] Fetching areas for ${targetCity.name}...`);
+            else console.log(`[ACTIONS] Fetching areas for ${targetCity.name} via API...`);
             
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -145,15 +162,24 @@ export async function generateKeywordsAction(niche: string, country: string, sta
               if (Array.isArray(data) && data.length > 0 && data[0].Status === 'Success') {
                 const postOffices = data[0].PostOffice;
                 const seenAreas = new Set<string>();
+                const areasList: string[] = [];
 
                 postOffices.forEach((po: any) => {
                   const areaName = po.Name;
                   if (areaName && !seenAreas.has(areaName)) {
                     seenAreas.add(areaName);
+                    areasList.push(areaName);
                     allKeywords.push(`${niche} in ${areaName}, ${baseString}`);
                   }
                 });
-                console.log(`[ACTIONS] Found ${postOffices.length} post offices for ${targetCity.name}`);
+                console.log(`[ACTIONS] Found ${postOffices.length} post offices for ${targetCity.name} via API`);
+                
+                // Save to DB Cache for next time
+                if (areasList.length > 0) {
+                  KeywordService.saveCityAreas(country, state, targetCity.name, areasList).catch(err => {
+                    console.error(`[ACTIONS] Failed to save DB Cache for ${targetCity.name}:`, err);
+                  });
+                }
               } else {
                 console.log(`[ACTIONS] No areas found for ${targetCity.name} via API`);
               }

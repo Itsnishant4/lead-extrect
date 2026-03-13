@@ -4,7 +4,6 @@ import {
   loginSchema,
   otpSchema,
   resetPasswordSchema,
-  searchLeadsSchema,
   createTaskSchema,
   createBlogPostSchema,
   updateBlogPostSchema,
@@ -81,20 +80,6 @@ describe('Validation Schemas', () => {
     });
   });
 
-  // --- searchLeadsSchema ---
-  describe('searchLeadsSchema', () => {
-    it('accepts valid query', () => {
-      expect(() => searchLeadsSchema.parse({ query: 'dentist in ahmedabad' })).not.toThrow();
-    });
-
-    it('accepts query with optional fields', () => {
-      expect(() => searchLeadsSchema.parse({ query: 'dentist', taskId: 1, forceStore: true })).not.toThrow();
-    });
-
-    it('rejects empty query', () => {
-      expect(() => searchLeadsSchema.parse({ query: '' })).toThrow();
-    });
-  });
 
   // --- createTaskSchema ---
   describe('createTaskSchema', () => {

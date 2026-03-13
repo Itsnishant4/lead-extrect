@@ -83,7 +83,7 @@ export default function KeywordsPage() {
     setGenStatus('Fetching areas and building list...');
 
     try {
-      const res = await generateKeywordsAction(niche, country, state, city || null, selectAllCities, mode);
+      const res = await generateKeywordsAction(niche, country, state, city || null, selectAllCities, selectAllCities ? mode : 'slow');
       if (res.success && 'data' in res && Array.isArray(res.data)) {
         let finalKeywords = res.data as string[];
 
