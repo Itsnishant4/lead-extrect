@@ -317,4 +317,49 @@ export class AdminService {
       auditLogs: userAuditLogs,
     };
   }
+
+  static async getUserLocations() {
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    
+    const activeUsers = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      country: users.country,
+      city: users.city,
+      latitude: users.latitude,
+      longitude: users.longitude,
+      lastActive: users.lastActive,
+    })
+    .from(users)
+    .where(sql`${users.lastActive} IS NOT NULL AND ${users.lastActive} > ${fiveMinutesAgo}`);
+
+    const allUsersWithLocation = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      country: users.country,
+      city: users.city,
+      latitude: users.latitude,
+      longitude: users.longitude,
+    })
+    .from(users)
+    .where(sql`${users.latitude} IS NOT NULL AND ${users.longitude} IS NOT NULL`);
+
+    const countryBreakdown = await db.select({
+      country: users.country,
+      count: sql<number>`count(*)`,
+    })
+    .from(users)
+    .where(sql`${users.country} IS NOT NULL`)
+    .groupBy(users.country);
+
+    return {
+      activeUsers,
+      activeCount: activeUsers.length,
+      totalWithLocation: allUsersWithLocation.length,
+      locations: allUsersWithLocation,
+      countryBreakdown,
+    };
+  }
 }

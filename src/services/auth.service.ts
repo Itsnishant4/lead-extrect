@@ -7,9 +7,10 @@ import { AuditService } from './audit.service';
 import { checkRateLimit } from '@/lib/security/ratelimit';
 import { UserRepository } from '@/repositories/user.repository';
 import { maskError, AppError } from '@/lib/utils/error.utils';
+import { getGeoLocation, getClientIp } from '@/lib/geo';
 
 export class AuthService {
-  static async signup(name: string, email: string, password: string) {
+  static async signup(name: string, email: string, password: string, ip?: string) {
     const existing = await UserRepository.findByEmail(email);
     if (existing) {
       throw new Error('User with this email already exists');
@@ -17,8 +18,6 @@ export class AuthService {
 
     const hashedPassword = await hashPassword(password);
 
-    // Look up the free plan from DB to get initial credits
-    // Match by period='free', name containing 'free', or price=0
     const freePlan = await db.select({ leadsCredits: plans.leadsCredits })
       .from(plans)
       .where(and(
@@ -34,12 +33,18 @@ export class AuthService {
       
     const initialCredits = freePlan?.leadsCredits || 0;
 
-    // Insert user (some remote SQLite environments have issues with returning())
+    const geo = ip ? await getGeoLocation(ip) : null;
+
     await db.insert(users).values({
       name,
       email,
       password: hashedPassword,
       bonusCredits: initialCredits,
+      country: geo?.country,
+      city: geo?.city,
+      latitude: geo?.latitude,
+      longitude: geo?.longitude,
+      lastActive: new Date(),
     });
 
     const newUser = await UserRepository.findByEmail(email);
@@ -79,6 +84,18 @@ export class AuthService {
     }
 
     const token = await signToken({ id: user.id, email: user.email, name: user.name });
+
+    const geo = ip ? await getGeoLocation(ip) : null;
+    
+    await db.update(users).set({
+      lastActive: new Date(),
+      ...(geo && {
+        country: geo.country,
+        city: geo.city,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
+      }),
+    }).where(eq(users.id, user.id));
 
     const cookieStore = await cookies();
     cookieStore.set('session', token, {

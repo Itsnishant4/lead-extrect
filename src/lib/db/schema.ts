@@ -15,8 +15,15 @@ export const users = sqliteTable('users', {
   otpCode: text('otp_code'),
   otpExpiry: integer('otp_expiry', { mode: 'timestamp' }),
   otpAttempts: integer('otp_attempts').default(0),
+  country: text('country'),
+  city: text('city'),
+  latitude: real('latitude'),
+  longitude: real('longitude'),
+  lastActive: integer('last_active', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-});
+}, (table) => ({
+  lastActiveIdx: index('idx_users_last_active').on(table.lastActive),
+}));
 
 export const tasks = sqliteTable('tasks', {
   id: integer('id').primaryKey({ autoIncrement: true }),

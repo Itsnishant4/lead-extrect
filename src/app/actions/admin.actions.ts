@@ -184,3 +184,15 @@ export async function getUserHistoryAdminAction(userId: number) {
     return handleActionError(error);
   }
 }
+
+export async function getUserLocationsAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    const data = await AdminService.getUserLocations();
+    return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}

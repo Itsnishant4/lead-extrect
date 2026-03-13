@@ -14,7 +14,7 @@ export async function signupAction(name: string, email: string, password: string
     if (!(await checkRateLimit(`signup:ip:${ip}`, 5, 60000))) {
       return { success: false, error: 'Too many signup attempts. Try again later.' };
     }
-    await AuthService.signup(name, email, password);
+    await AuthService.signup(name, email, password, ip);
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);

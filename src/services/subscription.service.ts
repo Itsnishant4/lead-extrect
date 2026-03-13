@@ -98,13 +98,16 @@ export class SubscriptionService {
     const plan = planRows[0];
     if (!plan) throw new Error('Plan not found');
 
-    try {
-      await db.update(transactions).set({
-        status: 'paid',
-        utr: utr,
-        updatedAt: new Date(),
-      }).where(eq(transactions.id, transaction.id));
+    const updateResult = await db.update(transactions)
+      .set({ status: 'paid', utr: utr, updatedAt: new Date() })
+      .where(and(eq(transactions.id, transaction.id), eq(transactions.status, 'pending')));
 
+    if ((updateResult as any).rowsAffected === 0) {
+      console.log(`[WEBHOOK] Transaction ${order_id} concurrent update detected, skipping`);
+      return { alreadyProcessed: true, transactionId: transaction.id };
+    }
+
+    try {
       await db.update(users).set({
         planType: plan.name.toLowerCase(),
         bonusCredits: sql`COALESCE(${users.bonusCredits}, 0) + ${plan.leadsCredits}`,

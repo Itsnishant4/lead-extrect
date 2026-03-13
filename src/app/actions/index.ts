@@ -62,6 +62,7 @@ export {
   updateUserCreditsAction,
   recalculateUserUsageAction,
   getUserHistoryAdminAction,
+  getUserLocationsAction,
 } from './admin.actions';
 
 // Blog
