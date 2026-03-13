@@ -62,6 +62,22 @@ export async function deleteBlogPostAction(id: number) {
   }
 }
 
+export async function bulkImportBlogPostsAction(posts: any[]) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    if (!Array.isArray(posts) || posts.length === 0) {
+      return { success: false, error: 'Invalid posts array' };
+    }
+    const ids = await BlogService.bulkCreatePosts(posts);
+    revalidatePath('/blog');
+    return { success: true, count: ids.length, ids };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
 export async function getBlogPostsPublicAction() {
   try {
     const data = await BlogService.getPostsPublic();

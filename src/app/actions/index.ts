@@ -71,6 +71,7 @@ export {
   createBlogPostAction,
   updateBlogPostAction,
   deleteBlogPostAction,
+  bulkImportBlogPostsAction,
   getBlogPostsPublicAction,
   getBlogPostBySlugPublicAction,
 } from './blog.actions';
