@@ -55,22 +55,22 @@ export class AdminService {
 
   static async getChartData() {
     const leadsGrowth = await db.select({
-      date: sql`date(created_at)`,
+      date: sql<string>`date(datetime(created_at / 1000, 'unixepoch'))`,
       count: sql<number>`count(*)`
     })
     .from(searches)
     .where(sql`created_at > datetime('now', '-7 days')`)
-    .groupBy(sql`date(created_at)`)
-    .orderBy(sql`date(created_at) ASC`);
+    .groupBy(sql`date(datetime(created_at / 1000, 'unixepoch'))`)
+    .orderBy(sql`date(datetime(created_at / 1000, 'unixepoch')) ASC`);
 
     const activityStats = await db.select({
-      date: sql`date(created_at)`,
+      date: sql<string>`date(datetime(created_at / 1000, 'unixepoch'))`,
       count: sql<number>`count(*)`
     })
     .from(auditLogs)
     .where(sql`created_at > datetime('now', '-7 days')`)
-    .groupBy(sql`date(created_at)`)
-    .orderBy(sql`date(created_at) ASC`);
+    .groupBy(sql`date(datetime(created_at / 1000, 'unixepoch'))`)
+    .orderBy(sql`date(datetime(created_at / 1000, 'unixepoch')) ASC`);
 
     return { leadsGrowth, activityStats };
   }

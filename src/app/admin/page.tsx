@@ -5,7 +5,6 @@ import {
   getAdminChartDataAction,
   getAdminInsightsAction,
   getAdminTasksAction,
-  getUserLocationsAction,
   updateTaskStatusAdminAction,
   bulkUpdateTasksAdminAction,
   updateUserPlanAction
@@ -55,7 +54,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
-import { WorldMap } from "@/components/world-map"
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -107,17 +105,7 @@ export default function AdminDashboard() {
     }
   });
 
-  const { data: userLocations, isLoading: isLoadingLocations } = useQuery({
-    queryKey: ['admin-user-locations'],
-    queryFn: async () => {
-      const res = await getUserLocationsAction();
-      if (!res.success) throw new Error((res as any).error);
-      return (res as any).data;
-    },
-    refetchInterval: 30000,
-  });
-
-  const isLoading = isLoadingStats || isLoadingChart || isLoadingInsights || isLoadingLocations;
+  const isLoading = isLoadingStats || isLoadingChart || isLoadingInsights;
 
   const { data: adminTasks = [] } = useQuery({
     queryKey: ['admin-tasks'],
@@ -266,47 +254,6 @@ export default function AdminDashboard() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-3">
-              <Card className="md:col-span-2 shadow-none border-border/50 bg-card/50">
-                <CardHeader className="pb-0">
-                  <CardTitle className="flex items-center gap-2 text-sm font-bold text-foreground">
-                    <Users className="h-4 w-4 text-primary" />
-                    Live User Locations
-                  </CardTitle>
-                  <CardDescription className="text-muted-foreground text-xs">Real-time user activity worldwide</CardDescription>
-                </CardHeader>
-                <CardContent className="p-4">
-                  <WorldMap 
-                    locations={userLocations?.locations || []} 
-                    activeCount={userLocations?.activeCount || 0}
-                  />
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-none border-border/50 bg-card/50">
-                <CardHeader className="pb-0">
-                  <CardTitle className="flex items-center gap-2 text-sm font-bold text-foreground">
-                    <Users className="h-4 w-4 text-primary" />
-                    Top Countries
-                  </CardTitle>
-                  <CardDescription className="text-muted-foreground text-xs">Users by location</CardDescription>
-                </CardHeader>
-                <CardContent className="p-4 space-y-3">
-                  {userLocations?.countryBreakdown?.slice(0, 8).map((country: any, idx: number) => (
-                    <div key={country.country} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                          {idx + 1}
-                        </div>
-                        <span className="text-sm font-medium text-foreground">{country.country}</span>
-                      </div>
-                      <Badge variant="secondary" className="tabular-nums">{country.count}</Badge>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
