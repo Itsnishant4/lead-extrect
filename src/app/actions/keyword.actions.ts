@@ -83,7 +83,7 @@ export async function deleteKeywordHistoryAction(id: number) {
   }
 }
 
-export async function generateKeywordsAction(niche: string, country: string, state: string, city: string | null, selectAllCities: boolean) {
+export async function generateKeywordsAction(niche: string, country: string, state: string, city: string | null, selectAllCities: boolean, mode: 'fast' | 'slow' = 'fast') {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
@@ -109,63 +109,73 @@ export async function generateKeywordsAction(niche: string, country: string, sta
 
     const allKeywords: string[] = [];
 
+    if (selectAllCities && mode === 'fast') {
+      for (const targetCity of targetCities) {
+        const baseString = `${targetCity.name}, ${state}, ${country}`;
+        allKeywords.push(`${niche} in ${baseString}`);
+      }
+      console.log(`[ACTIONS] Fast mode: Generated ${allKeywords.length} keywords (no areas)`);
+      return { success: true, data: allKeywords };
+    }
+
     for (const targetCity of targetCities) {
       const baseString = `${targetCity.name}, ${state}, ${country}`;
-      // Add the city-level keyword immediately as the first result
       allKeywords.push(`${niche} in ${baseString}`);
 
-      let areasFetched = false;
-      let retries = 3;
-      
-      while (retries > 0 && !areasFetched) {
-        try {
-          if (retries < 3) console.log(`[ACTIONS] Retrying areas for ${targetCity.name} (${3 - retries}/3)...`);
-          else console.log(`[ACTIONS] Fetching areas for ${targetCity.name}...`);
-          
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-          
-          const response = await fetch(`https://api.postalpincode.in/postoffice/${targetCity.name}`, {
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-          
-          if (response.ok) {
-            const data = await response.json();
+      if (mode === 'slow') {
+        let areasFetched = false;
+        let retries = 3;
+        
+        while (retries > 0 && !areasFetched) {
+          try {
+            if (retries < 3) console.log(`[ACTIONS] Retrying areas for ${targetCity.name} (${3 - retries}/3)...`);
+            else console.log(`[ACTIONS] Fetching areas for ${targetCity.name}...`);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
+            const response = await fetch(`https://api.postalpincode.in/postoffice/${targetCity.name}`, {
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            
+            if (response.ok) {
+              const data = await response.json();
 
-            if (Array.isArray(data) && data.length > 0 && data[0].Status === 'Success') {
-              const postOffices = data[0].PostOffice;
-              const seenAreas = new Set<string>();
+              if (Array.isArray(data) && data.length > 0 && data[0].Status === 'Success') {
+                const postOffices = data[0].PostOffice;
+                const seenAreas = new Set<string>();
 
-              postOffices.forEach((po: any) => {
-                const areaName = po.Name;
-                if (areaName && !seenAreas.has(areaName)) {
-                  seenAreas.add(areaName);
-                  allKeywords.push(`${niche} in ${areaName}, ${baseString}`);
-                }
-              });
-              console.log(`[ACTIONS] Found ${postOffices.length} post offices for ${targetCity.name}`);
+                postOffices.forEach((po: any) => {
+                  const areaName = po.Name;
+                  if (areaName && !seenAreas.has(areaName)) {
+                    seenAreas.add(areaName);
+                    allKeywords.push(`${niche} in ${areaName}, ${baseString}`);
+                  }
+                });
+                console.log(`[ACTIONS] Found ${postOffices.length} post offices for ${targetCity.name}`);
+              } else {
+                console.log(`[ACTIONS] No areas found for ${targetCity.name} via API`);
+              }
+              areasFetched = true;
             } else {
-              console.log(`[ACTIONS] No areas found for ${targetCity.name} via API`);
+              console.error(`[ACTIONS] Area API returned error: ${response.status}`);
+              retries--;
+              if (retries > 0) await new Promise(r => setTimeout(r, 1000));
             }
-            areasFetched = true;
-          } else {
-            console.error(`[ACTIONS] Area API returned error: ${response.status}`);
+          } catch (err: any) {
             retries--;
-            if (retries > 0) await new Promise(r => setTimeout(r, 1000));
-          }
-        } catch (err: any) {
-          retries--;
-          if (retries === 0) {
-            console.error(`Failed to fetch areas for ${targetCity.name} after 3 attempts:`, err.message || err);
-          } else {
-            await new Promise(r => setTimeout(r, 1000));
+            if (retries === 0) {
+              console.error(`Failed to fetch areas for ${targetCity.name} after 3 attempts:`, err.message || err);
+            } else {
+              await new Promise(r => setTimeout(r, 1000));
+            }
           }
         }
       }
     }
 
-    console.log(`[ACTIONS] Generated ${allKeywords.length} keywords`);
+    console.log(`[ACTIONS] Generated ${allKeywords.length} keywords (mode: ${mode})`);
     return { success: true, data: allKeywords };
   } catch (error: any) {
     console.error('[ACTIONS] generateKeywordsAction error:', error);
