@@ -58,7 +58,8 @@ export async function middleware(request: NextRequest) {
     '/compare/', 
     '/sitemap/',
     '/sitemap.xml',
-    '/favicon/'
+    '/favicon',
+    '/favicon.ico'
   ];
   
   const isPublicPath = publicPaths.includes(path) || isPublicPrefix.some(p => path.startsWith(p));
@@ -104,9 +105,8 @@ export const config = {
      * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - .png, .jpg, .jpeg, .svg, .gif, .webp (common image extensions)
+     * - favicon, images, and other static assets
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|webmanifest)|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|webmanifest|woff|woff2)).*)',
   ],
 };
