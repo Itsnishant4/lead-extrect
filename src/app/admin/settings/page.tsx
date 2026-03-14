@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { getSystemSettingsAction, updateSystemSettingsAction } from "@/app/actions/siteconfig.actions"
-import { getAllProxiesAdminAction, addProxyAdminAction, deleteProxyAdminAction, toggleProxyAdminAction, bulkAddProxiesAdminAction } from "@/app/actions"
+import { getAllProxiesAdminAction, addProxyAdminAction, deleteProxyAdminAction, toggleProxyAdminAction, bulkAddProxiesAdminAction, deleteAllProxiesAdminAction, testAllProxiesAdminAction } from "@/app/actions"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -186,6 +186,51 @@ export default function AdminSettingsPage() {
     { host: "proxy3.example.com", port: 1080, protocol: "socks5" }
   ];
 
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      const res = await deleteAllProxiesAdminAction();
+      if (!res.success) throw new Error((res as any).error || "Failed to delete all proxies");
+      return res;
+    },
+    onSuccess: () => {
+      toast.success("All proxies deleted");
+      queryClient.invalidateQueries({ queryKey: ['admin-proxies'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message);
+    }
+  });
+
+  const [isTestingProxies, setIsTestingProxies] = useState(false);
+  const [testResults, setTestResults] = useState<{ working: number; failed: number; failedDetails?: any[] } | null>(null);
+
+  const testAllMutation = useMutation({
+    mutationFn: async () => {
+      setIsTestingProxies(true);
+      setTestResults(null);
+      const res = await testAllProxiesAdminAction();
+      return res;
+    },
+    onSuccess: (res: any) => {
+      setIsTestingProxies(false);
+      if (res.success) {
+        setTestResults({
+          working: res.results.workingCount,
+          failed: res.results.failedCount,
+          failedDetails: res.results.failed
+        });
+        toast.success(`Testing complete: ${res.results.workingCount} working, ${res.results.failedCount} disabled`);
+        queryClient.invalidateQueries({ queryKey: ['admin-proxies'] });
+      } else {
+        toast.error(res.error || "Failed to test proxies");
+      }
+    },
+    onError: (error: any) => {
+      setIsTestingProxies(false);
+      toast.error(error.message);
+    }
+  });
+
   return (
     <>
       <header className={`flex transition-all ease-in-out duration-300 ${open ? 'md:ml-[250px]' : 'md:ml-[60px]'} h-16 shrink-0 items-center justify-between gap-2 px-4 sticky top-0 bg-background/80 backdrop-blur-md z-10 border-b`}>
@@ -266,6 +311,20 @@ export default function AdminSettingsPage() {
                     <CardDescription>Manage proxies for Google Maps scraping to avoid rate limiting.</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="gap-2"
+                      disabled={isTestingProxies || proxies.length === 0}
+                      onClick={() => testAllMutation.mutate()}
+                    >
+                      {isTestingProxies ? (
+                        <LoaderCircle size={16} className="animate-spin" />
+                      ) : (
+                        <ShieldCheck size={16} />
+                      )}
+                      {isTestingProxies ? 'Testing...' : 'Test All'}
+                    </Button>
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -370,39 +429,102 @@ export default function AdminSettingsPage() {
                     <p className="text-xs text-muted-foreground mt-1">Add proxies to avoid rate limiting</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {proxies.map((proxy: any) => (
-                      <div key={proxy.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-2 h-2 rounded-full ${proxy.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
-                          <div>
-                            <p className="text-sm font-medium">{proxy.host}:{proxy.port}</p>
-                            <p className="text-xs text-muted-foreground">{proxy.protocol} {proxy.username && `• ${proxy.username}`}</p>
+                  <>
+                    <div className="space-y-3">
+                      {proxies.map((proxy: any) => (
+                        <div key={proxy.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-2 h-2 rounded-full ${proxy.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
+                            <div>
+                              <p className="text-sm font-medium">{proxy.host}:{proxy.port}</p>
+                              <p className="text-xs text-muted-foreground">{proxy.protocol} {proxy.username && `• ${proxy.username}`}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Switch 
+                              checked={proxy.isActive}
+                              onCheckedChange={(checked) => toggleProxyMutation.mutate({ id: proxy.id, isActive: checked })}
+                            />
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-destructive"
+                              onClick={() => {
+                                if (confirm("Are you sure you want to delete this proxy?")) {
+                                  deleteProxyMutation.mutate(proxy.id);
+                                }
+                              }}
+                            >
+                              <Trash size={16} />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Switch 
-                            checked={proxy.isActive}
-                            onCheckedChange={(checked) => toggleProxyMutation.mutate({ id: proxy.id, isActive: checked })}
-                          />
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => {
-                              if (confirm("Are you sure you want to delete this proxy?")) {
-                                deleteProxyMutation.mutate(proxy.id);
-                              }
-                            }}
-                          >
-                            <Trash size={16} />
-                          </Button>
+                      ))}
+                    </div>
+                    {testResults && (
+                      <div className="mt-4 p-3 rounded-lg bg-muted/50 border">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium">Test Results</span>
+                          <Button variant="ghost" size="sm" onClick={() => setTestResults(null)}>Dismiss</Button>
                         </div>
+                        <div className="flex gap-4 text-sm">
+                          <span className="text-green-600 font-medium">✓ {testResults.working} Working</span>
+                          <span className="text-red-600 font-medium">✗ {testResults.failed} Disabled</span>
+                        </div>
+                        {testResults.failedDetails && testResults.failedDetails.length > 0 && (
+                          <div className="mt-2 max-h-32 overflow-y-auto text-xs text-muted-foreground">
+                            {testResults.failedDetails.slice(0, 5).map((f: any, i: number) => (
+                              <div key={i} className="flex justify-between py-1">
+                                <span>{f.host}:{f.port}</span>
+                                <span className="text-red-500">{f.error}</span>
+                              </div>
+                            ))}
+                            {testResults.failedDetails.length > 5 && (
+                              <div className="text-center py-1 text-muted-foreground">
+                                +{testResults.failedDetails.length - 5} more...
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    )}
+                    <div className="mt-4 pt-4 border-t flex justify-between items-center">
+                      <p className="text-xs text-muted-foreground">{proxies.length} proxies total</p>
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete ALL ${proxies.length} proxies?`)) {
+                            deleteAllMutation.mutate();
+                          }
+                        }}
+                        disabled={deleteAllMutation.isPending}
+                      >
+                        {deleteAllMutation.isPending && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                        Delete All
+                      </Button>
+                    </div>
+                  </>
                 )}
-              </CardContent>
+                  {proxies.length > 0 && (
+                    <div className="mt-4 pt-4 border-t flex justify-between items-center">
+                      <p className="text-xs text-muted-foreground">{proxies.length} proxies total</p>
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete ALL ${proxies.length} proxies?`)) {
+                            deleteAllMutation.mutate();
+                          }
+                        }}
+                        disabled={deleteAllMutation.isPending}
+                      >
+                        {deleteAllMutation.isPending && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                        Delete All Proxies
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
             </Card>
 
             <Dialog open={isBulkImportOpen} onOpenChange={setIsBulkImportOpen}>

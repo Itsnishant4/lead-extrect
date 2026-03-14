@@ -124,6 +124,62 @@ export async function toggleProxyAdminAction(id: number, isActive: boolean) {
   }
 }
 
+export async function deleteAllProxiesAdminAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    await ProxyService.deleteAllProxies();
+    return { success: true };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function testAllProxiesAdminAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    
+    const allProxies = await ProxyService.getAllProxies();
+    const results = {
+      total: allProxies.length,
+      working: [] as number[],
+      failed: [] as { id: number, host: string, port: number, error: string }[]
+    };
+
+    for (const proxy of allProxies) {
+      const testResult = await ProxyService.testProxyConnection(proxy);
+      
+      if (testResult.success) {
+        results.working.push(proxy.id);
+      } else {
+        // Disable failed proxy
+        await ProxyService.disableProxy(proxy.id);
+        results.failed.push({
+          id: proxy.id,
+          host: proxy.host,
+          port: proxy.port,
+          error: testResult.error || 'Unknown error'
+        });
+      }
+    }
+
+    return { 
+      success: true, 
+      results: {
+        total: results.total,
+        workingCount: results.working.length,
+        failedCount: results.failed.length,
+        failed: results.failed
+      }
+    };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
 export async function bulkAddProxiesAdminAction(proxies: any[]) {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };

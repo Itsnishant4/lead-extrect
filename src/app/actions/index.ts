@@ -89,6 +89,8 @@ export {
   deleteProxyAdminAction,
   toggleProxyAdminAction,
   bulkAddProxiesAdminAction,
+  deleteAllProxiesAdminAction,
+  testAllProxiesAdminAction,
 } from './settings.actions';
 
 // Keywords
