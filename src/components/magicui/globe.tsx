@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import createGlobe from "cobe";
-import { useSpring } from "framer-motion";
+import { useSpring } from "motion/react";
 
 export interface GlobePoint {
   location: [number, number];
