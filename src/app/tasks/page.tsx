@@ -14,10 +14,8 @@ import {
   Play,
   Trash2,
   RefreshCw,
-  Download,
   Clock,
   Loader2,
-  Loader,
   AlertCircle,
   Info
 } from 'lucide-react';
@@ -189,7 +187,8 @@ export default function TasksPage() {
                               task.status === 'running' ? "bg-indigo-500/10 text-indigo-600 shadow-[0_0_8px_rgba(79,70,229,0.1)]" :
                                 task.status === 'failed' ? "bg-rose-500/10 text-rose-600" :
                                   task.status === 'paused' ? "bg-amber-500/10 text-amber-600" :
-                                    "bg-slate-500/10 text-slate-500"
+                                    task.status === 'uploading' ? "bg-blue-500/10 text-blue-600" :
+                                      "bg-slate-500/10 text-slate-500"
                           )}>
                             {task.status} {task.totalKeywords > 0 ? `• ${Math.min(100, Math.round((task.currentKeywordIndex / task.totalKeywords) * 100))}%` : ''}
                           </Badge>
@@ -220,7 +219,7 @@ export default function TasksPage() {
 
                     <div className="flex flex-wrap items-center gap-2 mt-2 md:mt-0">
                       {/* Start button: only show for never-triggered pending tasks (no statusReason of 'Queued') */}
-                      {task.status === 'pending' && task.currentKeywordIndex === 0 && !task.statusReason?.startsWith('Queued') && !task.statusReason?.startsWith('Uploading') && (
+                      {task.status === 'pending' && task.currentKeywordIndex === 0 && !task.statusReason?.startsWith('Queued') && !task.statusReason?.startsWith('Uploading') && task.status !== 'uploading' && (
                         <Button
                           size="sm"
                           className="bg-indigo-600 flex-1 md:flex-none justify-center"
@@ -236,9 +235,9 @@ export default function TasksPage() {
                         </Button>
                       )}
                       {/* Starting... spinner for queued tasks waiting for worker */}
-                      {task.status === 'pending' && (task.statusReason?.startsWith('Queued') || task.statusReason?.startsWith('Uploading')) && (
+                      {(task.status === 'pending' && (task.statusReason?.startsWith('Queued') || task.statusReason?.startsWith('Uploading'))) || task.status === 'uploading' && (
                         <Button size="sm" variant="outline" disabled className="flex-1 md:flex-none justify-center">
-                          <Loader2 size={14} className="mr-2 animate-spin" /> Starting...
+                          <Loader2 size={14} className="mr-2 animate-spin" /> {task.status === 'uploading' ? 'Uploading...' : 'Starting...'}
                         </Button>
                       )}
                       {/* Pending with progress (worker will pick up) */}

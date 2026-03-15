@@ -33,7 +33,7 @@ export class TaskService {
       name,
       keywords: [],
       totalKeywords,
-      status: 'pending',
+      status: 'uploading',
       statusReason: 'Uploading keywords...',
       userAgent: options.userAgent,
       acceptLanguage: options.acceptLanguage,
@@ -103,7 +103,7 @@ export class TaskService {
     const result = await db
       .select({ count: count() })
       .from(tasks)
-      .where(and(eq(tasks.userId, userId), or(eq(tasks.status, 'running'), eq(tasks.status, 'pending'))));
+      .where(and(eq(tasks.userId, userId), or(eq(tasks.status, 'running'), eq(tasks.status, 'pending'), eq(tasks.status, 'uploading'))));
     return Number(result[0]?.count || 0);
   }
 

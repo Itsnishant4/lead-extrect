@@ -21,7 +21,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 interface Task {
   id: number;
   name: string;
-  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'uploading';
   statusReason: string | null;
   total_keywords: number;
   current_keyword_index: number;
@@ -89,8 +89,8 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     },
     refetchInterval: (query) => {
       const data = query.state.data as Task[];
-      // Polling every 4 seconds when tasks are running, 15 seconds otherwise
-      return (data && data.some(t => t.status === 'running' || t.status === 'pending')) ? 4000 : 15000;
+      // Polling every 4 seconds when tasks are running, pending, or uploading, 15 seconds otherwise
+      return (data && data.some(t => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 4000 : 15000;
     },
   });
 
