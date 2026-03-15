@@ -11,6 +11,22 @@ export const revalidate = 3600; // ISR: Revalidate every hour
 export const metadata: Metadata = {
   title: 'Pricing | LeadSpotter',
   description: 'Choose the right plan to scale your lead generation. Transparent pricing for Google Maps extraction.',
+  alternates: {
+    canonical: 'https://leadspotter.in/pricing',
+  },
+  openGraph: {
+    title: 'Pricing | LeadSpotter',
+    description: 'Choose the right plan to scale your lead generation. Transparent pricing for Google Maps extraction.',
+    url: 'https://leadspotter.in/pricing',
+    siteName: 'LeadSpotter',
+    locale: 'en_IN',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Pricing | LeadSpotter',
+    description: 'Choose the right plan to scale your lead generation.',
+  },
 };
 
 export default async function PricingPage() {

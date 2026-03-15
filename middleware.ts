@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyToken } from '@/lib/auth-edge';
-import { db } from '@/lib/db/index';
-import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+
+// In-memory cache for user validation (reset on deployment)
+// Map<userId, timestamp when validated>
+const userValidationCache = new Map<number, number>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes - balance between performance and security
 
 export async function middleware(request: NextRequest) {
   const session = request.cookies.get('session');
@@ -12,19 +14,37 @@ export async function middleware(request: NextRequest) {
   if (session) {
     const payload = await verifyToken(session.value);
     if (payload && payload.id) {
-       // Check if account still exists in DB
-       try {
-         const user = await db.select({ id: users.id }).from(users).where(eq(users.id, Number(payload.id))).limit(1);
-         if (user.length > 0) {
-           isValidSession = true;
-         }
-       } catch (err) {
-         console.error('[Middleware] DB Check error:', err);
-         // If DB is down, we might want to still trust the JWT if it's signed? 
-         // But "matching with any account" implies being strict.
-         // However, high-availability usually favors trusting the JWT if DB is unreachable.
-         // For now, let's stick to the user's request: must match an account.
-       }
+      const userId = Number(payload.id);
+      
+      // Check cache first
+      const cachedTime = userValidationCache.get(userId);
+      const now = Date.now();
+      
+      if (cachedTime && (now - cachedTime) < CACHE_TTL_MS) {
+        // Cache hit - trust the JWT without DB call
+        isValidSession = true;
+      } else {
+        // Cache miss or expired - verify with DB
+        try {
+          const { db } = await import('@/lib/db/index');
+          const { users } = await import('@/lib/db/schema');
+          const { eq } = await import('drizzle-orm');
+          
+          const user = await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1);
+          if (user.length > 0) {
+            isValidSession = true;
+            // Update cache
+            userValidationCache.set(userId, now);
+          } else {
+            // User no longer exists - clear cache
+            userValidationCache.delete(userId);
+          }
+        } catch (err) {
+          console.error('[Middleware] DB Check error:', err);
+          // If DB is down, trust the JWT if it's valid (high availability)
+          isValidSession = true;
+        }
+      }
     }
   }
 

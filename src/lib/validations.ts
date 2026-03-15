@@ -1,11 +1,20 @@
 import { z } from 'zod';
 
+// Strong password validation: min 8 chars, uppercase, lowercase, number, special char
+const strongPassword = z.string()
+  .min(8, 'Password must be at least 8 characters')
+  .max(100, 'Password must be less than 100 characters')
+  .refine(val => /[A-Z]/.test(val), 'Password must contain at least one uppercase letter')
+  .refine(val => /[a-z]/.test(val), 'Password must contain at least one lowercase letter')
+  .refine(val => /[0-9]/.test(val), 'Password must contain at least one number')
+  .refine(val => /[!@#$%^&*(),.?":{}|<>]/.test(val), 'Password must contain at least one special character (!@#$%^&*...)');
+
 // --- Auth ---
 
 export const signupSchema = z.object({
   name: z.string().min(2).max(50),
   email: z.string().email(),
-  password: z.string().min(8).max(100),
+  password: strongPassword,
 });
 
 export const loginSchema = z.object({
@@ -21,7 +30,7 @@ export const otpSchema = z.object({
 export const resetPasswordSchema = z.object({
   email: z.string().email(),
   otp: z.string().length(6),
-  newPassword: z.string().min(8).max(100),
+  newPassword: strongPassword,
 });
 
 

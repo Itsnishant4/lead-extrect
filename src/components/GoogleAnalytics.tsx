@@ -21,6 +21,26 @@ export default function GoogleAnalytics({ gaId }: { gaId?: string }) {
           gtag('js', new Date());
 
           gtag('config', '${GOOGLE_ANALYTICS_ID}');
+          
+          // Track conversion events
+          window.trackEvent = function(eventName, params) {
+            gtag('event', eventName, params);
+          };
+          
+          // Track signup starts
+          window.trackSignupStart = function(method) {
+            gtag('event', 'sign_up', { method: method });
+          };
+          
+          // Track first lead extracted
+          window.trackFirstLead = function(leadSource) {
+            gtag('event', 'first_lead_extracted', { source: leadSource });
+          };
+          
+          // Track upgrade clicks
+          window.trackUpgradeClick = function(planType) {
+            gtag('event', 'begin_checkout', { plan_type: planType });
+          };
         `}
             </Script>
         </>

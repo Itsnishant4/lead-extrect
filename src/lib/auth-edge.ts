@@ -1,10 +1,19 @@
 import { SignJWT, jwtVerify } from 'jose';
 
-const SECRET_KEY = process.env.JWT_SECRET ?? (() => {
-  throw new Error('JWT_SECRET environment variable is required');
-})();
+const isDev = process.env.NODE_ENV === 'development';
 
-const key = new TextEncoder().encode(SECRET_KEY);
+// Require JWT_SECRET in production, throw error
+const SECRET_KEY = process.env.JWT_SECRET;
+if (!SECRET_KEY) {
+  if (isDev) {
+    console.warn('[AUTH] WARNING: JWT_SECRET not set. Using dev-only fallback. NOT FOR PRODUCTION!');
+  } else {
+    throw new Error('JWT_SECRET environment variable is required in production');
+  }
+}
+
+// Use dev fallback only in development
+const key = new TextEncoder().encode(SECRET_KEY || 'dev-fallback-key-not-secure-for-production');
 
 export async function signToken(payload: { id: number; email: string; name: string; is_admin?: boolean }): Promise<string> {
     if (!payload.id || !payload.email) {
