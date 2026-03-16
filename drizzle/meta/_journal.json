@@ -15,6 +15,20 @@
       "when": 1772297756939,
       "tag": "0001_unique_ghost_rider",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772521379666,
+      "tag": "0002_stale_longshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1772529680851,
+      "tag": "0003_fuzzy_scarlet_witch",
+      "breakpoints": true
     }
   ]
 }

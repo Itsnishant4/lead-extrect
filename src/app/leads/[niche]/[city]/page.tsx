@@ -7,8 +7,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, MapPin, Store, CheckCircle, Download, Users, Globe, Phone, Mail } from 'lucide-react';
 import { db } from '@/lib/db';
-import { leads } from '@/lib/db/schema';
-import { sql, ilike, and } from 'drizzle-orm';
+import { leads, seoHubRegistry } from '@/lib/db/schema';
+import { sql, like, and, eq, or } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic'; // Prevent static generation timeout on massive DB queries
 
@@ -43,43 +43,46 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
   let sampleLeads: any[] = [];
 
   try {
-    const statsRes = await db.execute(sql`
-      SELECT 
-        SUM(total_leads) as total,
-        SUM(with_website) as with_website,
-        SUM(with_phone) as with_phone,
-        SUM(with_email) as with_email,
-        AVG(avg_rating) as avg_rating
-      FROM seo_hub_registry 
-      WHERE niche ILIKE ${'%' + searchNiche + '%'} 
-        AND city ILIKE ${'%' + searchCity + '%'}
-    `);
+    // Use Drizzle's aggregate functions instead of raw SQL
+    const statsRes = await db.select({
+      total: sql<number>`SUM(${seoHubRegistry.totalLeads})`,
+      withWebsite: sql<number>`SUM(${seoHubRegistry.withWebsite})`,
+      withPhone: sql<number>`SUM(${seoHubRegistry.withPhone})`,
+      withEmail: sql<number>`SUM(${seoHubRegistry.withEmail})`,
+      avgRating: sql<number>`AVG(${seoHubRegistry.avgRating})`,
+    })
+    .from(seoHubRegistry)
+    .where(and(
+      like(seoHubRegistry.niche, `%${searchNiche}%`),
+      like(seoHubRegistry.city, `%${searchCity}%`)
+    ));
 
-    if (statsRes && statsRes[0] && Number(statsRes[0].total || 0) > 0) {
+    if (statsRes[0] && Number(statsRes[0].total || 0) > 0) {
       total = Number(statsRes[0].total || 0);
-      withWebsite = Number(statsRes[0].with_website || 0);
-      withPhone = Number(statsRes[0].with_phone || 0);
-      withEmail = Number(statsRes[0].with_email || 0);
-      avgRating = Number(statsRes[0].avg_rating || 0);
+      withWebsite = Number(statsRes[0].withWebsite || 0);
+      withPhone = Number(statsRes[0].withPhone || 0);
+      withEmail = Number(statsRes[0].withEmail || 0);
+      avgRating = Number(statsRes[0].avgRating || 0);
     } else {
       // Fallback to active leads if registry missed it
-      const fallbackRes = await db.execute(sql`
-        SELECT 
-          COUNT(*) as total,
-          SUM(CASE WHEN website IS NOT NULL AND website != '' THEN 1 ELSE 0 END) as with_website,
-          SUM(CASE WHEN phone IS NOT NULL AND phone != '' THEN 1 ELSE 0 END) as with_phone,
-          SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) as with_email,
-          AVG(rating) as avg_rating
-        FROM leads 
-        WHERE category ILIKE ${'%' + searchNiche + '%'} 
-          AND city ILIKE ${'%' + searchCity + '%'}
-      `);
-      if (fallbackRes && fallbackRes[0]) {
+      const fallbackRes = await db.select({
+        total: sql<number>`COUNT(*)`,
+        withWebsite: sql<number>`SUM(CASE WHEN ${leads.website} IS NOT NULL AND ${leads.website} != '' THEN 1 ELSE 0 END)`,
+        withPhone: sql<number>`SUM(CASE WHEN ${leads.phone} IS NOT NULL AND ${leads.phone} != '' THEN 1 ELSE 0 END)`,
+        withEmail: sql<number>`SUM(CASE WHEN ${leads.email} IS NOT NULL AND ${leads.email} != '' THEN 1 ELSE 0 END)`,
+        avgRating: sql<number>`AVG(${leads.rating})`,
+      })
+      .from(leads)
+      .where(and(
+        like(leads.category, `%${searchNiche}%`),
+        like(leads.city, `%${searchCity}%`)
+      ));
+      if (fallbackRes[0]) {
         total = Number(fallbackRes[0].total || 0);
-        withWebsite = Number(fallbackRes[0].with_website || 0);
-        withPhone = Number(fallbackRes[0].with_phone || 0);
-        withEmail = Number(fallbackRes[0].with_email || 0);
-        avgRating = Number(fallbackRes[0].avg_rating || 0);
+        withWebsite = Number(fallbackRes[0].withWebsite || 0);
+        withPhone = Number(fallbackRes[0].withPhone || 0);
+        withEmail = Number(fallbackRes[0].withEmail || 0);
+        avgRating = Number(fallbackRes[0].avgRating || 0);
       }
     }
 
@@ -92,8 +95,8 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
     })
     .from(leads)
     .where(and(
-      ilike(leads.category, `%${searchNiche}%`),
-      ilike(leads.city, `%${searchCity}%`)
+      like(leads.category, `%${searchNiche}%`),
+      like(leads.city, `%${searchCity}%`)
     ))
     .limit(3);
 

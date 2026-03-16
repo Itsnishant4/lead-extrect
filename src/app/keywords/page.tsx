@@ -12,7 +12,7 @@ import {
 } from '@/app/actions';
 import { toast } from 'sonner';
 import {
-  Loader2, Rocket, Briefcase, Copy, Check, X, ArrowRight, ShieldCheck,
+  Loader2, Rocket, Briefcase, Copy, Check, X, ArrowRight, ShieldCheck, Zap, Clock,
 } from 'lucide-react';
 
 const PRESET_NICHES = [
@@ -40,10 +40,10 @@ export default function KeywordsPage() {
   const [isCopied, setIsCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectAllCities, setSelectAllCities] = useState(false);
+  const [mode, setMode] = useState<'fast' | 'slow'>('fast');
   const [genStatus, setGenStatus] = useState('');
   const [isCustomNiche, setIsCustomNiche] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
-  const [isDeepSearch, setIsDeepSearch] = useState(false);
 
   useEffect(() => {
     if (loadedSession) {
@@ -83,29 +83,9 @@ export default function KeywordsPage() {
     setGenStatus('Fetching areas and building list...');
 
     try {
-      const res = await generateKeywordsAction(niche, country, state, city || null, selectAllCities);
+      const res = await generateKeywordsAction(niche, country, state, city || null, selectAllCities, selectAllCities ? mode : 'slow');
       if (res.success && 'data' in res && Array.isArray(res.data)) {
         let finalKeywords = res.data as string[];
-
-        // Pincode Deep Search can still be appended if desired, 
-        // but generateKeywordsAction now handles the area names specifically.
-        if (isDeepSearch && city) {
-          setGenStatus('Adding pincode variations...');
-          try {
-            const pinRes = await fetch(`/api/pincodes?city=${city}`);
-            const pinData = await pinRes.json();
-            if (pinData.success && pinData.pincodes?.length > 0) {
-              const pincodes = pinData.pincodes as string[];
-              const pincodeKeywords: string[] = [];
-              const baseLocation = `${city}, ${state}, ${country}`;
-              for (const pin of pincodes) {
-                pincodeKeywords.push(`${niche} in ${city} ${pin}, ${state}, ${country}`);
-              }
-              finalKeywords = [...new Set([...finalKeywords, ...pincodeKeywords])];
-              toast.success(`Deep Search: Added ${pincodeKeywords.length} pincodes`);
-            }
-          } catch (err) {}
-        }
 
         setKeywords(finalKeywords);
         const location = selectAllCities ? `All cities in ${state}` : city ? `${city}, ${state}` : state;
@@ -199,33 +179,43 @@ export default function KeywordsPage() {
             <Combobox options={cities.map((c) => ({ value: c.name, label: c.name }))} value={city} onChange={setCity} disabled={selectAllCities} />
             <div className="flex items-center gap-3"><input type="checkbox" checked={selectAllCities} onChange={(e) => setSelectAllCities(e.target.checked)} /><span>Target all cities in selected state</span></div>
             
-            <label className="flex items-center justify-between p-4 md:p-6 bg-white/40 rounded-2xl border border-white/60 cursor-pointer hover:bg-white/60 hover:border-indigo-200 transition-all shadow-sm">
-              <div className="space-y-1">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-slate-800">Deep Search Protocol</span>
-                  <span className="bg-indigo-100/80 text-indigo-700 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    Priority
-                  </span>
+            {selectAllCities && (
+              <div className="space-y-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-amber-800">Extraction Mode</span>
                 </div>
-                <p className="text-xs text-slate-500">
-                  Scan every zip code for maximum lead density and data accuracy
-                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setMode('fast')}
+                    className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${mode === 'fast' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'}`}
+                  >
+                    <Zap className={`w-5 h-5 ${mode === 'fast' ? 'text-green-600' : 'text-gray-400'}`} />
+                    <span className={`text-sm font-medium ${mode === 'fast' ? 'text-green-700' : 'text-gray-600'}`}>Fast</span>
+                    <span className="text-xs text-gray-500">No area-wise extraction</span>
+                  </button>
+                  <button
+                    onClick={() => setMode('slow')}
+                    className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${mode === 'slow' ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-gray-300'}`}
+                  >
+                    <Clock className={`w-5 h-5 ${mode === 'slow' ? 'text-amber-600' : 'text-gray-400'}`} />
+                    <span className={`text-sm font-medium ${mode === 'slow' ? 'text-amber-700' : 'text-gray-600'}`}>Slow</span>
+                    <span className="text-xs text-gray-500">Area-wise extraction</span>
+                  </button>
+                </div>
+                {mode === 'slow' && (
+                  <div className="flex items-start gap-2 p-3 bg-amber-100 rounded-lg">
+                    <Clock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-800">
+                      <strong>Warning:</strong> This will take 4-5 hours to extract. Area-wise keywords will generate more leads but will take significantly longer.
+                    </p>
+                  </div>
+                )}
               </div>
-              <div className="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
-                <input
-                  type="checkbox"
-                  checked={isDeepSearch}
-                  onChange={(e) => setIsDeepSearch(e.target.checked)}
-                  disabled={!city || selectAllCities}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-disabled:opacity-40" />
-              </div>
-            </label>
+            )}
             
             {keywords.length === 0 ? (
               <button onClick={generateKeywords} disabled={isGenerating} className="w-full gradient-button text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg">
-                {isGenerating ? <Loader2 className="animate-spin" /> : <Rocket />} Generate
+                {isGenerating ? <Loader2 className="animate-spin size-5" /> : <Rocket />} Generate
               </button>
             ) : (
               <div className="space-y-4">

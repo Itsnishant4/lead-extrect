@@ -14,7 +14,10 @@ import {
   SignOut,
   ShieldCheck,
   CreditCard,
-  Megaphone
+  Megaphone,
+  ListChecks,
+  Gear,
+  Globe
 } from 'phosphor-react';
 import { logoutAction } from '@/app/actions';
 import { toast } from 'sonner';
@@ -55,6 +58,11 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
       url: '/admin',
     },
     {
+      title: 'Live View',
+      icon: Globe,
+      url: '/admin/live',
+    },
+    {
       title: 'User Management',
       icon: Users,
       url: '/admin/users',
@@ -75,13 +83,23 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
       url: '/admin/payments',
     },
     {
+      title: 'Task Management',
+      icon: ListChecks,
+      url: '/admin/tasks',
+    },
+    {
       title: 'Banner Settings',
       icon: Megaphone,
       url: '/admin/banner',
     },
     {
+      title: 'System Settings',
+      icon: Gear,
+      url: '/admin/settings',
+    },
+    {
       title: 'System Logs',
-      icon: Layout, // Changed icon for Logs since FileText is better for Blog
+      icon: Layout,
       url: '/admin/logs',
     },
   ];

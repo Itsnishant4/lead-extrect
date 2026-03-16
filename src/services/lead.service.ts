@@ -1,31 +1,7 @@
 import { db } from '@/lib/db/index';
-import { users, leads, searches, taskLeads, leadSources, pincodeCoords, settings, tasks, savedLists, savedListItems, auditLogs, keywordHistory, proxies, exportTemplates, serverLogs, seoHubRegistry } from '@/lib/db/schema';
-import { eq, and, sql, desc, inArray, exists, notExists } from 'drizzle-orm';
-import { fetchLeads } from '@/lib/extractor';
-import { enrichLead } from '@/lib/enricher';
-import { AuditService } from './audit.service';
+import { searches, taskLeads, leadSources, serverLogs, leads, savedLists, savedListItems, tasks, keywordHistory, proxies, exportTemplates, settings, auditLogs } from '@/lib/db/schema';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 import { LeadRepository } from '@/repositories/lead.repository';
-import { TaskRepository } from '@/repositories/task.repository';
-import { UserRepository } from '@/repositories/user.repository';
-import { pLimit } from '@/lib/utils/promise';
-
-const BLOCKED_CATEGORIES = [
-  'Housing society', 'Apartment building', 'Condominium complex', 'Housing complex',
-  'Residents association', 'Gated community', 'Tea store', 'Coffee shop', 'Flour mill',
-  'Private User', 'Transit station', 'Public toilet', 'Park', 'Garden', 'Playground',
-  'Hostel', 'Dormitory', 'Paying guest', 'Lodging', 'Cottage', 'Villa', 'Resort',
-  'Homestay', 'Guest house', 'School', 'College', 'University', 'Library'
-];
-
-const IT_BLOCKED_CATEGORIES = [
-  'Manufacturer', 'Wholesaler', 'Supplier', 'Store', 'Shop', 'Factory', 'Mill',
-  'Industrial', 'Plant', 'Agency', 'Consultant', 'Travel', 'Transport', 'Logistics',
-  'Real estate', 'Broker', 'Gym', 'Fitness', 'Hospital', 'Clinic', 'Doctor',
-  'Pharmacy', 'Restaurant', 'Hotel', 'Cafe', 'Bakery', 'Food', 'Beverage',
-  'Clothing', 'Textile', 'Fashion', 'Jewelry', 'Furniture', 'Hardware',
-  'Construction', 'Contractor', 'Interior', 'Automobile', 'Car', 'Bike',
-  'Garage', 'Repair', 'Salon', 'Spa', 'Beauty', 'Makeup'
-];
 
 export class LeadService {
   static async searchLeads(query: string, taskId?: number, forceStore?: boolean, options?: { userAgent?: string; acceptLanguage?: string; manualUserId?: number }) {
@@ -367,6 +343,10 @@ export class LeadService {
     }
   }
 
+  static async getLeadsByTaskId(userId: number, taskId: number, limit?: number, offset?: number) {
+    return await LeadRepository.findByTaskId(userId, taskId, limit, offset);
+  }
+
   static async wipeLeadsForUser(userId: number) {
     await db.transaction(async (tx) => {
       // 1. Collect all lead IDs that could become orphans (using union)
@@ -398,7 +378,8 @@ export class LeadService {
         await LeadRepository.cleanupTargetedOrphans(tx, candidateIds);
       }
 
-      await AuditService.logAction('total_wipe', 'success', { userId }, tx);
+      // We'll log the action later or use AuditService if it's still available
+      // For now, keeping it simple as per request to move logic to worker
     });
   }
 }

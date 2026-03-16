@@ -1,6 +1,6 @@
-import { db } from '@/lib/db/index';
-import { users, leads, tasks, searches, auditLogs, serverLogs, transactions, plans } from '@/lib/db/schema';
-import { eq, sql, desc, and, gt } from 'drizzle-orm';
+import { db, raw } from '@/lib/db/index';
+import { users, leads, tasks, searches, auditLogs, serverLogs, transactions, plans, taskLeads, leadSources } from '@/lib/db/schema';
+import { eq, sql, desc, and, or, gt, count, inArray } from 'drizzle-orm';
 
 export class AdminService {
   static async checkAdmin(userId: number) {
@@ -55,22 +55,22 @@ export class AdminService {
 
   static async getChartData() {
     const leadsGrowth = await db.select({
-      date: sql`DATE(created_at)`,
+      date: sql<string>`date(datetime(created_at / 1000, 'unixepoch'))`,
       count: sql<number>`count(*)`
     })
     .from(searches)
-    .where(sql`created_at > NOW() - INTERVAL '7 days'`)
-    .groupBy(sql`DATE(created_at)`)
-    .orderBy(sql`DATE(created_at) ASC`);
+    .where(sql`created_at > datetime('now', '-7 days')`)
+    .groupBy(sql`date(datetime(created_at / 1000, 'unixepoch'))`)
+    .orderBy(sql`date(datetime(created_at / 1000, 'unixepoch')) ASC`);
 
     const activityStats = await db.select({
-      date: sql`DATE(created_at)`,
+      date: sql<string>`date(datetime(created_at / 1000, 'unixepoch'))`,
       count: sql<number>`count(*)`
     })
     .from(auditLogs)
-    .where(sql`created_at > NOW() - INTERVAL '7 days'`)
-    .groupBy(sql`DATE(created_at)`)
-    .orderBy(sql`DATE(created_at) ASC`);
+    .where(sql`created_at > datetime('now', '-7 days')`)
+    .groupBy(sql`date(datetime(created_at / 1000, 'unixepoch'))`)
+    .orderBy(sql`date(datetime(created_at / 1000, 'unixepoch')) ASC`);
 
     return { leadsGrowth, activityStats };
   }
@@ -130,6 +130,67 @@ export class AdminService {
     .limit(200);
   }
 
+  /**
+   * Detailed admin task list: includes user info, credit (lead) consumption per task,
+   * keyword progress, status reason, timestamps, and user plan/credit details.
+   */
+  static async getAdminTasksDetailed() {
+    // Use raw query to avoid Drizzle mapping issues with joined SQLite tables
+    const result = await raw.execute(`
+      SELECT 
+        t.id, t.name, t.status, t.status_reason, t.total_keywords, t.current_keyword_index, t.total_leads, t.created_at, t.updated_at,
+        u.id as u_id, u.name as u_name, u.email as u_email, u.plan_type as u_plan, u.leads_extracted as u_leads_extracted, u.bonus_credits as u_bonus_credits
+      FROM tasks t
+      JOIN users u ON t.user_id = u.id
+      ORDER BY t.created_at DESC
+      LIMIT 500
+    `);
+
+    const taskRows = result.rows.map(row => ({
+      id: Number(row.id),
+      name: String(row.name),
+      status: String(row.status),
+      statusReason: row.status_reason ? String(row.status_reason) : null,
+      totalKeywords: Number(row.total_keywords),
+      currentKeywordIndex: Number(row.current_keyword_index),
+      totalLeads: Number(row.total_leads),
+      // SQLite unixepoch() returns seconds, JS needs ms. Handle both just in case.
+      createdAt: row.created_at ? new Date(Number(row.created_at) < 10000000000 ? Number(row.created_at) * 1000 : Number(row.created_at)) : null,
+      updatedAt: row.updated_at ? new Date(Number(row.updated_at) < 10000000000 ? Number(row.updated_at) * 1000 : Number(row.updated_at)) : null,
+      userId: Number(row.u_id),
+      userName: String(row.u_name),
+      userEmail: String(row.u_email),
+      userPlan: String(row.u_plan),
+      userLeadsExtracted: Number(row.u_leads_extracted),
+      userBonusCredits: Number(row.u_bonus_credits),
+    }));
+
+    // Get actual lead counts from task_leads table for each task
+    const taskIds = taskRows.map(row => row.id);
+    const leadCountMap = new Map<number, number>();
+    
+    if (taskIds.length > 0) {
+      // Use raw SQL for SQLite IN clause compatibility
+      const placeholders = taskIds.map(() => '?').join(',');
+      const leadCountResult = await raw.execute(
+        `SELECT task_id, COUNT(*) as count FROM task_leads WHERE task_id IN (${placeholders}) GROUP BY task_id`,
+        taskIds
+      );
+      
+      for (const row of leadCountResult.rows) {
+        leadCountMap.set(row.task_id as number, row.count as number);
+      }
+    }
+
+    // Map the results with actual lead counts
+    const rows = taskRows.map(task => ({
+      ...task,
+      creditsConsumed: leadCountMap.get(task.id) || task.totalLeads || 0,
+    }));
+
+    return rows;
+  }
+
   static async updateTaskStatus(taskId: number, status: string) {
     await db.update(tasks).set({ status, updatedAt: new Date() }).where(eq(tasks.id, taskId));
   }
@@ -159,19 +220,27 @@ export class AdminService {
 
   static async updateUser(userId: number, data: any) {
     const updateData: any = {};
-    if (data.name) updateData.name = data.name;
-    if (data.planType) updateData.planType = data.planType;
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.planType !== undefined) updateData.planType = data.planType;
     if (data.is_admin !== undefined) updateData.isAdmin = data.is_admin;
     if (data.is_suspended !== undefined) updateData.isSuspended = data.is_suspended;
     if (data.bonusCredits !== undefined) updateData.bonusCredits = data.bonusCredits;
-    if (data.subscription_expiry) updateData.subscriptionExpiry = new Date(data.subscription_expiry);
+    if (data.subscription_expiry !== undefined) updateData.subscriptionExpiry = data.subscription_expiry ? new Date(data.subscription_expiry) : null;
 
     await db.update(users).set(updateData).where(eq(users.id, userId));
   }
 
   static async startAllPendingTasks(userId: number) {
-    await db.update(tasks).set({ status: 'running', updatedAt: new Date() })
-      .where(and(eq(tasks.status, 'pending'), eq(tasks.userId, userId)));
+    // We update status to 'pending' with a specific reason to trigger the worker
+    await db.update(tasks).set({ 
+      status: 'pending', 
+      statusReason: 'Queued — started by admin',
+      updatedAt: new Date() 
+    })
+      .where(and(
+        or(eq(tasks.status, 'paused'), eq(tasks.status, 'failed')), 
+        eq(tasks.userId, userId)
+      ));
   }
 
   static async updateUserCredits(userId: number, amount: number) {
@@ -185,13 +254,15 @@ export class AdminService {
    * to fix inflated counters caused by duplicate worker processing.
    */
   static async recalculateUserUsage(userId: number) {
-    const result = await db.execute(sql`
-      SELECT COUNT(DISTINCT ls.lead_id) as actual_count
-      FROM lead_sources ls
-      INNER JOIN searches s ON ls.search_id = s.id
-      WHERE s.user_id = ${userId}
-    `);
-    const actualCount = Number(result[0]?.actual_count || 0);
+    // Use Drizzle's count with join instead of raw SQL
+    const result = await db.select({
+      actualCount: sql<number>`COUNT(DISTINCT ${leadSources.leadId})`,
+    })
+    .from(leadSources)
+    .innerJoin(searches, eq(leadSources.searchId, searches.id))
+    .where(eq(searches.userId, userId));
+    
+    const actualCount = Number(result[0]?.actualCount || 0);
     await db.update(users).set({ leadsExtracted: actualCount }).where(eq(users.id, userId));
     return actualCount;
   }
@@ -244,6 +315,51 @@ export class AdminService {
       user: user[0],
       transactions: userTransactions,
       auditLogs: userAuditLogs,
+    };
+  }
+
+  static async getUserLocations() {
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    
+    const activeUsers = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      country: users.country,
+      city: users.city,
+      latitude: users.latitude,
+      longitude: users.longitude,
+      lastActive: users.lastActive,
+    })
+    .from(users)
+    .where(sql`${users.lastActive} IS NOT NULL AND ${users.lastActive} > ${fiveMinutesAgo}`);
+
+    const allUsersWithLocation = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      country: users.country,
+      city: users.city,
+      latitude: users.latitude,
+      longitude: users.longitude,
+    })
+    .from(users)
+    .where(sql`${users.latitude} IS NOT NULL AND ${users.longitude} IS NOT NULL`);
+
+    const countryBreakdown = await db.select({
+      country: users.country,
+      count: sql<number>`count(*)`,
+    })
+    .from(users)
+    .where(sql`${users.country} IS NOT NULL`)
+    .groupBy(users.country);
+
+    return {
+      activeUsers,
+      activeCount: activeUsers.length,
+      totalWithLocation: allUsersWithLocation.length,
+      locations: allUsersWithLocation,
+      countryBreakdown,
     };
   }
 }

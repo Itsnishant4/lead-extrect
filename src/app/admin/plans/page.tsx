@@ -5,7 +5,8 @@ import {
   getAllPlansAdminAction,
   createPlanAction,
   updatePlanAction,
-  deletePlanAction
+  deletePlanAction,
+  permanentDeletePlanAction
 } from "@/app/actions"
 import {
   Table,
@@ -236,7 +237,19 @@ export default function AdminPlansPage() {
         toast.success("Plan deactivated");
         queryClient.invalidateQueries({ queryKey: ['admin-plans'] });
       } else {
-        toast.error((res as any).error || "Failed to delete plan");
+        toast.error((res as any).error || "Failed to deactivate plan");
+      }
+    }
+  });
+
+  const permanentDeleteMutation = useMutation({
+    mutationFn: permanentDeletePlanAction,
+    onSuccess: (res) => {
+      if (res.success) {
+        toast.success("Plan permanently deleted");
+        queryClient.invalidateQueries({ queryKey: ['admin-plans'] });
+      } else {
+        toast.error((res as any).error || "Failed to delete plan permanently");
       }
     }
   });
@@ -429,17 +442,33 @@ export default function AdminPlansPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" onClick={() => handleEdit(plan)}>
+                          <div className="flex justify-end gap-2 text-primary">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" onClick={() => handleEdit(plan)} title="Edit Plan">
                               <PencilSimple size={16} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={`h-8 w-8 ${plan.isActive ? 'text-orange-500' : 'text-emerald-500'}`}
+                              onClick={() => {
+                                if (confirm(`${plan.isActive ? 'Deactivate' : 'Activate'} this plan?`)) {
+                                  updateMutation.mutate({ id: plan.id, data: { isActive: !plan.isActive } });
+                                }
+                              }}
+                              title={plan.isActive ? "Deactivate Plan" : "Activate Plan"}
+                            >
+                              {plan.isActive ? <XCircle size={16} /> : <CheckCircle size={16} />}
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-destructive"
                               onClick={() => {
-                                if (confirm("Deactivate this plan?")) deleteMutation.mutate(plan.id);
+                                if (confirm("PERMANENTLY DELETE this plan? This action cannot be undone and may fail if transactions exist.")) {
+                                  permanentDeleteMutation.mutate(plan.id);
+                                }
                               }}
+                              title="Permanent Delete"
                             >
                               <Trash size={16} />
                             </Button>

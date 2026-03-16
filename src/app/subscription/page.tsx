@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { useAutomation } from '@/context/AutomationContext';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { getPlansAction, createCheckoutSessionAction, checkOrderStatusAction } from '@/app/actions';
@@ -8,7 +9,7 @@ import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import {
   Loader2, Check, CheckCircle, Zap, ShieldCheck, X, MessageCircle,
-  User, Award, Diamond,
+  User, Award, Diamond, Receipt,
 } from 'lucide-react';
 
 export default function SubscriptionPage() {
@@ -159,8 +160,9 @@ export default function SubscriptionPage() {
                     Plan: <span className="font-bold capitalize text-indigo-600 dark:text-indigo-400">{user.planType}</span>
                   </p>
                 </div>
-                <div className="flex-1 max-w-md w-full">
-                  <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className="flex-1 relative max-w-md w-full">
+                  
+                  <div className="h-2.5 mt-4 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-500"
                       style={{
@@ -172,10 +174,20 @@ export default function SubscriptionPage() {
                       }}
                     />
                   </div>
+                  
                   <div className="flex justify-between mt-2 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
                     <span>{Math.round(usagePercent)}% used</span>
                     <span>{limit === Infinity ? 'No limit' : `${remaining.toLocaleString()} available`}</span>
                   </div>
+
+                  <Link
+                    href="/payment/history"
+                    className="inline-flex w-full mt-3 justify-end items-center gap-1.5  text-xs font-semibold  hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+                  >
+                    <Receipt size={14} className='text-indigo-600 dark:text-indigo-400'/>
+                    Payment History
+                  </Link>
+                  
                 </div>
               </div>
             )}

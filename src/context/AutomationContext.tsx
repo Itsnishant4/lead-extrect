@@ -7,9 +7,7 @@ import {
   createTaskShellAction,
   appendTaskKeywordsAction,
   updateTaskStatusAction,
-  updateTaskLeadCountAction,
   deleteTaskAction,
-  searchLeadsAction,
   uploadTaskExportChunkAction,
   getSettingsAction,
   getUserAction,
@@ -23,7 +21,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 interface Task {
   id: number;
   name: string;
-  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'uploading';
   statusReason: string | null;
   total_keywords: number;
   current_keyword_index: number;
@@ -91,8 +89,8 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     },
     refetchInterval: (query) => {
       const data = query.state.data as Task[];
-      // Polling every 4 seconds when tasks are running, 15 seconds otherwise
-      return (data && data.some(t => t.status === 'running' || t.status === 'pending')) ? 4000 : 15000;
+      // Polling every 4 seconds when tasks are running, pending, or uploading, 15 seconds otherwise
+      return (data && data.some(t => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 4000 : 15000;
     },
   });
 
@@ -115,18 +113,29 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     queryClient.invalidateQueries({ queryKey: ['settings'] });
   };
 
+
   const loadTasksAsync = async () => {
     await loadTasks();
   };
 
-  const handleSearch = async (e?: React.FormEvent, searchOverride?: string, taskId?: number) => {
+  const handleSearch = async (e?: React.FormEvent, searchOverride?: string) => {
     e?.preventDefault();
     const finalQuery = searchOverride;
     if (!finalQuery?.trim()) return;
 
-    const res = await searchLeadsAction(finalQuery, taskId);
-    if (res.success) {
-      refreshUser();
+    // Convert legacy search to a one-keyword task
+    const taskName = `Search: ${finalQuery.slice(0, 30)}${finalQuery.length > 30 ? '...' : ''}`;
+    const res = await createTaskAction(taskName, [finalQuery]);
+    if (res.success && 'taskId' in res) {
+      const triggerRes = await triggerTaskAutomationAction(Number(res.taskId));
+      if (triggerRes.success) {
+        toast.success(`Search started for "${finalQuery}"`);
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      } else {
+        toast.error((triggerRes as any).error || "Failed to start search");
+      }
+    } else {
+      toast.error((res as any).error || "Failed to create search task");
     }
     return res;
   };

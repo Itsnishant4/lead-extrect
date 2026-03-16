@@ -21,6 +21,7 @@ import { AutomationProvider } from "@/context/AutomationContext";
 import QueryProvider from "@/components/QueryProvider";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import JsonLd from "@/components/JsonLd";
+import { NotificationProvider } from "@/components/NotificationProvider";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -127,12 +128,14 @@ export default function RootLayout({
 
         <QueryProvider>
           <AutomationProvider>
-            <SidebarProvider>
-              <main className="flex-1 w-full min-h-screen h-screen">
-                {children}
-              </main>
-              <Toaster position="top-right" />
-            </SidebarProvider>
+            <NotificationProvider>
+              <SidebarProvider>
+                <main className="flex-1 w-full min-h-screen h-screen">
+                  {children}
+                </main>
+                <Toaster position="top-right" />
+              </SidebarProvider>
+            </NotificationProvider>
           </AutomationProvider>
         </QueryProvider>
 

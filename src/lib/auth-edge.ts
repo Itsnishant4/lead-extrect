@@ -1,13 +1,25 @@
 import { SignJWT, jwtVerify } from 'jose';
 
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-    throw new Error('JWT_SECRET must be defined in production environment');
-}
-const SECRET_KEY = process.env.JWT_SECRET || 'dev-secret-key-change-in-prod';
-const key = new TextEncoder().encode(SECRET_KEY);
+const isDev = process.env.NODE_ENV === 'development';
 
-export async function signToken(payload: any): Promise<string> {
-    return await new SignJWT(payload)
+// Require JWT_SECRET in production, throw error
+const SECRET_KEY = process.env.JWT_SECRET;
+if (!SECRET_KEY) {
+  if (isDev) {
+    console.warn('[AUTH] WARNING: JWT_SECRET not set. Using dev-only fallback. NOT FOR PRODUCTION!');
+  } else {
+    throw new Error('JWT_SECRET environment variable is required in production');
+  }
+}
+
+// Use dev fallback only in development
+const key = new TextEncoder().encode(SECRET_KEY || 'dev-fallback-key-not-secure-for-production');
+
+export async function signToken(payload: { id: number; email: string; name: string; is_admin?: boolean }): Promise<string> {
+    if (!payload.id || !payload.email) {
+        throw new Error('Token payload must include id and email');
+    }
+    return await new SignJWT(payload as unknown as Record<string, unknown>)
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('7d') // 7 days session

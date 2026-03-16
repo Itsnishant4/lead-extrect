@@ -6,9 +6,11 @@ import { cookies } from 'next/headers';
 import { AuditService } from './audit.service';
 import { checkRateLimit } from '@/lib/security/ratelimit';
 import { UserRepository } from '@/repositories/user.repository';
+import { maskError, AppError } from '@/lib/utils/error.utils';
+import { getGeoLocation, getClientIp } from '@/lib/geo';
 
 export class AuthService {
-  static async signup(name: string, email: string, password: string) {
+  static async signup(name: string, email: string, password: string, ip?: string) {
     const existing = await UserRepository.findByEmail(email);
     if (existing) {
       throw new Error('User with this email already exists');
@@ -16,14 +18,12 @@ export class AuthService {
 
     const hashedPassword = await hashPassword(password);
 
-    // Look up the free plan from DB to get initial credits
-    // Match by period='free', name containing 'free', or price=0
     const freePlan = await db.select({ leadsCredits: plans.leadsCredits })
       .from(plans)
       .where(and(
         or(
           eq(plans.period, 'free'),
-          sql`${plans.name} ILIKE '%free%'`,
+          sql`LOWER(${plans.name}) LIKE LOWER('%free%')`,
         ),
         eq(plans.isActive, true)
       ))
@@ -33,20 +33,33 @@ export class AuthService {
       
     const initialCredits = freePlan?.leadsCredits || 0;
 
-    const result = await db.insert(users).values({
+    const geo = ip ? await getGeoLocation(ip) : null;
+
+    await db.insert(users).values({
       name,
       email,
       password: hashedPassword,
       bonusCredits: initialCredits,
-    }).returning({ id: users.id });
+      country: geo?.country,
+      city: geo?.city,
+      latitude: geo?.latitude,
+      longitude: geo?.longitude,
+      lastActive: new Date(),
+    });
 
-    const userId = result[0].id;
+    const newUser = await UserRepository.findByEmail(email);
+    if (!newUser) {
+      throw new Error('Failed to retrieve user after creation');
+    }
+
+    const userId = newUser.id;
     const token = await signToken({ id: userId, email, name });
 
     const cookieStore = await cookies();
     cookieStore.set('session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
     });
@@ -72,10 +85,23 @@ export class AuthService {
 
     const token = await signToken({ id: user.id, email: user.email, name: user.name });
 
+    const geo = ip ? await getGeoLocation(ip) : null;
+    
+    await db.update(users).set({
+      lastActive: new Date(),
+      ...(geo && {
+        country: geo.country,
+        city: geo.city,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
+      }),
+    }).where(eq(users.id, user.id));
+
     const cookieStore = await cookies();
     cookieStore.set('session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
     });
@@ -91,14 +117,16 @@ export class AuthService {
   }
 
   static async requestOTP(email: string, ip: string) {
-    if (!(await checkRateLimit(`otp:email:${email}`, 3, 60000, true))) {
-      throw new Error('Too many OTP requests for this account.');
-    }
+    try {
+      if (!(await checkRateLimit(`otp:email:${email}`, 3, 60000, true))) {
+        throw new Error('Too many OTP requests for this account.');
+      }
 
-    const { generateOTP, sendOTPEmail } = await import('@/lib/mailer');
+      const { generateOTP, sendOTPEmail } = await import('@/lib/mailer');
 
-    return await db.transaction(async (tx) => {
-      const userRows = await tx.select().from(users).where(eq(users.email, email)).for('update');
+      // db.transaction is currently failing on the sqlhost proxy.
+      // We use sequential updates. This is safe for OTP request.
+      const userRows = await db.select().from(users).where(eq(users.email, email));
       const user = userRows[0];
       if (!user) throw new Error("You are not registered");
 
@@ -110,9 +138,9 @@ export class AuthService {
 
       await UserRepository.update(user.id, {
         otpCode: otp,
-        otpExpiry: sql`NOW() + INTERVAL '10 minutes'`,
+        otpExpiry: sql`datetime('now', '+10 minutes')`,
         otpAttempts: 0,
-      }, tx);
+      });
 
       const sent = await sendOTPEmail(email, otp);
       if (!sent) {
@@ -121,16 +149,20 @@ export class AuthService {
 
       await AuditService.logAction('request_otp', 'success', { email, ip });
       return true;
-    });
+    } catch (err) {
+      console.error('[AUTH SERVICE] requestOTP error:', err);
+      throw new Error(maskError(err));
+    }
   }
 
   static async verifyOTP(email: string, otp: string, ip: string): Promise<number> {
-    if (!(await checkRateLimit(`verify:email:${email}`, 5, 60000, true))) {
-      throw new Error('Too many verification attempts. Please wait a minute.');
-    }
+    try {
+      if (!(await checkRateLimit(`verify:email:${email}`, 5, 60000, true))) {
+        throw new Error('Too many verification attempts. Please wait a minute.');
+      }
 
-    return await db.transaction(async (tx) => {
-      const userRows = await tx.select().from(users).where(eq(users.email, email)).for('update');
+      // Sequential verification to avoid db.transaction issues with LibSQL proxy
+      const userRows = await db.select().from(users).where(eq(users.email, email));
       const user = userRows[0];
 
       if (!user) {
@@ -143,12 +175,12 @@ export class AuthService {
 
       const isExpired = new Date(user.otpExpiry) < new Date();
       if (isExpired) {
-        await tx.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
+        await db.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
         throw new Error('OTP has expired. Please request a new one.');
       }
 
       if ((user.otpAttempts || 0) >= 5) {
-        await tx.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
+        await db.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
         throw new Error('Too many failed attempts. Please request a new OTP.');
       }
 
@@ -168,9 +200,10 @@ export class AuthService {
   }
 
   static async resetPassword(email: string, otp: string, newPassword: string, ip: string) {
-    const userId = await this.verifyOTP(email, otp, ip);
+    try {
+      const userId = await this.verifyOTP(email, otp, ip);
 
-    const hashedPassword = await hashPassword(newPassword);
+      const hashedPassword = await hashPassword(newPassword);
 
     await UserRepository.update(userId, {
       password: hashedPassword,
@@ -179,7 +212,11 @@ export class AuthService {
       otpAttempts: 0,
     });
 
-    await AuditService.logAction('reset_password', 'success', { email, ip });
-    return true;
+      await AuditService.logAction('reset_password', 'success', { email, ip });
+      return true;
+    } catch (err) {
+      console.error('[AUTH SERVICE] resetPassword error:', err);
+      throw new Error(maskError(err));
+    }
   }
 }
