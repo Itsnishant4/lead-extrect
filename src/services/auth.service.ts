@@ -184,18 +184,19 @@ export class AuthService {
         throw new Error('Too many failed attempts. Please request a new OTP.');
       }
 
-      if (user.otpCode !== otp) {
-        await db.update(users).set({ otpAttempts: sql`otp_attempts + 1` }).where(eq(users.id, user.id));
-        await AuditService.logAction('verify_otp', 'error', { email, reason: 'Invalid OTP', ip });
-        throw new Error('Invalid OTP. Please try again.');
-      }
-
-      await AuditService.logAction('verify_otp', 'success', { email, ip });
-      return user.id;
-    } catch (err) {
-      console.error('[AUTH SERVICE] verifyOTP error:', err);
-      throw new Error(maskError(err));
+    if (user.otpCode !== otp) {
+      await tx.update(users).set({ otpAttempts: sql`otp_attempts + 1` }).where(eq(users.id, user.id));
+      await AuditService.logAction('verify_otp', 'error', { email, reason: 'Invalid OTP', ip });
+      throw new Error('Invalid OTP. Please try again.');
     }
+
+    // CRITICAL FIX: Do NOT wipe OTP here - it needs to persist for resetPassword()
+    // The OTP will be wiped after successful password reset
+    // await tx.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
+
+    await AuditService.logAction('verify_otp', 'success', { email, ip });
+    return user.id;
+    });
   }
 
   static async resetPassword(email: string, otp: string, newPassword: string, ip: string) {
@@ -204,12 +205,12 @@ export class AuthService {
 
       const hashedPassword = await hashPassword(newPassword);
 
-      await UserRepository.update(userId, {
-        password: hashedPassword,
-        otpCode: null, // CRITICAL FIX: Wipe OTP after successful password reset
-        otpExpiry: null,
-        otpAttempts: 0,
-      });
+    await UserRepository.update(userId, {
+      password: hashedPassword,
+      otpCode: null, // CRITICAL FIX: Wipe OTP after successful password reset
+      otpExpiry: null,
+      otpAttempts: 0,
+    });
 
       await AuditService.logAction('reset_password', 'success', { email, ip });
       return true;
