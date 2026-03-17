@@ -11,13 +11,11 @@ import {
   Loader2, Check, CheckCircle, Zap, ShieldCheck, X, MessageCircle,
   User, Award, Diamond, Receipt,
 } from 'lucide-react';
+import { PTMCheckout } from '@/lib/sdk/PTMCheckout';
 
 export default function SubscriptionPage() {
   const { user, isLoadingUser: isLoading, refreshUser } = useAutomation();
-  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
-  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState<number | null>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const { data: plans = [], isLoading: isLoadingPlans } = useQuery({
     queryKey: ['public-plans'],
@@ -28,56 +26,6 @@ export default function SubscriptionPage() {
     },
   });
 
-  const handleMessage = useCallback((event: MessageEvent) => {
-    if (event.data?.type === 'PAYMENT_SUCCESS') {
-      setPaymentUrl(null);
-      setCurrentOrderId(null);
-      setIsCheckingOut(null);
-      toast.success('Payment successful! Your plan has been activated.');
-      refreshUser();
-    }
-  }, [refreshUser]);
-
-  useEffect(() => {
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [handleMessage]);
-
-  useEffect(() => {
-    if (!paymentUrl || !currentOrderId) return;
-    
-    const interval = setInterval(async () => {
-      // 1. First, still try checking the iframe location fallback
-      try {
-        const iframe = iframeRef.current;
-        if (iframe?.contentWindow?.location?.href?.includes('/success')) {
-          setPaymentUrl(null);
-          setCurrentOrderId(null);
-          setIsCheckingOut(null);
-          toast.success('Payment successful! Your plan has been activated.');
-          refreshUser();
-          return;
-        }
-      } catch {
-        // Cross-origin restriction - expected
-      }
-
-      // 2. Safely poll the backend for order status
-      try {
-        const statusRes = await checkOrderStatusAction(currentOrderId);
-        if (statusRes.success && 'status' in statusRes && statusRes.status === 'paid') {
-          setPaymentUrl(null);
-          setCurrentOrderId(null);
-          setIsCheckingOut(null);
-          toast.success('Payment successful! Your plan has been activated.');
-          refreshUser();
-        }
-      } catch (err) {
-        console.error('Failed to check order status', err);
-      }
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [paymentUrl, currentOrderId, refreshUser]);
 
   const handleCheckout = async (plan: any) => {
     // Custom plan -> redirect to WhatsApp
@@ -98,8 +46,32 @@ export default function SubscriptionPage() {
     try {
       const res = await createCheckoutSessionAction(plan.id);
       if (res.success && (res as any).data?.paymentUrl) {
-        setPaymentUrl((res as any).data.paymentUrl);
-        setCurrentOrderId((res as any).data.orderId);
+        const origin = window.location.origin;
+        const paymentUrlWithOrigin = (res as any).data.paymentUrl + `&origin=${encodeURIComponent(origin)}`;
+
+        const gateway = new PTMCheckout({
+          payment_url: paymentUrlWithOrigin,
+          order_id: (res as any).data.orderId,
+          gateway_origin: 'https://ptm-phi.vercel.app',
+          checkStatus: async (orderId) => {
+            const statusRes = await checkOrderStatusAction(orderId);
+            return statusRes.success ? (statusRes as any).status : 'pending';
+          },
+          onSuccess: () => {
+            toast.success('Payment successful! Your plan has been activated.');
+            refreshUser();
+            setIsCheckingOut(null);
+          },
+          onFailure: (err) => {
+            toast.error(err?.message || 'Payment failed');
+            setIsCheckingOut(null);
+          },
+          onClose: () => {
+            setIsCheckingOut(null);
+          }
+        });
+
+        gateway.open();
       } else {
         const errorMsg = (res as any).error;
         if (errorMsg === 'Unauthorized') {
@@ -420,17 +392,6 @@ export default function SubscriptionPage() {
         )}
       </main>
 
-      {paymentUrl && (
-        <div className="fixed inset-0 z-[100] bg-white/10 backdrop-blur-md animate-in fade-in duration-200 flex items-center justify-center p-4 md:p-8">         
-            <iframe
-              ref={iframeRef}
-              src={paymentUrl}
-              className="w-full h-full border-none"
-              allow="payment"
-              style={{ backgroundColor: 'transparent' }}
-            />
-        </div>
-      )}
 
       <footer className="w-full py-8 border-t border-white/20 dark:border-slate-800 flex flex-col items-center justify-center bg-white/5 dark:bg-white/[0.02] backdrop-blur-sm mt-auto">
         <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold tracking-[0.2em] uppercase"></p>
