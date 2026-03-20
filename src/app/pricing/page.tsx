@@ -41,7 +41,7 @@ export default async function PricingPage() {
         {/* Hero Section */}
         <section className="pt-28 md:pt-40 pb-16 relative">
           <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-indigo-100/50 to-transparent rounded-full -translate-y-1/2 translate-x-1/4 blur-3xl" />
-          <div className="max-w-6xl mx-auto px-6 text-center relative z-10">
+          <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
             <p className="text-indigo-600 font-bold uppercase tracking-widest text-sm mb-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
               Pricing
             </p>
@@ -59,8 +59,8 @@ export default async function PricingPage() {
 
         {/* Pricing Cards */}
         <section className="pb-24 relative z-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className={`grid grid-cols-1 gap-8 ${plans.length === 1 ? 'max-w-md mx-auto' : plans.length === 2 ? 'md:grid-cols-2 max-w-3xl mx-auto' : plans.length >= 3 ? 'md:grid-cols-3' : ''}`}>
+          <div className="max-w-4xl mx-auto px-4 sm:px-6">
+            <div className={`grid grid-cols-1 gap-8 ${plans.length === 1 ? 'max-w-md mx-auto' : plans.length === 2 ? 'md:grid-cols-2 max-w-2xl mx-auto' : plans.length >= 3 ? 'md:grid-cols-3' : ''}`}>
               {plans.map((plan) => {
                 const isPopular = !!plan.badge;
                 const isFree = plan.period === 'free';

@@ -3,18 +3,26 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
-import { 
-  ArrowRight, PlayCircle, Plus,  Star,  Mail, Phone, ExternalLink, MoreVertical, Store, CheckCircle,  BookmarkPlus
+import {
+  ArrowRight, Plus, CheckCircle, Search, CloudCog, Download,
+  Layers, MapPin, Cloud, Database, Zap, Shield, BarChart3,
+  Headphones, RefreshCw, BadgeCheck, Star, Mail,
+  Globe as GlobeIcon, Users,
 } from "lucide-react";
-import { FlipWords } from "@/components/ui/flip-words";
-import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 import dynamic from "next/dynamic";
-import { useEffect } from "react";
-import { Search, CloudCog, Download, Layers, MapPin, Cloud, Database } from "lucide-react";
 
-const InfiniteMovingCards = dynamic(() => import("@/components/ui/infinite-moving-cards").then(mod => ({ default: mod.InfiniteMovingCards })), { ssr: false });
+const InfiniteMovingCards = dynamic(
+  () => import("@/components/ui/infinite-moving-cards").then((m) => ({ default: m.InfiniteMovingCards })),
+  { ssr: false }
+);
+const Globe = dynamic(
+  () => import("@/components/magicui/globe").then((m) => ({ default: m.Globe })),
+  { ssr: false }
+);
 
-const flipWords = ["Lead Machine", "Sales Engine", "Growth Pipeline", "Revenue Source"];
+/* ══════════════════════════════════════════════════
+   DATA
+   ══════════════════════════════════════════════════ */
 
 const testimonials = [
   { quote: "LeadSpotter cut our prospecting time by 80%. We went from 2 hours of manual scraping to getting 5,000 verified leads in minutes.", name: "Rahul Mehta", title: "Founder, GrowthForce Agency" },
@@ -23,147 +31,31 @@ const testimonials = [
   { quote: "We've tried every scraper out there. LeadSpotter is the only one that handles cloud processing properly — set it and forget it.", name: "Sarah Chen", title: "VP Sales, DataDriven Co." },
   { quote: "The campaign management dashboard is beautifully designed and the export options are exactly what our CRM needs.", name: "Vikram Patel", title: "Sales Manager, TechBridge" },
 ];
-const mockLeads = [
-  { name: "Skyline Digital Agency", city: "New York, NY", email: "hello@skylinedigital.com", phone: "+1 (212) 555-0147", rating: 4.8, reviews: 124, website: "skylinedigital.com" },
-  { name: "Peak Performance Studio", city: "Los Angeles, CA", email: "info@peakstudio.io", phone: "+1 (310) 555-0283", rating: 4.9, reviews: 89, website: "peakstudio.io" },
-  { name: "Greenfield Consulting", city: "Chicago, IL", email: "team@greenfieldco.com", phone: "+1 (312) 555-0391", rating: 4.7, reviews: 56, website: "greenfieldco.com" },
-  { name: "Nova Marketing Group", city: "Austin, TX", email: "contact@novamarketing.co", phone: "+1 (512) 555-0462", rating: 4.6, reviews: 203, website: "novamarketing.co" },
-  { name: "Bright Path Solutions", city: "Seattle, WA", email: "info@brightpath.dev", phone: "+1 (206) 555-0518", rating: 5.0, reviews: 67, website: "brightpath.dev" },
-  { name: "Omnetra Infotech", city: "Rajkot", email: "omnetrainfotech@gmail.com", phone: "+919773005701", rating: 5.0, reviews: 67, website: "omntrainfotech.com" },
-];
-
-const howItWorks = [
-  { step: "01", Icon: Search, title: "Generate Keywords", description: "Combine niches and locations to create thousands of targeted search combinations in a single click." },
-  { step: "02", Icon: CloudCog, title: "Extract in the Cloud", description: "Our servers process your keywords 24/7, extracting business data and enriching every lead automatically." },
-  { step: "03", Icon: Download, title: "Export & Close", description: "Download CRM-ready CSV files with verified emails, phone numbers, and social profiles." },
-];
-
-const benefits = [
-  { Icon: Layers, title: "Bulk Keyword Generation", slug: "bulk-keyword-generator", description: "Combine hundreds of niches and locations in one click. Generate 5,000+ keyword combinations for massive search coverage." },
-  { Icon: MapPin, title: "Localized Area Search", description: "Pinpoint businesses with surgical precision using zip-code and neighborhood targeting." },
-  { Icon: Cloud, title: "24/7 Cloud Processing", description: "Start your task and walk away. Our servers handle extraction in the background while you sleep." },
-  { Icon: Database, title: "Deep Data Enrichment", slug: "email-enrichment", description: "Go beyond basic Maps info. We scrape websites to find hidden emails and social profiles." },
-];
 
 const faqs = [
-  { q: "What data can LeadSpotter extract?", a: "LeadSpotter extracts business names, addresses, phone numbers, emails, websites, ratings, reviews, social media profiles, and operating hours." },
+  { q: "What data can LeadSpotter extract?", a: "Business names, addresses, phone numbers, emails, websites, ratings, reviews, social media profiles, and operating hours from Google Maps and business websites." },
   { q: "Is this legal to use?", a: "Yes. LeadSpotter only collects publicly available data. We are fully GDPR and CCPA compliant." },
-  { q: "How does cloud processing work?", a: "When you start a task, it runs on our servers. You can close your browser and come back later." },
+  { q: "How does cloud processing work?", a: "Tasks run on our cloud servers 24/7. Close your browser, turn off your computer, and come back later to download results." },
+  { q: "How many leads can I extract per month?", a: "Free plan: 500 leads/month. Paid plans: 5,000 to unlimited. All plans include full data enrichment." },
+  { q: "Can I export directly to my CRM?", a: "Yes — CSV with custom columns, compatible with HubSpot, Salesforce, Pipedrive. Direct Telegram delivery available." },
+  { q: "Do you offer a free trial?", a: "Our Free plan is always free — no credit card required. 500 leads/month and 1 concurrent task to test everything." },
 ];
 
-function DashboardMockup() {
-  const [typedText, setTypedText] = useState("");
-  const [showResults, setShowResults] = useState(false);
-  const [visibleRows, setVisibleRows] = useState(0);
-  const [progressWidth, setProgressWidth] = useState(0);
-  const fullQuery = "Digital marketing agencies in New York";
+/* ══════════════════════════════════════════════════
+   SUB-COMPONENTS
+   ══════════════════════════════════════════════════ */
 
-  useEffect(() => {
-    let i = 0;
-    const typingTimer = setInterval(() => {
-      if (i <= fullQuery.length) {
-        setTypedText(fullQuery.slice(0, i));
-        i++;
-      } else {
-        clearInterval(typingTimer);
-        setTimeout(() => setShowResults(true), 600);
-      }
-    }, 55);
-    return () => clearInterval(typingTimer);
-  }, []);
-
-  useEffect(() => {
-    if (!showResults) return;
-    let row = 0;
-    const rowTimer = setInterval(() => {
-      row++;
-      if (row > mockLeads.length) clearInterval(rowTimer);
-      else setVisibleRows(row);
-    }, 200);
-    return () => clearInterval(rowTimer);
-  }, [showResults]);
-
-  useEffect(() => {
-    if (!showResults) return;
-    let p = 0;
-    const progTimer = setInterval(() => {
-      p += 2;
-      if (p > 100) {
-        clearInterval(progTimer);
-        setProgressWidth(100);
-      } else setProgressWidth(p);
-    }, 40);
-    return () => clearInterval(progTimer);
-  }, [showResults]);
-
+function FaqItem({ item, isOpen, toggle }: { item: { q: string; a: string }; isOpen: boolean; toggle: () => void }) {
   return (
-    <div className="w-full select-none" style={{ fontFamily: "Inter, system-ui, sans-serif", color: "#1E1B4B" }}>
-      <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.8)" }}>
-        <div className="flex items-center gap-2.5">
-          <svg className="w-6 h-6" viewBox="-50 0 256 256" xmlns="http://www.w3.org/2000/svg">
-            <rect x="64" y="64" width="128" height="128" rx="35" stroke="#1F2937" strokeWidth="16" fill="none" />
-            <circle cx="160" cy="96" r="20" fill="#1192EC" />
-          </svg>
-          <span className="text-sm font-bold tracking-tight" style={{ color: "#1e1b4b" }}>LeadSpotter</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-indigo-600" style={{ background: "#EEF2FF" }}>NP</div>
-        </div>
-      </div>
-
-      <div className="p-4 sm:p-6 h-[620px] sm:min-h-[380px]" style={{ background: "linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 50%, #F5F3FF 100%)" }}>
-        <AnimatePresence mode="wait">
-          {!showResults ? (
-            <motion.div key="search" initial={{ opacity: 1 }} exit={{ opacity: 0, y: -20 }} className="flex flex-col items-center justify-center h-full">
-              <p className="serif-font text-2xl sm:text-3xl font-bold mb-8 text-center" style={{ color: "#1e1b4b" }}>Find your next customer</p>
-              <div className="flex items-center gap-3 w-full max-w-lg rounded-full p-2 pl-5 bg-white/70 backdrop-blur-xl border border-white/40">
-                <Search size={20} className="text-slate-400" />
-                <div className="flex-1 text-sm text-indigo-950 truncate">{typedText}<span className="inline-block w-[2px] h-4 bg-indigo-500 ml-0.5 align-middle animate-pulse" /></div>
-                <button className="text-white text-xs font-bold px-5 py-2.5 rounded-full bg-gradient-to-r from-indigo-600 to-blue-600">Search</button>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div key="results" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-lg font-bold" style={{ color: "#1e1b4b" }}>Results for "{fullQuery}"</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="w-20 h-1.5 rounded-full bg-white/60 overflow-hidden">
-                      <motion.div className="h-full bg-indigo-600" style={{ width: `${progressWidth}%` }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {mockLeads.slice(0, visibleRows)?.map((lead, i) => (
-                  <motion.div key={lead.name} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/70 backdrop-blur-xl border border-white/40 shadow-sm">
-                    <Store size={16} className="text-indigo-500" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold truncate">{lead.name}</p>
-                      <p className="text-[10px] text-slate-400">{lead.city}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-}
-
-function FaqItem({ item, isOpen, toggle }: { item: any; isOpen: boolean; toggle: () => void }) {
-  return (
-    <div className="border-b border-indigo-100 last:border-0">
-      <button onClick={toggle} className="w-full flex items-center justify-between py-6 text-left group">
-        <span className="text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors pr-4">{item.q}</span>
-        <Plus size={24} className={`text-indigo-400 shrink-0 transition-transform duration-300 ${isOpen ? "rotate-45" : ""}`} />
+    <div className="border-b border-indigo-50 last:border-0">
+      <button onClick={toggle} className="w-full flex items-center justify-between py-5 text-left group cursor-pointer">
+        <span className="text-[15px] font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors pr-4">{item.q}</span>
+        <Plus size={18} className={`text-indigo-300 shrink-0 transition-transform duration-300 ${isOpen ? "rotate-45" : ""}`} />
       </button>
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <p className="pb-6 text-gray-500 leading-relaxed max-w-3xl">{item.a}</p>
+            <p className="pb-5 text-gray-500 text-sm leading-relaxed">{item.a}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -171,111 +63,305 @@ function FaqItem({ item, isOpen, toggle }: { item: any; isOpen: boolean; toggle:
   );
 }
 
+/* ══════════════════════════════════════════════════
+   PAGE
+   ══════════════════════════════════════════════════ */
+
 export function HomeClient() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
-    <>
-      <section className="pt-[40%] md:pt-[15%] pb-8 md:pb-12 relative">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="rounded-3xl md:rounded-[3.5rem] border border-indigo-100 bg-gradient-to-b from-indigo-50/80 via-white to-white overflow-hidden relative">
-            <div className="px-6 sm:px-12 pt-16 md:pt-24 pb-8 text-center relative z-10">
-              <h1 className="font-sans text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6">
-                Turn Maps into your <FlipWords words={flipWords} className="text-indigo-600" />
-              </h1>
-              <p className="max-w-2xl mx-auto mb-10 text-base font-normal text-gray-500 leading-snug tracking-wide">
-                Extract verified leads from maps while you focus on closing deals.
-              </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-                <Link href="/signup">
-                  <HoverBorderGradient containerClassName="rounded-full" className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-8 py-3.5 text-base font-bold">
-                    <span>Start for Free</span>
-                    <ArrowRight size={20} />
-                  </HoverBorderGradient>
-                </Link>
-                <Link href="#how-it-works" className="px-8 py-3.5 rounded-full text-base font-semibold text-gray-600 border border-gray-200 bg-white hover:border-indigo-200 flex items-center gap-2">
-                  <PlayCircle size={20} className="text-indigo-400" />
-                  How it Works
-                </Link>
-              </div>
-            </div>
-            <div className="px-4 sm:px-8 md:px-12 pb-4 sm:pb-8 relative z-10">
-              <div className="rounded-2xl border border-gray-200/80 bg-white overflow-hidden shadow-2xl shadow-indigo-500/5">
-                <div className="h-10 bg-gray-50 flex items-center px-4 gap-2 border-b border-gray-100">
-                  <div className="flex gap-1.5"><div className="w-3 h-3 rounded-full bg-red-400/80" /><div className="w-3 h-3 rounded-full bg-amber-400/80" /><div className="w-3 h-3 rounded-full bg-green-400/80" /></div>
-                </div>
-                <DashboardMockup />
-              </div>
-            </div>
+    <div className="bg-white">
+
+      {/* ━━━━━━ HERO — clean white + AI card, w-full ━━━━━━ */}
+      <section className="relative bg-gradient-to-t from-white to-[#5c49ee]/10 border-b h-screen flex items-center px-6 md:px-16 overflow-hidden bg-white">
+
+        {/* Dot grid background */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          backgroundImage: "radial-gradient(circle, rgba(0,0,0,0.05) 1px, transparent 1px)",
+          backgroundSize: "30px 30px",
+        }} />
+
+        {/* Subtle wave overlay */}
+        <div className="absolute inset-0 opacity-[0.07] pointer-events-none">
+          <svg viewBox="0 0 1440 600" className="w-full h-full" preserveAspectRatio="none">
+            <path d="M0,300 C360,150 720,450 1080,250 C1260,180 1380,350 1440,300" stroke="#6366f1" strokeWidth="1.5" fill="none" />
+            <path d="M0,350 C360,200 720,500 1080,300 C1260,230 1380,400 1440,350" stroke="#a78bfa" strokeWidth="1" fill="none" />
+          </svg>
+        </div>
+
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 items-center w-full relative z-10 pt-28 md:pt-20 pb-16">
+
+          {/* ── LEFT: Text ── */}
+          <div className="space-y-6">
+            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
+              className="text-4xl font-sans font-medium md:text-6xl ">
+              Find, Analyze, and Convert High-Quality Leads
+            </motion.h1>
+
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+              className="text-gray-600 max-w-lg text-base">
+              Discover real-time leads, identify opportunities, and automate outreach with AI precision.
+            </motion.p>
+
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+              className="flex flex-col sm:flex-row items-start gap-3">
+              <Link href="/signup"
+                className="bg-gray-900 text-white px-6 py-3 rounded-xl shadow-md hover:scale-105 transition text-sm font-medium flex items-center gap-2">
+                Get Started <ArrowRight size={16} />
+              </Link>
+              <Link href="/pricing"
+                className="border border-gray-300 px-6 py-3 rounded-xl text-sm font-medium text-gray-700 bg-white/60 hover:bg-white flex items-center gap-2 transition-all shadow-sm">
+                Request Demo
+              </Link>
+            </motion.div>
           </div>
+
+          {/* ── RIGHT: Floating AI Card ── */}
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2 }}
+            className="relative flex justify-center">
+
+            {/* Question bubble */}
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -top-4 right-4 md:right-10 z-10"
+            >
+              <div className="bg-white px-4 py-2 rounded-xl shadow text-sm font-medium text-gray-700">
+                What&apos;s the conversion rate?
+              </div>
+            </motion.div>
+
+            {/* Main insight card */}
+            <motion.div
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+              className="bg-white rounded-2xl shadow-xl p-6 w-[320px] mt-8"
+            >
+              <p className="text-emerald-600 font-semibold text-lg">
+                Conversion rate is 18.4%
+              </p>
+              <p className="text-orange-500 font-medium mt-3 text-[15px]">
+                Top 20% leads generate 65% revenue
+              </p>
+              <p className="text-gray-500 text-sm mt-3 leading-relaxed">
+                Focus on high-intent leads to maximize ROI and reduce wasted outreach.
+              </p>
+            </motion.div>
+          </motion.div>
+
         </div>
       </section>
 
-      <section className="py-16 md:py-32" id="how-it-works">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <p className="text-indigo-600 font-bold uppercase tracking-widest text-sm mb-4">Process</p>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">From keywords to closed deals</h2>
-          </div>
+      {/* ━━━━━━ HOW IT WORKS ━━━━━━ */}
+      <section className="py-24 md:py-32" id="how-it-works">
+        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
+            <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Process</p>
+            <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-3">Three steps. That&apos;s it.</h2>
+            <p className="text-gray-400 text-sm max-w-sm mx-auto">No complex setup. Enter keywords and let the cloud handle everything.</p>
+          </motion.div>
+
           <div className="grid md:grid-cols-3 gap-8">
-            {howItWorks?.map((item: any) => (
-              <div key={item.step} className="p-8 rounded-2xl border border-gray-100 bg-white">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 bg-indigo-100">
-                  <item.Icon size={28} className="text-indigo-600" />
+            {[
+              { n: "1", icon: Search, title: "Generate Keywords", desc: "Combine hundreds of niches with locations to create thousands of targeted search combinations in one click.", color: "bg-violet-500", shadow: "shadow-violet-500/20" },
+              { n: "2", icon: CloudCog, title: "Extract in the Cloud", desc: "Our servers process your keywords 24/7, extracting business data and enriching every lead automatically.", color: "bg-indigo-500", shadow: "shadow-indigo-500/20" },
+              { n: "3", icon: Download, title: "Export & Close", desc: "Download CRM-ready CSV files with verified emails, phone numbers, and social profiles.", color: "bg-blue-500", shadow: "shadow-blue-500/20" },
+            ].map((item, i) => (
+              <motion.div key={item.n} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.12 }}
+                className="group text-center">
+                <div className={`inline-flex w-14 h-14 rounded-2xl ${item.color} ${item.shadow} shadow-lg items-center justify-center mb-5 group-hover:scale-110 transition-transform`}>
+                  <item.icon size={24} className="text-white" />
                 </div>
-                <h3 className="text-xl font-bold mb-3">{item.title}</h3>
-                <p className="text-gray-500">{item.description}</p>
-              </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed max-w-[260px] mx-auto">{item.desc}</p>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-       <section className="py-16 md:py-32" id="features">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <p className="text-indigo-600 font-bold uppercase tracking-widest text-sm mb-4">Features</p>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">Features that you never expected</h2>
-          </div>
-          <div className="grid md:grid-cols-2 gap-6">
-            {benefits?.map((item: any) => (
-              <div key={item.title} className="p-8 rounded-2xl border border-gray-200 bg-white shadow-sm hover:border-indigo-300 transition-colors">
-                <item.Icon size={24} className="text-indigo-600 mb-4" />
-                <h3 className="text-lg font-bold mb-2">{item.title}</h3>
-                <p className="text-gray-500 text-sm mb-4">{item.description}</p>
+      {/* ━━━━━━ FEATURES ━━━━━━ */}
+      <section className="py-24 md:py-32 bg-gray-50/40" id="features">
+        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-14">
+            <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Features</p>
+            <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-3">Built for serious lead gen</h2>
+            <p className="text-gray-400 text-sm max-w-sm mx-auto">A complete B2B toolkit that runs 24/7 in the cloud.</p>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            {[
+              { icon: Layers, title: "Bulk Keyword Generation", desc: "Generate 5,000+ keyword combos from hundreds of niches and locations in one click.", accent: "bg-violet-50", slug: "bulk-keyword-generator" },
+              { icon: MapPin, title: "Localized Area Search", desc: "Pinpoint businesses with zip-code, neighborhood, and city-level precision targeting.", accent: "bg-rose-50" },
+              { icon: Cloud, title: "24/7 Cloud Processing", desc: "Start a task and walk away. Our servers extract while you sleep or focus on closing.", accent: "bg-sky-50" },
+              { icon: Database, title: "Deep Data Enrichment", desc: "Scrape websites for hidden emails, phones, and social profiles beyond Maps data.", accent: "bg-amber-50", slug: "email-enrichment" },
+              { icon: Mail, title: "Verified Email Extraction", desc: "Real business emails from contact pages with automatic validation built right in.", accent: "bg-emerald-50" },
+              { icon: Zap, title: "CRM-Ready Export", desc: "Clean CSV with custom columns for HubSpot, Salesforce, Pipedrive. Telegram delivery too.", accent: "bg-indigo-50" },
+            ].map((item, i) => (
+              <motion.div key={item.title} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06 }}
+                className="group p-6 rounded-2xl bg-white border border-gray-100 hover:border-indigo-100 hover:shadow-lg hover:shadow-indigo-500/5 transition-all">
+                <div className={`w-10 h-10 rounded-xl ${item.accent} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                  <item.icon size={20} className="text-gray-700" />
+                </div>
+                <h3 className="text-[15px] font-bold text-gray-900 mb-1.5">{item.title}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed mb-3">{item.desc}</p>
                 {item.slug && (
-                  <Link href={`/features/${item.slug}`} className="text-xs font-bold text-indigo-600 hover:underline">
-                    Learn more about {item.title} →
+                  <Link href={`/features/${item.slug}`} className="text-xs font-semibold text-indigo-500 hover:text-indigo-600 inline-flex items-center gap-1 transition-all">
+                    Learn more <ArrowRight size={11} />
                   </Link>
                 )}
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="text-center mt-10">
+            <Link href="/features" className="text-sm font-semibold text-indigo-500 hover:text-indigo-600 inline-flex items-center gap-1.5 transition-colors">
+              View all features <ArrowRight size={15} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ━━━━━━ STATS ━━━━━━ */}
+      <section className="py-16 md:py-20 border-y border-indigo-50/60">
+        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+            {[
+              { val: "2M+", label: "Data points processed daily", icon: BarChart3 },
+              { val: "5,000+", label: "Active users worldwide", icon: Users },
+              { val: "99%", label: "Uptime reliability", icon: Shield },
+              { val: "150+", label: "Countries served", icon: GlobeIcon },
+            ].map((s, i) => (
+              <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
+                className="text-center md:text-left">
+                <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center mb-3 mx-auto md:mx-0">
+                  <s.icon size={16} className="text-indigo-500" />
+                </div>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{s.val}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ━━━━━━ GLOBE ━━━━━━ */}
+      <section className="py-24 md:py-32">
+        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
+              <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Global Reach</p>
+              <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-4">Extract from anywhere on the planet</h2>
+              <p className="text-gray-400 text-sm leading-relaxed mb-6">
+                Millions of data points daily across 150+ countries. Whether you target businesses in Mumbai, New York, London, or Tokyo — our cloud handles it all seamlessly.
+              </p>
+              <Link href="/signup" className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">
+                Start extracting free <ArrowRight size={15} />
+              </Link>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
+              className="flex items-center justify-center">
+              <div className="relative w-full max-w-[340px] aspect-square">
+                <Globe className="opacity-80" />
+                <div className="absolute inset-0 bg-indigo-300/10 rounded-full blur-[60px] pointer-events-none" />
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* ━━━━━━ TESTIMONIALS ━━━━━━ */}
+      <section className="py-24 md:py-32 bg-indigo-50/30 overflow-hidden">
+        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+            <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Testimonials</p>
+            <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-3">Loved by sales teams everywhere</h2>
+            <p className="text-gray-400 text-sm max-w-sm mx-auto">Join thousands who trust LeadSpotter for lead generation.</p>
+          </motion.div>
+        </div>
+        <InfiniteMovingCards items={testimonials} direction="left" speed="slow" />
+
+        <div className="max-w-4xl mx-auto px-5 sm:px-8 mt-14">
+          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+            {[
+              { val: "4.9/5", sub: "from 500+ reviews", stars: true },
+              { val: "80%", sub: "less prospecting time" },
+              { val: "12%", sub: "email response rate" },
+              { val: "3x", sub: "more qualified leads" },
+            ].map((s) => (
+              <div key={s.sub} className="text-center">
+                <p className="text-xl font-bold text-gray-900 flex items-center gap-1 justify-center">
+                  {s.val}
+                  {s.stars && (
+                    <span className="flex ml-1">
+                      {[...Array(5)].map((_, i) => <Star key={i} size={11} className="text-amber-400 fill-amber-400" />)}
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-gray-400">{s.sub}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="py-16 md:py-32 ">
-        <div className="max-w-6xl mx-auto px-6 text-center mb-12">
-          <h2 className="font-sans  text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">Loved by sales teams everywhere</h2>
+      {/* ━━━━━━ WHY US ━━━━━━ */}
+      <section className="py-24 md:py-32">
+        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-14">
+            <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Why LeadSpotter</p>
+            <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-3">Not just another scraper</h2>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { icon: Zap, title: "10x Faster", desc: "5,000+ leads in minutes with parallel cloud processing.", tint: "bg-amber-50", iconColor: "text-amber-600" },
+              { icon: Shield, title: "GDPR Compliant", desc: "Only publicly available data. Fully GDPR & CCPA compliant.", tint: "bg-emerald-50", iconColor: "text-emerald-600" },
+              { icon: RefreshCw, title: "Always Fresh", desc: "Real-time extraction means no stale databases ever.", tint: "bg-sky-50", iconColor: "text-sky-600" },
+              { icon: BadgeCheck, title: "Verified Data", desc: "Every email and phone number validated before delivery.", tint: "bg-violet-50", iconColor: "text-violet-600" },
+              { icon: Headphones, title: "24/7 Support", desc: "Minutes, not days. Chat, email, or call whenever you need.", tint: "bg-rose-50", iconColor: "text-rose-600" },
+              { icon: BarChart3, title: "Analytics", desc: "Track exports, quality, and campaign performance metrics.", tint: "bg-indigo-50", iconColor: "text-indigo-600" },
+            ].map((item, i) => (
+              <motion.div key={item.title} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06 }}
+                className="p-5 rounded-2xl border border-gray-100 bg-white hover:shadow-lg hover:shadow-indigo-500/5 transition-all group">
+                <div className={`w-9 h-9 rounded-lg ${item.tint} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                  <item.icon size={17} className={item.iconColor} />
+                </div>
+                <h3 className="text-sm font-bold text-gray-900 mb-1">{item.title}</h3>
+                <p className="text-gray-400 text-xs leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
         </div>
-        <InfiniteMovingCards items={testimonials} direction="left" speed="slow" />
       </section>
 
-      <section className="py-16 md:py-32">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid md:grid-cols-2 gap-12 items-start">
-            <div>
-              <h2 className="font-sans text-3xl sm:text-4xl font-bold text-gray-900 mb-4">FAQ</h2>
-              <p className="text-gray-500 mb-6">Everything you need to know about LeadSpotter.</p>
+      {/* ━━━━━━ FAQ ━━━━━━ */}
+      <section className="py-24 md:py-32 bg-gray-50/40">
+        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+          <div className="grid md:grid-cols-5 gap-10">
+            <div className="md:col-span-2 md:sticky md:top-32 md:self-start">
+              <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+                <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">FAQ</p>
+                <h2 className="text-3xl font-semibold text-gray-900 mb-3">Questions?</h2>
+                <p className="text-gray-400 text-sm mb-5">Everything you need to know about LeadSpotter.</p>
+                <Link href="/pricing" className="inline-flex items-center gap-2 text-indigo-600 font-semibold text-sm hover:gap-3 transition-all">
+                  View pricing <ArrowRight size={15} />
+                </Link>
+              </motion.div>
             </div>
-            <div>
-              {faqs?.map((faq: any, i: number) => (
+            <div className="md:col-span-3">
+              {faqs.map((faq, i) => (
                 <FaqItem key={i} item={faq} isOpen={openFaq === i} toggle={() => setOpenFaq(openFaq === i ? null : i)} />
               ))}
             </div>
           </div>
         </div>
       </section>
-    </>
+
+    
+      
+
+    </div>
   );
 }

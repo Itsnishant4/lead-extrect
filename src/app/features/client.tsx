@@ -87,7 +87,7 @@ export default function FeaturesPageClient() {
       {/* Hero */}
       <section className="pt-28 md:pt-40 pb-16 md:pb-24 relative">
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-indigo-100/50 to-transparent rounded-full -translate-y-1/2 translate-x-1/4 blur-3xl" />
-        <div className="max-w-6xl mx-auto px-6 text-center relative z-10">
+        <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
             className="text-indigo-600 font-bold uppercase tracking-widest text-sm mb-4">All Features</motion.p>
           <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
@@ -111,7 +111,7 @@ export default function FeaturesPageClient() {
       {/* Core Features - Detailed */}
       {coreFeatures.map((feature, i) => (
         <AnimatedSection key={feature.title} className={`py-16 md:py-24 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}>
-          <div className="max-w-6xl mx-auto px-6">
+          <div className="max-w-4xl mx-auto px-6">
             <div className={`grid md:grid-cols-2 gap-12 items-center ${i % 2 === 1 ? "md:direction-rtl" : ""}`}>
               <div className={i % 2 === 1 ? "md:order-2" : ""}>
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 bg-gradient-to-br from-indigo-100 to-violet-100">
@@ -143,7 +143,7 @@ export default function FeaturesPageClient() {
 
       {/* Additional Features Grid */}
       <AnimatedSection className="py-16 md:py-24">
-        <div className="max-w-6xl mx-auto px-6">
+        <div className="max-w-4xl mx-auto px-6">
           <motion.div variants={fadeUp} className="text-center mb-16">
             <p className="text-indigo-600 font-bold uppercase tracking-widest text-sm mb-4">And Much More</p>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">Additional Capabilities</h2>
