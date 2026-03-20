@@ -155,7 +155,7 @@ export function HomeClient() {
 
       {/* ━━━━━━ HOW IT WORKS ━━━━━━ */}
       <section className="py-24 md:py-32" id="how-it-works">
-        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
             <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Process</p>
             <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-3">Three steps. That&apos;s it.</h2>
@@ -183,7 +183,7 @@ export function HomeClient() {
 
       {/* ━━━━━━ FEATURES ━━━━━━ */}
       <section className="py-24 md:py-32 bg-gray-50/40" id="features">
-        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-14">
             <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Features</p>
             <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-3">Built for serious lead gen</h2>
@@ -225,7 +225,7 @@ export function HomeClient() {
 
       {/* ━━━━━━ STATS ━━━━━━ */}
       <section className="py-16 md:py-20 border-y border-indigo-50/60">
-        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             {[
               { val: "2M+", label: "Data points processed daily", icon: BarChart3 },
@@ -248,7 +248,7 @@ export function HomeClient() {
 
       {/* ━━━━━━ GLOBE ━━━━━━ */}
       <section className="py-24 md:py-32">
-        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
               <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Global Reach</p>
@@ -273,7 +273,7 @@ export function HomeClient() {
 
       {/* ━━━━━━ TESTIMONIALS ━━━━━━ */}
       <section className="py-24 md:py-32 bg-indigo-50/30 overflow-hidden">
-        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
             <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Testimonials</p>
             <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-3">Loved by sales teams everywhere</h2>
@@ -282,7 +282,7 @@ export function HomeClient() {
         </div>
         <InfiniteMovingCards items={testimonials} direction="left" speed="slow" />
 
-        <div className="max-w-4xl mx-auto px-5 sm:px-8 mt-14">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 mt-14">
           <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
             {[
               { val: "4.9/5", sub: "from 500+ reviews", stars: true },
@@ -308,7 +308,7 @@ export function HomeClient() {
 
       {/* ━━━━━━ WHY US ━━━━━━ */}
       <section className="py-24 md:py-32">
-        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-14">
             <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Why LeadSpotter</p>
             <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-3">Not just another scraper</h2>
@@ -338,7 +338,7 @@ export function HomeClient() {
 
       {/* ━━━━━━ FAQ ━━━━━━ */}
       <section className="py-24 md:py-32 bg-gray-50/40">
-        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8">
           <div className="grid md:grid-cols-5 gap-10">
             <div className="md:col-span-2 md:sticky md:top-32 md:self-start">
               <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
@@ -359,8 +359,8 @@ export function HomeClient() {
         </div>
       </section>
 
-    
-      
+
+
 
     </div>
   );

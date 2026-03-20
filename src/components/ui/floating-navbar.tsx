@@ -37,7 +37,7 @@ export const FloatingNav = ({
     if (typeof window !== "undefined") {
       setIsAtTop(window.scrollY < 40);
     }
-    
+
     if (alwaysVisible) {
       setVisible(true);
       return;

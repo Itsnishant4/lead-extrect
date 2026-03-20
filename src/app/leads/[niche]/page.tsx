@@ -28,9 +28,9 @@ export default async function NicheHubPage({ params }: { params: Params }) {
 
   return (
     <div className="bg-white text-gray-900 antialiased min-h-screen flex flex-col">
-      <JsonLd 
-        type="FAQPage" 
-        data={{ 
+      <JsonLd
+        type="FAQPage"
+        data={{
           faqs: [
             {
               "@type": "Question",
@@ -41,13 +41,13 @@ export default async function NicheHubPage({ params }: { params: Params }) {
               }
             }
           ]
-        }} 
+        }}
       />
       <LandingBanner />
       <LandingHeader />
-      
+
       <main className="pt-32 pb-20 flex-grow">
-        <div className="max-w-4xl mx-auto px-6">
+        <div className="max-w-6xl mx-auto px-6">
           <div className="mb-12 text-center">
             <h1 className="text-3xl md:text-5xl font-bold mb-6">Verified {capitalizedNiche} Leads</h1>
             <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
@@ -57,9 +57,9 @@ export default async function NicheHubPage({ params }: { params: Params }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-12">
             {popularCities.map((city) => (
-              <Link 
+              <Link
                 key={city}
-                href={`/leads/${niche}/${city}`} 
+                href={`/leads/${niche}/${city}`}
                 className="flex items-center p-4 rounded-xl border border-gray-100 hover:border-indigo-200 hover:shadow-md transition-all group"
               >
                 <div className="bg-indigo-50 p-3 mr-3 rounded-lg text-indigo-600 mr-4 group-hover:bg-indigo-100 transition-colors">

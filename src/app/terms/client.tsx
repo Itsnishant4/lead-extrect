@@ -7,7 +7,7 @@ export default function TermsPageClient() {
     return (
         <div className="bg-white text-slate-900 antialiased min-h-screen flex flex-col">
             <main className="flex-grow py-12 lg:py-20 pt-28 md:pt-36">
-                <div className="container mx-auto px-6 max-w-4xl">
+                <div className="container mx-auto px-6 max-w-6xl">
                     <h1 className="text-4xl font-extrabold mb-4">Terms of Service</h1>
                     <p className="text-slate-500 mb-10 text-sm">Last updated: February 25, 2026</p>
 

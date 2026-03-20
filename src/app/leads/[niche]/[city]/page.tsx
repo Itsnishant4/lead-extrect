@@ -30,7 +30,7 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
   const { niche, city } = await params;
   const capitalizedNiche = niche.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   const capitalizedCity = city.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-  
+
   const searchNiche = niche.replace(/-/g, ' ');
   const searchCity = city.replace(/-/g, ' ');
 
@@ -51,11 +51,11 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
       withEmail: sql<number>`SUM(${seoHubRegistry.withEmail})`,
       avgRating: sql<number>`AVG(${seoHubRegistry.avgRating})`,
     })
-    .from(seoHubRegistry)
-    .where(and(
-      like(seoHubRegistry.niche, `%${searchNiche}%`),
-      like(seoHubRegistry.city, `%${searchCity}%`)
-    ));
+      .from(seoHubRegistry)
+      .where(and(
+        like(seoHubRegistry.niche, `%${searchNiche}%`),
+        like(seoHubRegistry.city, `%${searchCity}%`)
+      ));
 
     if (statsRes[0] && Number(statsRes[0].total || 0) > 0) {
       total = Number(statsRes[0].total || 0);
@@ -72,11 +72,11 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
         withEmail: sql<number>`SUM(CASE WHEN ${leads.email} IS NOT NULL AND ${leads.email} != '' THEN 1 ELSE 0 END)`,
         avgRating: sql<number>`AVG(${leads.rating})`,
       })
-      .from(leads)
-      .where(and(
-        like(leads.category, `%${searchNiche}%`),
-        like(leads.city, `%${searchCity}%`)
-      ));
+        .from(leads)
+        .where(and(
+          like(leads.category, `%${searchNiche}%`),
+          like(leads.city, `%${searchCity}%`)
+        ));
       if (fallbackRes[0]) {
         total = Number(fallbackRes[0].total || 0);
         withWebsite = Number(fallbackRes[0].withWebsite || 0);
@@ -93,12 +93,12 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
       reviewsCount: leads.reviewsCount,
       address: leads.address,
     })
-    .from(leads)
-    .where(and(
-      like(leads.category, `%${searchNiche}%`),
-      like(leads.city, `%${searchCity}%`)
-    ))
-    .limit(3);
+      .from(leads)
+      .where(and(
+        like(leads.category, `%${searchNiche}%`),
+        like(leads.city, `%${searchCity}%`)
+      ))
+      .limit(3);
 
   } catch (error) {
     console.error('Failed to fetch lead stats:', error);
@@ -120,9 +120,9 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
 
   return (
     <div className="bg-white text-gray-900 antialiased">
-      <JsonLd 
-        type="FAQPage" 
-        data={{ 
+      <JsonLd
+        type="FAQPage"
+        data={{
           faqs: [
             {
               "@type": "Question",
@@ -149,13 +149,13 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
               }
             }
           ]
-        }} 
+        }}
       />
       <LandingBanner />
       <LandingHeader />
-      
+
       <main className="pt-32 pb-20">
-        <div className="max-w-4xl mx-auto px-6">
+        <div className="max-w-6xl mx-auto px-6">
           <div className="mb-12">
             <h1 className="text-3xl md:text-5xl font-bold mb-6">Verified {capitalizedNiche} in {capitalizedCity}</h1>
             <p className="text-xl text-gray-600 leading-relaxed mb-8">
@@ -194,7 +194,7 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
               <h2 className="text-2xl font-bold">Top Rated {capitalizedNiche} in {capitalizedCity}</h2>
               <span className="text-sm text-gray-500 hidden md:inline-block">Average Rating: {avgRating.toFixed(1)} ★</span>
             </div>
-            
+
             <div className="grid gap-4">
               {sampleLeads.map((lead, i) => (
                 <div key={i} className="flex flex-col md:flex-row md:items-center justify-between p-6 rounded-2xl border border-gray-100 bg-white hover:border-indigo-200 transition-colors shadow-sm relative overflow-hidden group">

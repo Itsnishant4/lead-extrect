@@ -56,26 +56,26 @@ export default async function FeaturePage({ params }: { params: Params }) {
 
   return (
     <div className="bg-white text-gray-900 antialiased">
-      <JsonLd 
-        type="SoftwareApplication" 
-        data={{ 
-          name: feature.title, 
+      <JsonLd
+        type="SoftwareApplication"
+        data={{
+          name: feature.title,
           description: feature.description,
           featureList: feature.benefits.join(', ')
-        }} 
+        }}
       />
       <LandingBanner />
       <LandingHeader />
-      
+
       <main className="pt-32 pb-20">
-        <div className="max-w-4xl mx-auto px-6">
+        <div className="max-w-6xl mx-auto px-6">
           <div className="flex items-center gap-4 mb-8">
             <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600">
               <feature.icon size={32} />
             </div>
             <h1 className="text-4xl font-bold">{feature.title}</h1>
           </div>
-          
+
           <p className="text-xl text-gray-600 mb-10 leading-relaxed">
             {feature.longDescription}
           </p>

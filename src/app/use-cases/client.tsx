@@ -85,7 +85,7 @@ export default function UseCasesPageClient() {
       {/* Hero */}
       <section className="pt-28 md:pt-40 pb-16 md:pb-24 relative">
         <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-indigo-100/40 to-transparent rounded-full -translate-y-1/2 -translate-x-1/4 blur-3xl" />
-        <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
+        <div className="max-w-6xl mx-auto px-6 text-center relative z-10">
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
             className="text-indigo-600 font-bold uppercase tracking-widest text-sm mb-4">Use Cases</motion.p>
           <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
@@ -102,7 +102,7 @@ export default function UseCasesPageClient() {
       {/* Use Case Sections */}
       {useCases.map((uc, i) => (
         <AnimatedSection key={uc.title} className={`py-16 md:py-20 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}>
-          <div className="max-w-4xl mx-auto px-6">
+          <div className="max-w-6xl mx-auto px-6">
             <div className="grid md:grid-cols-2 gap-12 items-start">
               <div className={i % 2 === 1 ? "md:order-2" : ""}>
                 <div className="flex items-center gap-3 mb-4">
@@ -143,7 +143,7 @@ export default function UseCasesPageClient() {
         </AnimatedSection>
       ))}
 
-    
+
 
       <LandingFooter />
     </div>
