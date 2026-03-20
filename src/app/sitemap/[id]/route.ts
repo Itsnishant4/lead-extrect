@@ -100,17 +100,17 @@ export async function GET(
       if (niche && city) {
         if (!uniqueSlugs.has(`niche-${niche}`)) {
           uniqueSlugs.add(`niche-${niche}`);
-          addUrl(`${baseUrl}/leads/${niche}`, new Date(), 'weekly', 0.7);
+          addUrl(`${baseUrl}/leads/${niche}`, new Date(), 'daily', 0.7);
         }
         if (!uniqueSlugs.has(`city-${city}`)) {
           uniqueSlugs.add(`city-${city}`);
-          addUrl(`${baseUrl}/leads/in/${city}`, new Date(), 'weekly', 0.7);
+          addUrl(`${baseUrl}/leads/in/${city}`, new Date(), 'daily', 0.7);
         }
 
         const slug = `${niche}/${city}`;
         if (!uniqueSlugs.has(slug)) {
           uniqueSlugs.add(slug);
-          addUrl(`${baseUrl}/leads/${slug}`, new Date(), 'weekly', 0.6);
+          addUrl(`${baseUrl}/leads/${slug}`, new Date(), 'daily', 0.6);
         }
       }
     });
