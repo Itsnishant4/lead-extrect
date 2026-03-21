@@ -99,7 +99,8 @@ export class PTMCheckout {
       boxShadow: '0 25px 50px -12px rgba(0,0,0,0.0  )',
       backgroundColor: 'transparent'
     });
-    this.iframe.setAttribute('allow', 'payment');
+    this.iframe.setAttribute('allow', 'payment; clipboard-read; clipboard-write');
+    this.iframe.setAttribute('sandbox', 'allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation allow-top-navigation-by-user-activation');
 
     // this.modal.appendChild(closeBtn);
     this.modal.appendChild(this.iframe);

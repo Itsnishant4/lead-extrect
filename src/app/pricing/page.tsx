@@ -3,14 +3,16 @@ import { PlanService } from '@/services/plan.service';
 import { LandingHeader } from '@/components/LandingHeader';
 import { LandingFooter } from '@/components/LandingFooter';
 import { LandingBanner } from '@/components/LandingBanner';
+import JsonLd from '@/components/JsonLd';
 import { Check, X, Zap, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 export const revalidate = 3600; // ISR: Revalidate every hour
 
 export const metadata: Metadata = {
-  title: 'Pricing | LeadSpotter',
+  title: 'LeadSpotter Pricing — Free & Paid Plans for Google Maps Lead Extraction',
   description: 'Choose the right plan to scale your lead generation. Transparent pricing for Google Maps extraction.',
+  keywords: ['leadspotter pricing', 'google maps scraper pricing', 'lead extraction plans', 'b2b lead generation cost', 'google maps leads pricing'],
   alternates: {
     canonical: 'https://leadspotter.in/pricing',
   },
@@ -36,12 +38,60 @@ export default async function PricingPage() {
     <div className="bg-white text-gray-900 antialiased overflow-x-hidden min-h-screen flex flex-col">
       <LandingBanner />
       <LandingHeader />
+      <JsonLd
+        type="BreadcrumbList"
+        data={{
+          items: [
+            { name: "Home", url: "https://leadspotter.in" },
+            { name: "Pricing", url: "https://leadspotter.in/pricing" },
+          ],
+        }}
+      />
+      <JsonLd
+        type="FAQPage"
+        data={{
+          faqs: [
+            {
+              "@type": "Question",
+              name: "What happens when I run out of credits?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Your active tasks will pause. You can upgrade to a higher plan to resume them immediately, or wait until your next billing cycle for credits to reset.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "Can I cancel my subscription?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Yes, you can cancel your monthly subscription at any time from your dashboard. You'll continue to have access until the end of your billing period.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: 'How are "leads" counted?',
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "One lead equals one business profile successfully extracted from Google Maps, complete with all available data points (emails, phones, socials, etc).",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "Do you offer refunds?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Because we incur immediate server and proxy costs for extracting leads, we generally do not offer refunds. We recommend trying the Free plan first to ensure LeadSpotter meets your needs.",
+              },
+            },
+          ],
+        }}
+      />
 
       <main className="flex-1 w-full">
         {/* Hero Section */}
         <section className="pt-28 md:pt-40 pb-16 relative">
           <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-indigo-100/50 to-transparent rounded-full -translate-y-1/2 translate-x-1/4 blur-3xl" />
-          <div className="max-w-6xl mx-auto px-6 text-center relative z-10">
+          <div className="max-w-5xl mx-auto px-6 text-center relative z-10">
             <p className="text-indigo-600 font-bold uppercase tracking-widest text-sm mb-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
               Pricing
             </p>
@@ -59,7 +109,7 @@ export default async function PricingPage() {
 
         {/* Pricing Cards */}
         <section className="pb-24 relative z-10">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6">
             <div className={`grid grid-cols-1 gap-8 ${plans.length === 1 ? 'max-w-md mx-auto' : plans.length === 2 ? 'md:grid-cols-2 max-w-2xl mx-auto' : plans.length >= 3 ? 'md:grid-cols-3' : ''}`}>
               {plans.map((plan) => {
                 const isPopular = !!plan.badge;
@@ -186,7 +236,7 @@ export default async function PricingPage() {
         <section className="py-24 bg-gray-50/50">
           <div className="max-w-4xl mx-auto px-6">
             <div className="text-center mb-16">
-              <h2 className="max-w-6xlxl font-bold text-gray-900 mb-4">Frequently asked questions</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Frequently asked questions</h2>
               <p className="text-gray-500">Everything you need to know about the product and billing.</p>
             </div>
 

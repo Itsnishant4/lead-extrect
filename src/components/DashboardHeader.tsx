@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { Logo } from '@/components/Logo';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import {
-  Search, Zap, Rocket, ChevronDown, User, CreditCard,
+  Zap, Rocket, ChevronDown, User, CreditCard,
   LogOut, LogIn, UserPlus, X,
   Menu, Receipt, LayoutDashboard,
   Bell, Check, CheckCheck, AlertTriangle, CreditCard as CreditCardIcon,
@@ -18,14 +18,13 @@ import {
 type NavStyle = 'default' | 'segment' | 'iconOnly' | 'wide' | 'logoDashboard';
 
 interface DashboardHeaderProps {
-  activePage: 'dashboard' | 'search' | 'bulk' | 'campaigns';
+  activePage: 'dashboard' | 'leads' | 'campaigns';
   navStyle?: NavStyle;
 }
 
 const navIcons = {
   dashboard: LayoutDashboard,
-  search: Search,
-  bulk: Zap,
+  leads: Zap,
   campaigns: Rocket,
 } as const;
 
@@ -145,8 +144,7 @@ export function DashboardHeader({ activePage, navStyle = 'default' }: DashboardH
 
   const allNavLinks = [
     { key: 'dashboard' as const, href: '/dashboard', label: 'Dashboard' },
-    { key: 'search' as const, href: '/leads', label: 'Search' },
-    { key: 'bulk' as const, href: '/keywords', label: 'Bulk' },
+    { key: 'leads' as const, href: '/leads', label: 'Leads' },
     { key: 'campaigns' as const, href: '/tasks', label: 'Campaigns' },
   ];
 

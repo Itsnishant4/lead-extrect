@@ -6,6 +6,9 @@ import { PlanService } from '@/services/plan.service';
 import { SubscriptionService } from '@/services/subscription.service';
 import { createPlanSchema, updatePlanSchema } from '@/lib/validations';
 import { handleActionError } from './helpers';
+import { db } from '@/lib/db/index';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function getPlansAction() {
   try {
@@ -153,6 +156,26 @@ export async function rejectPaymentAdminAction(transactionId: number) {
     await AdminService.checkAdmin(session.id);
     await SubscriptionService.rejectPayment(transactionId);
     return { success: true };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function getMyPlanFeaturesAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    const userRows = await db.select({ planType: users.planType }).from(users).where(eq(users.id, session.id)).limit(1);
+    const planType = userRows[0]?.planType || 'free';
+    const plan = await PlanService.getPlanByName(planType);
+    const features: string[] = (plan?.features as string[]) || ['CSV Export'];
+    return {
+      success: true,
+      data: {
+        planType,
+        features,
+      },
+    };
   } catch (error: any) {
     return handleActionError(error);
   }

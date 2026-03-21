@@ -21,8 +21,8 @@ export async function GET(
   const parsedId = Number(idMatch[1]);
   const offset = parsedId * limit;
 
-  // Use a fixed date for static pages to avoid "faking" modified dates
-  const staticLastMod = '2025-03-01T12:00:00Z';
+  // Use current date for static pages
+  const staticLastMod = new Date().toISOString().split('.')[0] + 'Z';
   const now = new Date();
 
 
@@ -52,7 +52,18 @@ export async function GET(
     addUrl(`${baseUrl}/features/google-maps-extractor`, staticLastMod, 'monthly', 0.8);
     addUrl(`${baseUrl}/features/email-enrichment`, staticLastMod, 'monthly', 0.8);
     addUrl(`${baseUrl}/features/bulk-keyword-generator`, staticLastMod, 'monthly', 0.8);
+    addUrl(`${baseUrl}/features/localized-area-search`, staticLastMod, 'monthly', 0.8);
+    addUrl(`${baseUrl}/features/cloud-processing`, staticLastMod, 'monthly', 0.8);
+    addUrl(`${baseUrl}/features/verified-email-extraction`, staticLastMod, 'monthly', 0.8);
+    addUrl(`${baseUrl}/features/crm-ready-export`, staticLastMod, 'monthly', 0.8);
     addUrl(`${baseUrl}/use-cases`, staticLastMod, 'monthly', 0.9);
+    addUrl(`${baseUrl}/use-cases/marketing-agencies`, staticLastMod, 'monthly', 0.8);
+    addUrl(`${baseUrl}/use-cases/sales-teams`, staticLastMod, 'monthly', 0.8);
+    addUrl(`${baseUrl}/use-cases/real-estate`, staticLastMod, 'monthly', 0.8);
+    addUrl(`${baseUrl}/use-cases/freelancers`, staticLastMod, 'monthly', 0.8);
+    addUrl(`${baseUrl}/use-cases/recruiters`, staticLastMod, 'monthly', 0.8);
+    addUrl(`${baseUrl}/use-cases/home-services`, staticLastMod, 'monthly', 0.8);
+    addUrl(`${baseUrl}/compare`, staticLastMod, 'monthly', 0.9);
     addUrl(`${baseUrl}/blog`, staticLastMod, 'weekly', 0.9);
     addUrl(`${baseUrl}/company`, staticLastMod, 'monthly', 0.7);
     addUrl(`${baseUrl}/privacy`, staticLastMod, 'yearly', 0.3);
@@ -85,6 +96,7 @@ export async function GET(
     const data = await db.select({
       category: seoHubRegistry.niche,
       city: seoHubRegistry.city,
+      lastUpdated: seoHubRegistry.lastUpdated,
     })
     .from(seoHubRegistry)
     .orderBy(seoHubRegistry.niche, seoHubRegistry.city)
@@ -96,21 +108,22 @@ export async function GET(
     data.forEach((row) => {
       const niche = String(row.category || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const city = String(row.city || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const lastMod = row.lastUpdated ? new Date(Number(row.lastUpdated) * 1000) : now;
 
       if (niche && city) {
         if (!uniqueSlugs.has(`niche-${niche}`)) {
           uniqueSlugs.add(`niche-${niche}`);
-          addUrl(`${baseUrl}/leads/${niche}`, new Date(), 'daily', 0.7);
+          addUrl(`${baseUrl}/leads/${niche}`, lastMod, 'daily', 0.7);
         }
         if (!uniqueSlugs.has(`city-${city}`)) {
           uniqueSlugs.add(`city-${city}`);
-          addUrl(`${baseUrl}/leads/in/${city}`, new Date(), 'daily', 0.7);
+          addUrl(`${baseUrl}/leads/in/${city}`, lastMod, 'daily', 0.7);
         }
 
         const slug = `${niche}/${city}`;
         if (!uniqueSlugs.has(slug)) {
           uniqueSlugs.add(slug);
-          addUrl(`${baseUrl}/leads/${slug}`, new Date(), 'daily', 0.6);
+          addUrl(`${baseUrl}/leads/${slug}`, lastMod, 'daily', 0.6);
         }
       }
     });

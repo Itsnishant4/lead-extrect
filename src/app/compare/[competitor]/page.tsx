@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   if (!comp) return { title: 'Not Found' };
 
   return {
-    title: `LeadSpotter vs ${comp.name} (2025) | #1 Alternative Compared`,
+    title: `LeadSpotter vs ${comp.name} (2026) | #1 Alternative Compared`,
     description: `Detailed comparison of LeadSpotter vs ${comp.name}. See features, pricing, pros & cons, and why teams switch to LeadSpotter for Google Maps lead extraction.`,
     alternates: {
       canonical: `https://leadspotter.in/compare/leadspotter-vs-${compKey}`,
@@ -85,6 +85,16 @@ export default async function ComparePage({ params }: { params: Params }) {
     <div className="bg-white text-gray-900 antialiased min-h-screen flex flex-col">
       {/* JSON-LD Structured Data */}
       <JsonLd
+        type="BreadcrumbList"
+        data={{
+          items: [
+            { name: "Home", url: "https://leadspotter.in" },
+            { name: "Compare", url: "https://leadspotter.in/compare" },
+            { name: `LeadSpotter vs ${comp.name}`, url: `https://leadspotter.in/compare/leadspotter-vs-${compKey}` },
+          ],
+        }}
+      />
+      <JsonLd
         type="FAQPage"
         data={{
           faqs: comp.faqs.map((faq) => ({
@@ -109,7 +119,7 @@ export default async function ComparePage({ params }: { params: Params }) {
           {/* Background decorations */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-br from-indigo-100/60 via-violet-50/40 to-transparent rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
 
-          <div className="max-w-6xl mx-auto px-6 relative z-10">
+          <div className="max-w-5xl mx-auto px-6 relative z-10">
             {/* Breadcrumb */}
             <div className="flex items-center gap-2 text-sm text-gray-400 mb-8">
               <Link href="/" className="hover:text-gray-600 transition-colors">Home</Link>
@@ -167,7 +177,7 @@ export default async function ComparePage({ params }: { params: Params }) {
             SECTION 2: Quick Verdict (TL;DR)
         ═══════════════════════════════════════════════════════════════════ */}
         <section className="py-16 md:py-20 bg-gray-50/60">
-          <div className="max-w-6xl mx-auto px-6">
+          <div className="max-w-5xl mx-auto px-6">
             <div className="text-center mb-10">
               <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 text-xs font-bold text-indigo-600 uppercase tracking-wider mb-4">
                 <Trophy size={14} /> TL;DR Verdict
@@ -181,10 +191,10 @@ export default async function ComparePage({ params }: { params: Params }) {
                 <div
                   key={i}
                   className={`flex items-center gap-4 p-5 rounded-2xl border transition-all ${v.winner === 'us'
-                      ? 'bg-green-50/60 border-green-200/60'
-                      : v.winner === 'them'
-                        ? 'bg-gray-50 border-gray-200'
-                        : 'bg-amber-50/40 border-amber-200/50'
+                    ? 'bg-green-50/60 border-green-200/60'
+                    : v.winner === 'them'
+                      ? 'bg-gray-50 border-gray-200'
+                      : 'bg-amber-50/40 border-amber-200/50'
                     }`}
                 >
                   <div className="shrink-0">
@@ -210,10 +220,10 @@ export default async function ComparePage({ params }: { params: Params }) {
                   </div>
                   <div className="shrink-0 hidden sm:block">
                     <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${v.winner === 'us'
-                        ? 'bg-green-100 text-green-700'
-                        : v.winner === 'them'
-                          ? 'bg-gray-100 text-gray-600'
-                          : 'bg-amber-100 text-amber-700'
+                      ? 'bg-green-100 text-green-700'
+                      : v.winner === 'them'
+                        ? 'bg-gray-100 text-gray-600'
+                        : 'bg-amber-100 text-amber-700'
                       }`}>
                       {v.winner === 'us' ? 'LeadSpotter' : v.winner === 'them' ? comp.name : 'Tie'}
                     </span>
@@ -228,7 +238,7 @@ export default async function ComparePage({ params }: { params: Params }) {
             SECTION 3: Feature Comparison Table
         ═══════════════════════════════════════════════════════════════════ */}
         <section id="comparison" className="py-16 md:py-24 scroll-mt-24">
-          <div className="max-w-6xl mx-auto px-6">
+          <div className="max-w-5xl mx-auto px-6">
             <div className="text-center mb-12">
               <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 text-xs font-bold text-indigo-600 uppercase tracking-wider mb-4">
                 <Sparkles size={14} /> Feature-by-Feature
@@ -365,7 +375,7 @@ export default async function ComparePage({ params }: { params: Params }) {
             SECTION 5: Use Cases — Who Should Use What
         ═══════════════════════════════════════════════════════════════════ */}
         <section className="py-16 md:py-24">
-          <div className="max-w-6xl mx-auto px-6">
+          <div className="max-w-5xl mx-auto px-6">
             <div className="text-center mb-12">
               <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 text-xs font-bold text-indigo-600 uppercase tracking-wider mb-4">
                 <Users size={14} /> Use Cases
@@ -381,8 +391,8 @@ export default async function ComparePage({ params }: { params: Params }) {
                 <div
                   key={i}
                   className={`flex flex-col sm:flex-row items-start gap-4 p-5 sm:p-6 rounded-2xl border transition-all ${uc.best === 'leadspotter'
-                      ? 'bg-green-50/40 border-green-200/50'
-                      : 'bg-gray-50/60 border-gray-200/60'
+                    ? 'bg-green-50/40 border-green-200/50'
+                    : 'bg-gray-50/60 border-gray-200/60'
                     }`}
                 >
                   <div className="shrink-0 mt-0.5">
@@ -402,8 +412,8 @@ export default async function ComparePage({ params }: { params: Params }) {
                   </div>
                   <div className="shrink-0">
                     <span className={`text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap ${uc.best === 'leadspotter'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-600'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-600'
                       }`}>
                       {uc.best === 'leadspotter' ? 'LeadSpotter' : comp.name}
                     </span>
@@ -418,7 +428,7 @@ export default async function ComparePage({ params }: { params: Params }) {
             SECTION 6: Why Switch to LeadSpotter
         ═══════════════════════════════════════════════════════════════════ */}
         <section className="py-16 md:py-24 bg-gray-50/60">
-          <div className="max-w-6xl mx-auto px-6">
+          <div className="max-w-5xl mx-auto px-6">
             <div className="text-center mb-12">
               <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 text-xs font-bold text-indigo-600 uppercase tracking-wider mb-4">
                 <Shield size={14} /> Why Switch
@@ -491,7 +501,7 @@ export default async function ComparePage({ params }: { params: Params }) {
             SECTION 8: Cross-Links to Other Comparisons
         ═══════════════════════════════════════════════════════════════════ */}
         <section className="py-12 md:py-16 border-t border-gray-100">
-          <div className="max-w-6xl mx-auto px-6">
+          <div className="max-w-5xl mx-auto px-6">
             <h3 className="text-center text-sm font-bold text-gray-400 uppercase tracking-widest mb-8">
               More Comparisons
             </h3>
@@ -508,6 +518,34 @@ export default async function ComparePage({ params }: { params: Params }) {
                   </Link>
                 );
               })}
+            </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION 9: Related Features
+        ═══════════════════════════════════════════════════════════════════ */}
+        <section className="py-12 md:py-16 border-t border-gray-100">
+          <div className="max-w-5xl mx-auto px-6">
+            <h3 className="text-center text-sm font-bold text-gray-400 uppercase tracking-widest mb-8">
+              Explore Our Features
+            </h3>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link href="/features/google-maps-extractor" className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm font-medium text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all">
+                Google Maps Extractor
+              </Link>
+              <Link href="/features/bulk-keyword-generator" className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm font-medium text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all">
+                Bulk Keywords
+              </Link>
+              <Link href="/features/email-enrichment" className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm font-medium text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all">
+                Email Enrichment
+              </Link>
+              <Link href="/features/crm-ready-export" className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm font-medium text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all">
+                CRM Export
+              </Link>
+              <Link href="/features" className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm font-medium text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all">
+                All Features →
+              </Link>
             </div>
           </div>
         </section>
@@ -535,8 +573,8 @@ function FeatureValue({ value, positive }: { value: boolean | string; positive?:
   // String value (partial support, notes)
   return (
     <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${positive
-        ? 'bg-green-50 text-green-700 border border-green-100'
-        : 'bg-amber-50 text-amber-700 border border-amber-100'
+      ? 'bg-green-50 text-green-700 border border-green-100'
+      : 'bg-amber-50 text-amber-700 border border-amber-100'
       }`}>
       {value}
     </span>

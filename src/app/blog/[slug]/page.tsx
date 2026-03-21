@@ -1,9 +1,10 @@
+import React from 'react';
 import type { Metadata } from 'next';
 import { LandingHeader } from '@/components/LandingHeader';
 import { LandingBanner } from "@/components/LandingBanner";
 import { LandingFooter } from '@/components/LandingFooter';
 import Link from 'next/link';
-import { ArrowLeft, Clock, User } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Clock, User } from 'lucide-react';
 import { getBlogPostBySlugPublicAction, getBlogPostsPublicAction } from '@/app/actions';
 import { format } from 'date-fns';
 import { notFound } from 'next/navigation';
@@ -22,7 +23,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
   const res = await getBlogPostBySlugPublicAction(slug);
-  
+
   if (!('data' in res)) return { title: 'Article Not Found' };
   const article = res.data;
 
@@ -58,29 +59,51 @@ export default async function BlogArticlePage({ params }: { params: Params }) {
 
   // Simple markdown-like rendering
   const renderContent = (content: string) => {
-    return content.split('\n').map((line, i) => {
+    const lines = content.split('\n');
+    const result: React.ReactNode[] = [];
+    let paragraphCount = 0;
+
+    lines.forEach((line, i) => {
       const trimmed = line.trim();
-      if (!trimmed) return <br key={i} />;
-      if (trimmed.startsWith('## ')) return <h2 key={i} className="text-2xl font-bold text-gray-900 mt-10 mb-4">{trimmed.slice(3)}</h2>;
-      if (trimmed.startsWith('### ')) return <h3 key={i} className="text-xl font-bold text-gray-900 mt-8 mb-3">{trimmed.slice(4)}</h3>;
+      if (!trimmed) { result.push(<br key={i} />); return; }
+      if (trimmed.startsWith('## ')) { result.push(<h2 key={i} className="text-2xl font-bold text-gray-900 mt-10 mb-4">{trimmed.slice(3)}</h2>); return; }
+      if (trimmed.startsWith('### ')) { result.push(<h3 key={i} className="text-xl font-bold text-gray-900 mt-8 mb-3">{trimmed.slice(4)}</h3>); return; }
       if (trimmed.startsWith('- **')) {
         const match = trimmed.match(/^- \*\*(.+?)\*\*:?\s*(.*)/);
-        if (match) return <li key={i} className="ml-6 mb-2 text-gray-600 list-disc"><strong className="text-gray-900">{match[1]}</strong>{match[2] ? `: ${match[2]}` : ''}</li>;
+        if (match) { result.push(<li key={i} className="ml-6 mb-2 text-gray-600 list-disc"><strong className="text-gray-900">{match[1]}</strong>{match[2] ? `: ${match[2]}` : ''}</li>); return; }
       }
-      if (trimmed.startsWith('- ')) return <li key={i} className="ml-6 mb-2 text-gray-600 list-disc">{trimmed.slice(2)}</li>;
+      if (trimmed.startsWith('- ')) { result.push(<li key={i} className="ml-6 mb-2 text-gray-600 list-disc">{trimmed.slice(2)}</li>); return; }
       if (trimmed.startsWith('1. ') || /^\d+\.\s/.test(trimmed)) {
         const text = trimmed.replace(/^\d+\.\s*/, '');
         const boldMatch = text.match(/^\*\*(.+?)\*\*:?\s*(.*)/);
-        if (boldMatch) return <li key={i} className="ml-6 mb-2 text-gray-600 list-decimal"><strong className="text-gray-900">{boldMatch[1]}</strong>{boldMatch[2] ? `: ${boldMatch[2]}` : ''}</li>;
-        return <li key={i} className="ml-6 mb-2 text-gray-600 list-decimal">{text}</li>;
+        if (boldMatch) { result.push(<li key={i} className="ml-6 mb-2 text-gray-600 list-decimal"><strong className="text-gray-900">{boldMatch[1]}</strong>{boldMatch[2] ? `: ${boldMatch[2]}` : ''}</li>); return; }
+        result.push(<li key={i} className="ml-6 mb-2 text-gray-600 list-decimal">{text}</li>); return;
       }
-      if (trimmed.startsWith('**') && trimmed.endsWith('**')) return <p key={i} className="font-bold text-gray-900 mt-4 mb-2">{trimmed.slice(2, -2)}</p>;
+      if (trimmed.startsWith('**') && trimmed.endsWith('**')) { result.push(<p key={i} className="font-bold text-gray-900 mt-4 mb-2">{trimmed.slice(2, -2)}</p>); return; }
       if (trimmed.startsWith('**')) {
         const parts = trimmed.split(/\*\*/g);
-        return <p key={i} className="text-gray-600 leading-relaxed mb-4">{parts.map((part, j) => j % 2 === 1 ? <strong key={j} className="text-gray-900">{part}</strong> : part)}</p>;
+        result.push(<p key={i} className="text-gray-600 leading-relaxed mb-4">{parts.map((part, j) => j % 2 === 1 ? <strong key={j} className="text-gray-900">{part}</strong> : part)}</p>);
+        paragraphCount++;
+      } else {
+        result.push(<p key={i} className="text-gray-600 leading-relaxed mb-4">{trimmed}</p>);
+        paragraphCount++;
       }
-      return <p key={i} className="text-gray-600 leading-relaxed mb-4">{trimmed}</p>;
+
+      // Insert inline CTA after ~8 paragraphs
+      if (paragraphCount === 8) {
+        result.push(
+          <div key={`cta-${i}`} className="my-10 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50/80 to-violet-50/50 p-6 text-center">
+            <p className="font-bold text-gray-900 mb-2">Ready to try it yourself?</p>
+            <p className="text-gray-500 text-sm mb-4">Start extracting leads from Google Maps for free.</p>
+            <Link href="/signup" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-full font-bold text-sm hover:bg-indigo-700 transition-colors">
+              Get Started Free <ArrowRight size={14} />
+            </Link>
+          </div>
+        );
+      }
     });
+
+    return result;
   };
 
   const publishDate = article.publishedAt || article.createdAt;
@@ -120,7 +143,7 @@ export default async function BlogArticlePage({ params }: { params: Params }) {
 
         {/* Related Posts Section */}
         {relatedPosts.length > 0 && (
-          <div className="max-w-6xl mx-auto px-6 mt-24">
+          <div className="max-w-5xl mx-auto px-6 mt-24">
             <h2 className="text-2xl font-bold mb-10 text-center">More from LeadSpotter</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {relatedPosts.map((post: any) => (

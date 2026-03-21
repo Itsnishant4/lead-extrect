@@ -26,7 +26,7 @@ export default function BlogPageClient({ initialPosts }: { initialPosts: any[] }
       {/* Hero */}
       <section className="pt-28 md:pt-40 pb-16 md:pb-20 relative">
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-indigo-100/40 to-transparent rounded-full -translate-y-1/2 translate-x-1/4 blur-3xl" />
-        <div className="max-w-6xl mx-auto px-6 text-center relative z-10">
+        <div className="max-w-5xl mx-auto px-6 text-center relative z-10">
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
             className="text-indigo-600 font-bold uppercase tracking-widest text-sm mb-4">Blog</motion.p>
           <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
@@ -42,7 +42,7 @@ export default function BlogPageClient({ initialPosts }: { initialPosts: any[] }
 
       {/* Posts Grid */}
       <section className="pb-20 md:pb-32">
-        <div className="max-w-6xl mx-auto px-6">
+        <div className="max-w-5xl mx-auto px-6">
           {posts && posts.length > 0 ? (
             <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true }}
               className="grid md:grid-cols-2 gap-8">

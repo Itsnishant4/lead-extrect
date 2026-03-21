@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/index';
-import { tasks, leads as leadsTable, taskLeads } from '@/lib/db/schema';
+import { tasks, leads as leadsTable, taskLeads, users } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getSession } from '@/lib/auth';
 import { handleApiError, validateRequest } from '@/lib/utils/api-error-handler';
 import { z } from 'zod';
+import { PlanService } from '@/services/plan.service';
+import {
+  generateCsv, generateJson, generateExcel, generatePdf,
+  computeLeadScore, verifyEmail,
+  type ExportFormat,
+  FORMAT_CONTENT_TYPES, FORMAT_EXTENSIONS,
+  hasFeature,
+} from '@/lib/export-utils';
 
 const exportFiltersSchema = z.object({
   hasEmail: z.coerce.boolean().optional(),
@@ -13,6 +21,8 @@ const exportFiltersSchema = z.object({
   hasSocials: z.coerce.boolean().optional(),
   hasRating: z.coerce.boolean().optional(),
   hasAddress: z.coerce.boolean().optional(),
+  hasVerifiedEmail: z.coerce.boolean().optional(),
+  format: z.enum(['csv', 'json', 'xlsx', 'pdf']).optional().default('csv'),
 });
 
 const validateExportFilters = validateRequest(exportFiltersSchema);
@@ -37,10 +47,34 @@ export async function GET(
     }
 
     const filters = validateExportFilters(Object.fromEntries(url.searchParams));
+    const format: ExportFormat = filters.format || 'csv';
 
-    const taskRows = await db.select({ 
-      name: tasks.name, 
-      exportFileIds: tasks.exportFileIds 
+    // ── Check user plan permissions ──
+    const userRows = await db.select({ planType: users.planType }).from(users).where(eq(users.id, session.id)).limit(1);
+    const userPlanType = userRows[0]?.planType || 'free';
+    const plan = await PlanService.getPlanByName(userPlanType);
+    const planFeatures: string[] = (plan?.features as string[]) || ['CSV Export'];
+
+    // Validate format permission
+    const formatFeatureMap: Record<ExportFormat, string> = {
+      csv: 'CSV Export',
+      json: 'JSON Export',
+      xlsx: 'Excel Export',
+      pdf: 'PDF Export',
+    };
+    if (!hasFeature(planFeatures, formatFeatureMap[format])) {
+      return NextResponse.json({
+        error: `${format.toUpperCase()} export is not available on your current plan. Please upgrade to access this format.`,
+      }, { status: 403 });
+    }
+
+    // Check feature flags
+    const hasLeadScoring = hasFeature(planFeatures, 'Lead Scoring');
+    const hasEmailVerification = hasFeature(planFeatures, 'Email Verification');
+
+    const taskRows = await db.select({
+      name: tasks.name,
+      exportFileIds: tasks.exportFileIds
     }).from(tasks).where(and(eq(tasks.id, taskId), eq(tasks.userId, session.id))).limit(1);
 
     if (!taskRows[0]) {
@@ -49,19 +83,16 @@ export async function GET(
 
     const task = taskRows[0];
 
-    const { hasEmail, hasPhone, hasWebsite, hasSocials, hasRating, hasAddress } = filters;
-    const hasFilters = hasEmail || hasPhone || hasWebsite || hasSocials || hasRating || hasAddress;
+    const { hasEmail, hasPhone, hasWebsite, hasSocials, hasRating, hasAddress, hasVerifiedEmail } = filters;
+    const hasFilters = hasEmail || hasPhone || hasWebsite || hasSocials || hasRating || hasAddress || hasVerifiedEmail;
 
+    // ── Try Telegram file merge first (CSV only) ──
     const fileIds = task.exportFileIds ? (() => {
-      try {
-        return JSON.parse(task.exportFileIds);
-      } catch {
-        return [];
-      }
+      try { return JSON.parse(task.exportFileIds); } catch { return []; }
     })() : [];
     const token = process.env.TELEGRAM_BOT_TOKEN;
 
-    if (fileIds.length > 0 && token) {
+    if (fileIds.length > 0 && token && format === 'csv') {
       try {
         const files: string[] = [];
         for (const fileId of fileIds) {
@@ -78,11 +109,10 @@ export async function GET(
         if (files.length > 0) {
           let mergedLines: string[] = [];
           let headerLine = "";
-          
+
           files.forEach((content, index) => {
             const lines = content.split('\n').filter(line => line.trim().length > 0);
             if (lines.length === 0) return;
-            
             if (index === 0) {
               headerLine = lines[0];
               mergedLines.push(...lines.slice(1));
@@ -91,7 +121,6 @@ export async function GET(
             }
           });
 
-          // Parse CSV Row helper
           const parseCsvRow = (text: string) => {
             let p = '', row = [''], i = 0, s = !0, l;
             for (l of text) {
@@ -108,8 +137,6 @@ export async function GET(
           if (hasFilters) {
             mergedLines = mergedLines.filter(line => {
               const cols = parseCsvRow(line);
-              // Expected indices based on worker CSV structure:
-              // 2: Rating, 4: Phone, 5: WebPhone, 6: Email, 7: WebEmail, 8: Website, 9: Address, 14-20: Socials
               if (hasEmail && !cols[6] && !cols[7]) return false;
               if (hasPhone && !cols[4] && !cols[5]) return false;
               if (hasWebsite && !cols[8]) return false;
@@ -118,6 +145,10 @@ export async function GET(
               if (hasSocials) {
                 const hasAnySocial = cols.slice(14, 21).some(s => s && s.trim().length > 0);
                 if (!hasAnySocial) return false;
+              }
+              if (hasVerifiedEmail) {
+                const email = cols[6] || cols[7];
+                if (!email || !verifyEmail(email)) return false;
               }
               return true;
             });
@@ -145,13 +176,13 @@ export async function GET(
       }
     }
 
-    // 3. Build SQL Query
+    // ── Database fallback ──
     const leadsRes = await db.select()
       .from(leadsTable)
       .innerJoin(taskLeads, eq(leadsTable.id, taskLeads.leadId))
       .where(eq(taskLeads.taskId, taskId));
 
-    const filteredLeads = leadsRes.map(r => r.leads).filter(lead => {
+    let filteredLeads = leadsRes.map(r => r.leads).filter(lead => {
       if (hasEmail && !lead.email && !lead.websiteEmail) return false;
       if (hasPhone && !lead.phone && !lead.websitePhone) return false;
       if (hasWebsite && !lead.website) return false;
@@ -161,6 +192,10 @@ export async function GET(
         const socials = [lead.facebook, lead.instagram, lead.linkedin, lead.twitter, lead.youtube, lead.pinterest, lead.tiktok];
         if (!socials.some(s => s && s.length > 0)) return false;
       }
+      if (hasVerifiedEmail) {
+        const email = lead.email || lead.websiteEmail;
+        if (!email || !verifyEmail(email)) return false;
+      }
       return true;
     });
 
@@ -168,39 +203,35 @@ export async function GET(
       return NextResponse.json({ error: 'No leads match filters' }, { status: 404 });
     }
 
-    // 4. Generate CSV
-    const header = [
-      'Name', 'Category', 'Rating', 'Reviews',
-      'Phone', 'Website Phone', 'Email', 'Website Email',
-      'Website', 'Address', 'City', 'Latitude', 'Longitude', 'Place ID',
-      'Facebook', 'Instagram', 'LinkedIn', 'Twitter', 'YouTube', 'Pinterest', 'TikTok',
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
-    ];
+    // ── Generate output in requested format ──
+    const filename = `${task.name?.replace(/\s+/g, '_') || 'task'}_export${FORMAT_EXTENSIONS[format]}`;
+    const contentType = FORMAT_CONTENT_TYPES[format];
+    let body: BodyInit;
 
-    const escapeCsv = (str: any) => {
-      if (str === null || str === undefined) return '';
-      let stringValue = String(str);
-      if (/^[=+\-@]/.test(stringValue)) stringValue = "'" + stringValue;
-      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-        return `"${stringValue.replace(/"/g, '""')}"`;
+    switch (format) {
+      case 'csv': {
+        body = generateCsv(filteredLeads, hasLeadScoring, hasEmailVerification);
+        break;
       }
-      return stringValue;
-    };
+      case 'json': {
+        body = generateJson(filteredLeads, hasLeadScoring, hasEmailVerification);
+        break;
+      }
+      case 'xlsx': {
+        const xlsxBuf = generateExcel(filteredLeads, hasLeadScoring, hasEmailVerification);
+        body = new Uint8Array(xlsxBuf as unknown as ArrayBuffer);
+        break;
+      }
+      case 'pdf': {
+        const pdfBuf = generatePdf(filteredLeads, hasLeadScoring, hasEmailVerification);
+        body = new Uint8Array(pdfBuf as unknown as ArrayBuffer);
+        break;
+      }
+    }
 
-    const csvRows = filteredLeads.map(lead => [
-      lead.name, lead.category, lead.rating, lead.reviewsCount,
-      lead.phone, lead.websitePhone, lead.email, lead.websiteEmail,
-      lead.website, lead.address, lead.city, lead.latitude, lead.longitude, lead.placeId,
-      lead.facebook, lead.instagram, lead.linkedin, lead.twitter, lead.youtube, lead.pinterest, lead.tiktok,
-      lead.mondayHours, lead.tuesdayHours, lead.wednesdayHours, lead.thursdayHours, lead.fridayHours, lead.saturdayHours, lead.sundayHours
-    ].map(escapeCsv).join(','));
-
-    const output = [header.join(','), ...csvRows].join('\n');
-    const filename = `${task.name?.replace(/\s+/g, '_') || 'task'}_export.csv`;
-
-    return new NextResponse(output, {
+    return new NextResponse(body, {
       headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${filename}"`,
       },
     });

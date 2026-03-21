@@ -45,7 +45,7 @@ export function LandingFooter() {
       {/* Black CTA Section */}
       <section className="px-4 py-8 md:px-6 md:py-12">
         <div className="py-16 sm:py-28">
-          <div className="max-w-6xl mx-auto px-6">
+          <div className="max-w-5xl mx-auto px-6">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} className="relative rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-8 sm:p-16 text-center overflow-hidden">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[800px] h-[300px] bg-white/20 blur-[120px] rounded-full pointer-events-none -translate-y-1/2" />
 

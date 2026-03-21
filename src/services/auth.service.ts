@@ -4,7 +4,7 @@ import { eq, sql, and, or, desc } from 'drizzle-orm';
 import { hashPassword, verifyPassword, signToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { AuditService } from './audit.service';
-import { checkRateLimit } from '@/lib/security/ratelimit';
+import { memoryCheckRateLimit as checkRateLimit } from '@/lib/security/memory-ratelimit';
 import { UserRepository } from '@/repositories/user.repository';
 import { maskError, AppError } from '@/lib/utils/error.utils';
 import { getGeoLocation, getClientIp } from '@/lib/geo';

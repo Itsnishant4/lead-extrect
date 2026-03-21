@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
-  Loader2, TrendingUp, Users, Zap, Search, Target, ArrowUpRight,
+  Loader2, TrendingUp, Users, Zap, Target, ArrowUpRight,
   CheckCircle, XCircle, Clock, Pause, Play, Mail, Phone, Globe,
   BarChart3, MapPin, Layers, Sparkles,
 } from 'lucide-react';
@@ -421,10 +421,10 @@ export default function DashboardPage() {
               <div className="py-8 text-center">
                 <p className="text-xs text-slate-400 mb-3">No tasks yet</p>
                 <Link
-                  href="/keywords"
+                  href="/leads"
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors"
                 >
-                  <Search size={12} />
+                  <Zap size={12} />
                   Start Extracting
                 </Link>
               </div>
@@ -440,24 +440,12 @@ export default function DashboardPage() {
               href="/leads"
               className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 hover:bg-white/50 dark:hover:bg-white/5 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
             >
-              <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 transition-colors">
-                <Search size={16} className="text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-foreground">Search Leads</p>
-                <p className="text-[10px] text-slate-400">Find new leads</p>
-              </div>
-            </Link>
-            <Link
-              href="/keywords"
-              className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 hover:bg-white/50 dark:hover:bg-white/5 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
-            >
               <div className="w-9 h-9 rounded-lg bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center group-hover:bg-violet-100 dark:group-hover:bg-violet-900/50 transition-colors">
                 <Zap size={16} className="text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-foreground">Bulk Extract</p>
-                <p className="text-[10px] text-slate-400">Generate keywords</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-foreground">Leads</p>
+                <p className="text-[10px] text-slate-400">Generate & extract</p>
               </div>
             </Link>
             <Link

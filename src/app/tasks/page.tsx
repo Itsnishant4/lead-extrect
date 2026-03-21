@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTasksAction, deleteTaskAction, updateTaskStatusAction, triggerTaskAutomationAction, getTaskLeadsAction } from '@/app/actions';
+import { getTasksAction, deleteTaskAction, updateTaskStatusAction, triggerTaskAutomationAction, getTaskLeadsAction, getMyPlanFeaturesAction } from '@/app/actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
 import { ExportFilters, FilterSettings } from '@/components/ExportFilters';
+import type { ExportFormat } from '@/lib/export-utils';
 
 export default function TasksPage() {
   const queryClient = useQueryClient();
@@ -45,6 +46,39 @@ export default function TasksPage() {
     },
     refetchInterval: 5000
   });
+
+  // Fetch user's plan features for export permissions
+  const { data: planData } = useQuery({
+    queryKey: ['my-plan-features'],
+    queryFn: async () => {
+      const res = await getMyPlanFeaturesAction();
+      if (res.success && 'data' in res) return res.data as { planType: string; features: string[] };
+      return { planType: 'free', features: ['CSV Export'] };
+    },
+    staleTime: 60_000,
+  });
+
+  const planFeatures = planData?.features || ['CSV Export'];
+  const allowedFormats: ExportFormat[] = (['csv', 'json', 'xlsx', 'pdf'] as ExportFormat[]).filter(f => {
+    const featureMap: Record<ExportFormat, string> = { csv: 'CSV Export', json: 'JSON Export', xlsx: 'Excel Export', pdf: 'PDF Export' };
+    return planFeatures.includes(featureMap[f]);
+  }) as ExportFormat[];
+
+  const hasLeadScoring = planFeatures.includes('Lead Scoring');
+  const hasEmailVerification = planFeatures.includes('Email Verification');
+
+  // Map plan features to allowed export filters
+  const filterFeatureMap: Record<string, string> = {
+    hasEmail: 'Filter: Email Required',
+    hasPhone: 'Filter: Phone Required',
+    hasWebsite: 'Filter: Website Required',
+    hasSocials: 'Filter: Socials Required',
+    hasRating: 'Filter: Rating Required',
+    hasAddress: 'Filter: Address Required',
+    hasVerifiedEmail: 'Filter: Verified Email Required',
+  };
+  const allowedFilters = (Object.keys(filterFeatureMap) as (keyof FilterSettings)[])
+    .filter(k => planFeatures.includes(filterFeatureMap[k]));
 
   const handleStart = async (taskId: number) => {
     setLoading(taskId, 'start', true);
@@ -102,8 +136,8 @@ export default function TasksPage() {
     }
   };
 
-  const handleExport = async (taskId: number, taskName: string, filters: FilterSettings) => {
-    toast.info('Exporting leads...');
+  const handleExport = async (taskId: number, taskName: string, filters: FilterSettings, format: ExportFormat) => {
+    toast.info(`Exporting as ${format.toUpperCase()}...`);
     try {
       const params = new URLSearchParams();
       if (filters.hasEmail) params.append('hasEmail', '1');
@@ -112,12 +146,15 @@ export default function TasksPage() {
       if (filters.hasSocials) params.append('hasSocials', '1');
       if (filters.hasRating) params.append('hasRating', '1');
       if (filters.hasAddress) params.append('hasAddress', '1');
+      if (filters.hasVerifiedEmail) params.append('hasVerifiedEmail', '1');
+      params.append('format', format);
 
       const url = `/api/task-export/${taskId}?${params.toString()}`;
 
       const res = await fetch(url);
       if (!res.ok) {
-        toast.error('Export failed or no leads match criteria');
+        const errData = await res.json().catch(() => ({}));
+        toast.error((errData as any).error || 'Export failed or no leads match criteria');
         return;
       }
 
@@ -125,7 +162,8 @@ export default function TasksPage() {
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `${taskName.replace(/\s+/g, '_')}_leads.csv`;
+      const ext = format === 'xlsx' ? '.xlsx' : format === 'pdf' ? '.pdf' : format === 'json' ? '.json' : '.csv';
+      a.download = `${taskName.replace(/\s+/g, '_')}_leads${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -159,7 +197,7 @@ export default function TasksPage() {
           <div className="py-20 text-center  rounded-2xl">
             <Rocket className="h-12 w-12 0 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-slate-900">No tasks found</h3>
-            <p className="text-slate-500 max-w-xs mx-auto mt-2">Start a new automation from the Keyword Generator page.</p>
+            <p className="text-slate-500 max-w-xs mx-auto mt-2">Start a new automation from the Leads page.</p>
           </div>
         ) : (
           <div className="grid gap-4 max-w-5xl mx-auto">
@@ -280,8 +318,14 @@ export default function TasksPage() {
                           Resume
                         </Button>
                       )}
-                      {/* Export - ExportFilters should handle its own responsiveness, but we'll ensure it flows in the flexbox */}
-                      <ExportFilters onExport={(filters) => handleExport(task.id, task.name, filters)} />
+                      {/* Export */}
+                      <ExportFilters
+                        onExport={(filters, format) => handleExport(task.id, task.name, filters, format)}
+                        allowedFormats={allowedFormats}
+                        allowedFilters={allowedFilters}
+                        hasLeadScoring={hasLeadScoring}
+                        hasEmailVerification={hasEmailVerification}
+                      />
                       {/* Delete */}
                       <Button
                         size="sm"

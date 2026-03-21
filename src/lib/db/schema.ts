@@ -108,6 +108,7 @@ export const leads = sqliteTable('leads', {
   websiteEmail: text('website_email'),
   websitePhone: text('website_phone'),
   leadScore: integer('lead_score').default(0),
+  emailVerified: integer('email_verified', { mode: 'boolean' }).default(false),
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 }, (table) => ({
   placeIdIdx: index('idx_leads_place_id').on(table.placeId),

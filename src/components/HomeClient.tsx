@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import {
   ArrowRight, Plus, CheckCircle, Search, CloudCog, Download,
   Layers, MapPin, Cloud, Database, Zap, Shield, BarChart3,
@@ -45,21 +45,15 @@ const faqs = [
    SUB-COMPONENTS
    ══════════════════════════════════════════════════ */
 
-function FaqItem({ item, isOpen, toggle }: { item: { q: string; a: string }; isOpen: boolean; toggle: () => void }) {
+function FaqItem({ item }: { item: { q: string; a: string } }) {
   return (
-    <div className="border-b border-indigo-50 last:border-0">
-      <button onClick={toggle} className="w-full flex items-center justify-between py-5 text-left group cursor-pointer">
+    <details className="group border-b border-indigo-50 last:border-0">
+      <summary className="w-full flex items-center justify-between py-5 text-left cursor-pointer list-none [&::-webkit-details-marker]:hidden">
         <span className="text-[15px] font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors pr-4">{item.q}</span>
-        <Plus size={18} className={`text-indigo-300 shrink-0 transition-transform duration-300 ${isOpen ? "rotate-45" : ""}`} />
-      </button>
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <p className="pb-5 text-gray-500 text-sm leading-relaxed">{item.a}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+        <Plus size={18} className="text-indigo-300 shrink-0 transition-transform duration-300 group-open:rotate-45" />
+      </summary>
+      <p className="pb-5 text-gray-500 text-sm leading-relaxed">{item.a}</p>
+    </details>
   );
 }
 
@@ -68,8 +62,6 @@ function FaqItem({ item, isOpen, toggle }: { item: { q: string; a: string }; isO
    ══════════════════════════════════════════════════ */
 
 export function HomeClient() {
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-
   return (
     <div className="bg-white">
 
@@ -90,13 +82,13 @@ export function HomeClient() {
           </svg>
         </div>
 
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 items-center w-full relative z-10 pt-28 md:pt-20 pb-16">
+        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-10 items-center w-full relative z-10 pt-28 md:pt-20 pb-16">
 
           {/* ── LEFT: Text ── */}
           <div className="space-y-6">
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
-              className="text-4xl font-sans font-medium md:text-6xl ">
-              Find, Analyze, and Convert High-Quality Leads
+              className="text-4xl md:text-6xl font-[Oswald] leading-[4rem]">
+              Extract High Quality Leads From Google Maps
             </motion.h1>
 
             <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
@@ -107,7 +99,7 @@ export function HomeClient() {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
               className="flex flex-col sm:flex-row items-start gap-3">
               <Link href="/signup"
-                className="bg-gray-900 text-white px-6 py-3 rounded-xl shadow-md hover:scale-105 transition text-sm font-medium flex items-center gap-2">
+                className="bg-gradient-to-b from-[#6858E8]/80 to-[#6858E8] text-white px-6 py-3 rounded-xl shadow-md transition text-sm font-medium flex items-center gap-2">
                 Get Started <ArrowRight size={16} />
               </Link>
               <Link href="/pricing"
@@ -155,7 +147,7 @@ export function HomeClient() {
 
       {/* ━━━━━━ HOW IT WORKS ━━━━━━ */}
       <section className="py-24 md:py-32" id="how-it-works">
-        <div className="max-w-6xl mx-auto px-5 sm:px-8">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
             <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Process</p>
             <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-3">Three steps. That&apos;s it.</h2>
@@ -183,7 +175,7 @@ export function HomeClient() {
 
       {/* ━━━━━━ FEATURES ━━━━━━ */}
       <section className="py-24 md:py-32 bg-gray-50/40" id="features">
-        <div className="max-w-6xl mx-auto px-5 sm:px-8">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-14">
             <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Features</p>
             <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-3">Built for serious lead gen</h2>
@@ -193,11 +185,11 @@ export function HomeClient() {
           <div className="grid sm:grid-cols-2 gap-4">
             {[
               { icon: Layers, title: "Bulk Keyword Generation", desc: "Generate 5,000+ keyword combos from hundreds of niches and locations in one click.", accent: "bg-violet-50", slug: "bulk-keyword-generator" },
-              { icon: MapPin, title: "Localized Area Search", desc: "Pinpoint businesses with zip-code, neighborhood, and city-level precision targeting.", accent: "bg-rose-50" },
-              { icon: Cloud, title: "24/7 Cloud Processing", desc: "Start a task and walk away. Our servers extract while you sleep or focus on closing.", accent: "bg-sky-50" },
+              { icon: MapPin, title: "Localized Area Search", desc: "Pinpoint businesses with zip-code, neighborhood, and city-level precision targeting.", accent: "bg-rose-50", slug: "localized-area-search" },
+              { icon: Cloud, title: "24/7 Cloud Processing", desc: "Start a task and walk away. Our servers extract while you sleep or focus on closing.", accent: "bg-sky-50", slug: "cloud-processing" },
               { icon: Database, title: "Deep Data Enrichment", desc: "Scrape websites for hidden emails, phones, and social profiles beyond Maps data.", accent: "bg-amber-50", slug: "email-enrichment" },
-              { icon: Mail, title: "Verified Email Extraction", desc: "Real business emails from contact pages with automatic validation built right in.", accent: "bg-emerald-50" },
-              { icon: Zap, title: "CRM-Ready Export", desc: "Clean CSV with custom columns for HubSpot, Salesforce, Pipedrive. Telegram delivery too.", accent: "bg-indigo-50" },
+              { icon: Mail, title: "Verified Email Extraction", desc: "Real business emails from contact pages with automatic validation built right in.", accent: "bg-emerald-50", slug: "verified-email-extraction" },
+              { icon: Zap, title: "CRM-Ready Export", desc: "Clean CSV with custom columns for HubSpot, Salesforce, Pipedrive. Telegram delivery too.", accent: "bg-indigo-50", slug: "crm-ready-export" },
             ].map((item, i) => (
               <motion.div key={item.title} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06 }}
                 className="group p-6 rounded-2xl bg-white border border-gray-100 hover:border-indigo-100 hover:shadow-lg hover:shadow-indigo-500/5 transition-all">
@@ -206,18 +198,20 @@ export function HomeClient() {
                 </div>
                 <h3 className="text-[15px] font-bold text-gray-900 mb-1.5">{item.title}</h3>
                 <p className="text-gray-400 text-sm leading-relaxed mb-3">{item.desc}</p>
-                {item.slug && (
-                  <Link href={`/features/${item.slug}`} className="text-xs font-semibold text-indigo-500 hover:text-indigo-600 inline-flex items-center gap-1 transition-all">
-                    Learn more <ArrowRight size={11} />
-                  </Link>
-                )}
+                <Link href={`/features/${item.slug}`} className="text-xs font-semibold text-indigo-500 hover:text-indigo-600 inline-flex items-center gap-1 transition-all">
+                  Learn more <ArrowRight size={11} />
+                </Link>
               </motion.div>
             ))}
           </div>
 
-          <div className="text-center mt-10">
+          <div className="flex items-center justify-center gap-4 mt-10">
             <Link href="/features" className="text-sm font-semibold text-indigo-500 hover:text-indigo-600 inline-flex items-center gap-1.5 transition-colors">
               View all features <ArrowRight size={15} />
+            </Link>
+            <span className="text-gray-300">|</span>
+            <Link href="/signup" className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-bold shadow-md hover:scale-105 transition-transform">
+              Start Free
             </Link>
           </div>
         </div>
@@ -225,7 +219,7 @@ export function HomeClient() {
 
       {/* ━━━━━━ STATS ━━━━━━ */}
       <section className="py-16 md:py-20 border-y border-indigo-50/60">
-        <div className="max-w-6xl mx-auto px-5 sm:px-8">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             {[
               { val: "2M+", label: "Data points processed daily", icon: BarChart3 },
@@ -248,7 +242,7 @@ export function HomeClient() {
 
       {/* ━━━━━━ GLOBE ━━━━━━ */}
       <section className="py-24 md:py-32">
-        <div className="max-w-6xl mx-auto px-5 sm:px-8">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
               <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Global Reach</p>
@@ -273,7 +267,7 @@ export function HomeClient() {
 
       {/* ━━━━━━ TESTIMONIALS ━━━━━━ */}
       <section className="py-24 md:py-32 bg-indigo-50/30 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5 sm:px-8">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
             <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Testimonials</p>
             <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-3">Loved by sales teams everywhere</h2>
@@ -282,7 +276,7 @@ export function HomeClient() {
         </div>
         <InfiniteMovingCards items={testimonials} direction="left" speed="slow" />
 
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 mt-14">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 mt-14">
           <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
             {[
               { val: "4.9/5", sub: "from 500+ reviews", stars: true },
@@ -308,7 +302,7 @@ export function HomeClient() {
 
       {/* ━━━━━━ WHY US ━━━━━━ */}
       <section className="py-24 md:py-32">
-        <div className="max-w-6xl mx-auto px-5 sm:px-8">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-14">
             <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Why LeadSpotter</p>
             <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-3">Not just another scraper</h2>
@@ -338,7 +332,7 @@ export function HomeClient() {
 
       {/* ━━━━━━ FAQ ━━━━━━ */}
       <section className="py-24 md:py-32 bg-gray-50/40">
-        <div className="max-w-6xl mx-auto px-5 sm:px-8">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8">
           <div className="grid md:grid-cols-5 gap-10">
             <div className="md:col-span-2 md:sticky md:top-32 md:self-start">
               <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
@@ -352,7 +346,7 @@ export function HomeClient() {
             </div>
             <div className="md:col-span-3">
               {faqs.map((faq, i) => (
-                <FaqItem key={i} item={faq} isOpen={openFaq === i} toggle={() => setOpenFaq(openFaq === i ? null : i)} />
+                <FaqItem key={i} item={faq} />
               ))}
             </div>
           </div>

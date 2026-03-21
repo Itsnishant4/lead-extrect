@@ -102,7 +102,7 @@ export default function SubscriptionPage() {
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-indigo-100 dark:selection:bg-indigo-900 bg-gradient-to-br from-indigo-50 via-indigo-100 to-violet-50 dark:from-background dark:via-background dark:to-background text-foreground">
-      <DashboardHeader activePage="search" />
+      <DashboardHeader activePage="leads" />
 
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 md:px-8 pt-28 pb-16">
         {pageLoading ? (

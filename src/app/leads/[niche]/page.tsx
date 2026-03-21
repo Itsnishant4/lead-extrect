@@ -5,29 +5,65 @@ import { LandingFooter } from '@/components/LandingFooter';
 import JsonLd from '@/components/JsonLd';
 import Link from 'next/link';
 import { ArrowRight, MapPin, Search } from 'lucide-react';
+import { db } from '@/lib/db';
+import { seoHubRegistry } from '@/lib/db/schema';
+import { sql, like } from 'drizzle-orm';
 
 type Params = Promise<{ niche: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { niche } = await params;
   const capitalizedNiche = niche.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const searchNiche = niche.replace(/-/g, ' ');
+
+  // Check if data exists to prevent index bloat
+  let hasData = false;
+  try {
+    const count = await db.select({ total: sql<number>`SUM(${seoHubRegistry.totalLeads})` })
+      .from(seoHubRegistry)
+      .where(like(seoHubRegistry.niche, `%${searchNiche}%`));
+    hasData = Number(count[0]?.total || 0) > 0;
+  } catch {}
 
   return {
     title: `Best ${capitalizedNiche} Leads Database | B2B Directory | LeadSpotter`,
     description: `Discover top ${capitalizedNiche} leads across multiple cities. Extract names, emails, and phone numbers for your next outreach campaign.`,
     alternates: { canonical: `https://leadspotter.in/leads/${niche}` },
+    robots: hasData ? { index: true, follow: true } : { index: false, follow: true },
   };
 }
 
 export default async function NicheHubPage({ params }: { params: Params }) {
   const { niche } = await params;
   const capitalizedNiche = niche.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const searchNiche = niche.replace(/-/g, ' ');
 
-  // Sample static cities. In a real app, this would be fetched from DB
-  const popularCities = ['mumbai', 'delhi', 'bangalore', 'pune', 'chennai', 'hyderabad', 'kolkata', 'ahmedabad', 'jaipur', 'surat'];
+  // Fetch cities that have data for this niche
+  let popularCities: string[] = ['mumbai', 'delhi', 'bangalore', 'pune', 'chennai', 'hyderabad', 'kolkata', 'ahmedabad', 'jaipur', 'surat'];
+  try {
+    const dbCities = await db.select({ city: seoHubRegistry.city })
+      .from(seoHubRegistry)
+      .where(like(seoHubRegistry.niche, `%${searchNiche}%`))
+      .groupBy(seoHubRegistry.city)
+      .orderBy(sql`SUM(${seoHubRegistry.totalLeads}) DESC`)
+      .limit(20);
+    if (dbCities.length > 0) {
+      popularCities = dbCities.map(c => String(c.city).toLowerCase().replace(/\s+/g, '-'));
+    }
+  } catch {}
 
   return (
     <div className="bg-white text-gray-900 antialiased min-h-screen flex flex-col">
+      <JsonLd
+        type="BreadcrumbList"
+        data={{
+          items: [
+            { name: "Home", url: "https://leadspotter.in" },
+            { name: "Leads", url: "https://leadspotter.in/leads" },
+            { name: capitalizedNiche, url: `https://leadspotter.in/leads/${niche}` },
+          ],
+        }}
+      />
       <JsonLd
         type="FAQPage"
         data={{
@@ -47,7 +83,7 @@ export default async function NicheHubPage({ params }: { params: Params }) {
       <LandingHeader />
 
       <main className="pt-32 pb-20 flex-grow">
-        <div className="max-w-6xl mx-auto px-6">
+        <div className="max-w-5xl mx-auto px-6">
           <div className="mb-12 text-center">
             <h1 className="text-3xl md:text-5xl font-bold mb-6">Verified {capitalizedNiche} Leads</h1>
             <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">

@@ -13,19 +13,10 @@ const TOUR_STEPS: DriveStep[] = [
     },
   },
   {
-    element: '#tour-nav-search',
+    element: '#tour-nav-leads',
     popover: {
-      title: 'Search',
-      description: 'Search for any business type in any location. Results appear instantly with contact details, ratings, and more.',
-      side: 'bottom',
-      align: 'center',
-    },
-  },
-  {
-    element: '#tour-nav-bulk',
-    popover: {
-      title: 'Bulk Extraction',
-      description: 'Upload a list of keywords to extract leads in bulk. Paste them or import from a file.',
+      title: 'Leads',
+      description: 'Select a niche and location to generate targeted keyword combinations, then start extracting leads in bulk.',
       side: 'bottom',
       align: 'center',
     },
@@ -60,7 +51,7 @@ const TOUR_STEPS: DriveStep[] = [
   {
     popover: {
       title: 'You\'re all set!',
-      description: 'Start by searching for a business type like "restaurants in New York". You can replay this tour anytime from Settings.',
+      description: 'Start by selecting a niche and location on the Leads page. You can replay this tour anytime from Settings.',
     },
   },
 ];

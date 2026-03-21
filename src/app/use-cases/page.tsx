@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import UseCasesPageClient from "./client";
 import { LandingBanner } from "@/components/LandingBanner";
 import { LandingHeader } from "@/components/LandingHeader";
+import JsonLd from "@/components/JsonLd";
 
 export const metadata: Metadata = {
   title: "Use Cases - Lead Generation for Agencies, Freelancers & Sales Teams",
   description:
     "Discover how marketing agencies, freelancers, real estate agents, recruiters, and sales teams use LeadSpotter to extract verified B2B leads from Google Maps and grow their business.",
-  alternates: { canonical: "/use-cases" },
+  alternates: { canonical: "https://leadspotter.in/use-cases" },
   keywords: [
     "lead generation for agencies",
     "freelancer lead generation",
@@ -27,6 +28,15 @@ export const metadata: Metadata = {
 export default function UseCasesPage() {
   return (
     <>
+      <JsonLd
+        type="BreadcrumbList"
+        data={{
+          items: [
+            { name: "Home", url: "https://leadspotter.in" },
+            { name: "Use Cases", url: "https://leadspotter.in/use-cases" },
+          ],
+        }}
+      />
       <LandingBanner />
       <LandingHeader />
       <UseCasesPageClient />

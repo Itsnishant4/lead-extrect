@@ -1,7 +1,7 @@
 'use server';
 
 import { getSession } from '@/lib/auth';
-import { checkRateLimit } from '@/lib/security/ratelimit';
+import { memoryCheckRateLimit as checkRateLimit } from '@/lib/security/memory-ratelimit';
 import { AuthService } from '@/services/auth.service';
 import { UserService } from '@/services/user.service';
 import { signupSchema, loginSchema, otpSchema, resetPasswordSchema } from '@/lib/validations';

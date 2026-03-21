@@ -32,7 +32,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "LeadSpotter | Lead Extraction Tool & B2B Lead Generation",
+    default: "LeadSpotter | #1 Google Maps Lead Extractor & B2B Sales Engine",
     template: "%s | LeadSpotter",
   },
   description: "Extract verified business leads in bulk. Automate your prospecting with our powerful, cloud-based extraction tool.",
@@ -65,7 +65,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://leadspotter.in",
     siteName: "LeadSpotter",
-    title: "LeadSpotter | Turn Maps into your Lead Machine",
+    title: "LeadSpotter | #1 Google Maps Lead Extractor & B2B Sales Engine",
     description: "Extract verified business leads in bulk. Automate your prospecting with our powerful, cloud-based extraction tool.",
     images: [
       {
