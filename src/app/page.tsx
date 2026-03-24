@@ -5,6 +5,7 @@ import { LandingFooter } from "@/components/LandingFooter";
 import { HomeClient } from "@/components/HomeClient";
 import JsonLd from "@/components/JsonLd";
 import { Metadata } from "next";
+import "@fontsource/oswald/cyrillic-400.css";
 
 export const metadata: Metadata = {
   title: "LeadSpotter | #1 Google Maps Lead Extractor & B2B Sales Engine",

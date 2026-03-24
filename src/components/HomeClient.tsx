@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
+
 import {
   ArrowRight, Plus, CheckCircle, Search, CloudCog, Download,
   Layers, MapPin, Cloud, Database, Zap, Shield, BarChart3,
@@ -97,7 +98,7 @@ export function HomeClient() {
           {/* ── LEFT: Text ── */}
           <div className="space-y-6">
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
-              className="text-4xl md:text-6xl font-[Oswald] leading-[4rem]">
+              className={` text-4xl oswald-font md:text-6xl  `}>
               Extract High Quality Leads From Google Maps
             </motion.h1>
 

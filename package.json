@@ -12,10 +12,15 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "proxy:check": "tsx scripts/proxy-checker.ts"
+    "proxy:check": "tsx scripts/proxy-checker.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit push",
+    "db:migrate:history": "drizzle-kit migrate",
+    "db:reconcile": "tsx scripts/reconcile-db.ts"
   },
   "dependencies": {
     "@browsermcp/mcp": "^0.1.3",
+    "@fontsource/oswald": "^5.2.8",
     "@libsql/client": "^0.17.0",
     "@tanstack/query-sync-storage-persister": "^5.90.22",
     "@tanstack/react-query": "^5.90.20",
