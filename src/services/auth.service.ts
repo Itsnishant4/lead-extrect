@@ -3,6 +3,7 @@ import { users, plans } from '@/lib/db/schema';
 import { eq, sql, and, or, desc } from 'drizzle-orm';
 import { hashPassword, verifyPassword, signToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { randomBytes } from 'crypto';
 import { AuditService } from './audit.service';
 import { memoryCheckRateLimit as checkRateLimit } from '@/lib/security/memory-ratelimit';
 import { UserRepository } from '@/repositories/user.repository';
@@ -114,6 +115,68 @@ export class AuthService {
   static async logout() {
     const cookieStore = await cookies();
     cookieStore.delete('session');
+  }
+
+  static async googleLogin(googleEmail: string, googleName: string, ip?: string) {
+    let user = await UserRepository.findByEmail(googleEmail);
+
+    if (!user) {
+      // Create new user via Google
+      const freePlan = await db.select({ leadsCredits: plans.leadsCredits })
+        .from(plans)
+        .where(and(
+          or(
+            eq(plans.period, 'free'),
+            sql`LOWER(${plans.name}) LIKE LOWER('%free%')`
+          ),
+          eq(plans.isActive, true)
+        ))
+        .orderBy(desc(plans.leadsCredits))
+        .limit(1)
+        .then(r => r[0]);
+
+      const initialCredits = freePlan?.leadsCredits || 50;
+      const geo = ip ? await getGeoLocation(ip) : null;
+
+      // Generate random password for Google users
+      const tempPassword = randomBytes(32).toString('hex');
+      const hashedPassword = await hashPassword(tempPassword);
+
+      await db.insert(users).values({
+        name: googleName || googleEmail.split('@')[0],
+        email: googleEmail,
+        password: hashedPassword,
+        bonusCredits: initialCredits,
+        country: geo?.country,
+        city: geo?.city,
+        latitude: geo?.latitude,
+        longitude: geo?.longitude,
+        lastActive: new Date(),
+      });
+
+      user = await UserRepository.findByEmail(googleEmail);
+    }
+
+    if (!user) {
+      throw new Error('Failed to create or find user');
+    }
+
+    if (user.isSuspended) {
+      throw new Error('Account suspended. Contact support.');
+    }
+
+    const token = await signToken({ id: user.id, email: user.email, name: user.name });
+    const cookieStore = await cookies();
+    cookieStore.set('session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      path: '/',
+    });
+
+    await AuditService.logAction('google_login', 'success', { email: googleEmail, ip });
+    return { id: user.id, email: user.email, name: user.name };
   }
 
   static async requestOTP(email: string, ip: string) {

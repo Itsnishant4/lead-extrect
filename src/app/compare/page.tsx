@@ -10,6 +10,17 @@ export const metadata: Metadata = {
   title: 'LeadSpotter Comparisons — See How We Stack Up Against Competitors',
   description: 'Compare LeadSpotter with PhantomBuster, Apollo, Outscraper, ZoomInfo, and more. See features, pricing, and why teams switch to LeadSpotter for Google Maps lead extraction.',
   alternates: { canonical: 'https://leadspotter.in/compare' },
+  openGraph: {
+    title: 'LeadSpotter Comparisons — See How We Stack Up Against Competitors',
+    description: 'Compare LeadSpotter with PhantomBuster, Apollo, Outscraper, ZoomInfo, and more.',
+    url: 'https://leadspotter.in/compare',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'LeadSpotter Comparisons — See How We Stack Up',
+    description: 'Compare LeadSpotter with PhantomBuster, Apollo, Outscraper, ZoomInfo, and more.',
+    images: ['https://leadspotter.in/opengraph-image'],
+  },
 };
 
 const competitors = [
@@ -32,6 +43,17 @@ export default function CompareHubPage() {
           { name: "Home", url: "https://leadspotter.in" },
           { name: "Compare", url: "https://leadspotter.in/compare" },
         ],
+      }} />
+      <JsonLd type="ItemList" data={{
+        name: "LeadSpotter Competitor Comparisons",
+        description: "Compare LeadSpotter with other lead extraction tools",
+        itemListElement: competitors.map((comp, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          name: `LeadSpotter vs ${comp.name}`,
+          url: `https://leadspotter.in/compare/leadspotter-vs-${comp.slug}`,
+          description: comp.tagline,
+        })),
       }} />
       <LandingBanner />
       <LandingHeader />

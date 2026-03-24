@@ -336,3 +336,78 @@ export const pushSubscriptions = sqliteTable('push_subscriptions', {
   userIdIdx: index('idx_push_subscriptions_user_id').on(table.userId),
   endpointIdx: unique('push_subscriptions_endpoint_unique').on(table.endpoint),
 }));
+
+// ─── Integrations ───
+
+export const integrations = sqliteTable('integrations', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  slug: text('slug').unique().notNull(),           // 'google-sheets', 'hubspot', 'zapier'
+  name: text('name').notNull(),                     // 'Google Sheets'
+  featureFlag: text('feature_flag').notNull(),      // 'Integration: Google Sheets'
+  category: text('category').notNull(),             // 'crm', 'automation', 'export', 'notification'
+  description: text('description'),
+  iconUrl: text('icon_url'),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  oauthProvider: text('oauth_provider'),             // 'google', 'hubspot', 'salesforce', 'slack' or null
+  configSchema: text('config_schema', { mode: 'json' }),  // JSON Schema for user config fields
+  sortOrder: integer('sort_order').default(0),
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+}, (table) => ({
+  slugIdx: index('idx_integrations_slug').on(table.slug),
+  categoryIdx: index('idx_integrations_category').on(table.category),
+}));
+
+export const userIntegrations = sqliteTable('user_integrations', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  integrationId: integer('integration_id').references(() => integrations.id).notNull(),
+  isEnabled: integer('is_enabled', { mode: 'boolean' }).default(true),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  tokenExpiry: integer('token_expiry', { mode: 'timestamp' }),
+  apiKey: text('api_key'),
+  config: text('config', { mode: 'json' }),         // { spreadsheetId, webhookUrl, channelId, ... }
+  lastSyncedAt: integer('last_synced_at', { mode: 'timestamp' }),
+  totalSynced: integer('total_synced').default(0),
+  lastError: text('last_error'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+}, (table) => ({
+  userIdIdx: index('idx_user_integrations_user_id').on(table.userId),
+  integrationIdIdx: index('idx_user_integrations_integration_id').on(table.integrationId),
+  unq: unique('user_integrations_user_integration_unique').on(table.userId, table.integrationId),
+}));
+
+export const integrationLogs = sqliteTable('integration_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  integrationId: integer('integration_id').references(() => integrations.id).notNull(),
+  taskId: integer('task_id').references(() => tasks.id),
+  action: text('action').notNull(),                 // 'sync', 'test', 'oauth_connect', 'oauth_refresh'
+  status: text('status').notNull(),                  // 'success', 'failed', 'partial'
+  leadsCount: integer('leads_count').default(0),
+  errorMessage: text('error_message'),
+  metadata: text('metadata', { mode: 'json' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+}, (table) => ({
+  userIdIdx: index('idx_integration_logs_user_id').on(table.userId),
+  integrationIdIdx: index('idx_integration_logs_integration_id').on(table.integrationId),
+  createdAtIdx: index('idx_integration_logs_created_at').on(table.createdAt),
+}));
+
+export const userApiKeys = sqliteTable('user_api_keys', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  name: text('name').notNull(),
+  keyHash: text('key_hash').notNull(),
+  keyPrefix: text('key_prefix').notNull(),           // First 8 chars for identification
+  permissions: text('permissions', { mode: 'json' }), // ['leads:read', 'tasks:read', 'export:read']
+  lastUsedAt: integer('last_used_at', { mode: 'timestamp' }),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+}, (table) => ({
+  userIdIdx: index('idx_user_api_keys_user_id').on(table.userId),
+  keyHashIdx: unique('user_api_keys_key_hash_unique').on(table.keyHash),
+}));

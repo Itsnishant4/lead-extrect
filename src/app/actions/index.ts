@@ -138,3 +138,23 @@ export {
   getBannerAction,
   updateBannerAdminAction,
 } from './siteconfig.actions';
+
+// Integrations
+export {
+  getAllIntegrationsAdminAction,
+  createIntegrationAction,
+  updateIntegrationAction,
+  toggleIntegrationAction,
+  getIntegrationStatsAction,
+  getPlanIntegrationMatrixAction,
+  assignIntegrationToPlanAction,
+  unassignIntegrationFromPlanAction,
+  seedIntegrationsAction,
+  getMyIntegrationsAction,
+  connectIntegrationAction,
+  disconnectIntegrationAction,
+  testIntegrationAction,
+  getIntegrationLogsAction,
+  getCompletedTasksAction,
+  syncTaskToIntegrationAction,
+} from './integration.actions';

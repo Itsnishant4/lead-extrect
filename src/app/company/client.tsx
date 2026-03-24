@@ -84,7 +84,7 @@ export default function CompanyPageClient() {
           <div className="mx-auto grid max-h-[50rem] max-w-5xl grid-cols-1 items-start gap-10 overflow-hidden sm:grid-cols-2 md:max-h-[40rem] md:pt-10 lg:grid-cols-3">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" as const }} className="px-6 py-10 md:px-10 md:py-10 lg:col-span-2">
               <h1 className="text-center text-2xl font-bold tracking-tight text-gray-900 sm:text-left sm:text-4xl lg:text-7xl">
-                Your go-to tool for{" "}
+                Your tool for{" "}
                 <FlipWords words={["lead generation", "smart prospecting", "market research", "sales growth"]} className="text-indigo-600" />{" "}
                 <br className="hidden sm:block" />built with passion
               </h1>

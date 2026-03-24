@@ -40,6 +40,16 @@ export async function logoutAction() {
   return { success: true };
 }
 
+export async function googleLoginAction(email: string, name: string) {
+  try {
+    const { ip } = await getClientInfo();
+    await AuthService.googleLogin(email, name, ip);
+    return { success: true };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
 export async function requestOTPAction(email: string) {
   try {
     const { ip } = await getClientInfo();

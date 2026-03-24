@@ -371,6 +371,18 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     description: feature.description,
     keywords: [feature.title.toLowerCase(), 'lead generation', 'google maps', 'b2b leads', 'lead extraction'],
     alternates: { canonical: `https://leadspotter.in/features/${slug}` },
+    openGraph: {
+      title: `${feature.title} | LeadSpotter`,
+      description: feature.description,
+      url: `https://leadspotter.in/features/${slug}`,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${feature.title} | LeadSpotter`,
+      description: feature.description,
+      images: ['https://leadspotter.in/opengraph-image'],
+    },
   };
 }
 

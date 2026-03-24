@@ -38,6 +38,19 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     description: `Get a list of verified ${capitalizedNiche} in ${capitalizedCity}. Extract names, phone numbers, and emails for your cold outreach campaigns.`,
     alternates: { canonical: `https://leadspotter.in/leads/${niche}/${city}` },
     robots: hasData ? { index: true, follow: true } : { index: false, follow: true },
+    keywords: [`${capitalizedNiche} in ${capitalizedCity}`, `${capitalizedCity} ${capitalizedNiche}`, 'b2b leads', 'google maps leads', `${capitalizedNiche} directory`],
+    openGraph: {
+      title: `Best ${capitalizedNiche} in ${capitalizedCity} | LeadSpotter`,
+      description: `Get a list of verified ${capitalizedNiche} in ${capitalizedCity}. Extract names, phone numbers, and emails.`,
+      url: `https://leadspotter.in/leads/${niche}/${city}`,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `Best ${capitalizedNiche} in ${capitalizedCity} | LeadSpotter`,
+      description: `Get a list of verified ${capitalizedNiche} in ${capitalizedCity}.`,
+      images: ['https://leadspotter.in/opengraph-image'],
+    },
   };
 }
 

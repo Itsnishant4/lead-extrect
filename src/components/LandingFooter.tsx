@@ -106,18 +106,19 @@ export function LandingFooter() {
               {/* Links Columns */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12 w-full lg:w-auto lg:min-w-[500px] xl:min-w-[600px] justify-between">
 
-                {/* Product Col */}
-                <div>
-                  <h3 className="font-bold text-gray-900 mb-6 text-sm">Product</h3>
-                  <ul className="space-y-4 text-sm text-gray-500 font-medium">
-                    <li><Link className="hover:text-gray-900 transition-colors" href="/features">Features</Link></li>
-                    <li><Link className="hover:text-gray-900 transition-colors" href="/pricing">Pricing</Link></li>
-                    <li><Link className="hover:text-gray-900 transition-colors" href="/use-cases">Use Cases</Link></li>
-                    <li><Link className="hover:text-gray-900 transition-colors" href="/features/google-maps-extractor">Maps Extractor</Link></li>
-                    <li><Link className="hover:text-gray-900 transition-colors" href="/features/email-enrichment">Email Enrichment</Link></li>
-                    <li><Link className="hover:text-gray-900 transition-colors" href="/features/bulk-keyword-generator">Keyword Generator</Link></li>
-                  </ul>
-                </div>
+{/* Product Col */}
+      <div>
+        <h3 className="font-bold text-gray-900 mb-6 text-sm">Product</h3>
+        <ul className="space-y-4 text-sm text-gray-500 font-medium">
+          <li><Link className="hover:text-gray-900 transition-colors" href="/features">Features</Link></li>
+          <li><Link className="hover:text-gray-900 transition-colors" href="/pricing">Pricing</Link></li>
+          <li><Link className="hover:text-gray-900 transition-colors" href="/use-cases">Use Cases</Link></li>
+          <li><Link className="hover:text-gray-900 transition-colors" href="/features/google-maps-extractor">Maps Extractor</Link></li>
+          <li><Link className="hover:text-gray-900 transition-colors" href="/features/email-enrichment">Email Enrichment</Link></li>
+          <li><Link className="hover:text-gray-900 transition-colors" href="/features/bulk-keyword-generator">Keyword Generator</Link></li>
+          <li><Link className="hover:text-gray-900 transition-colors" href="/integrations">Integrations</Link></li>
+        </ul>
+      </div>
 
                 {/* Resources Col */}
                 <div>

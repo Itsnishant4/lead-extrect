@@ -9,6 +9,8 @@ import { getBlogPostBySlugPublicAction, getBlogPostsPublicAction } from '@/app/a
 import { format } from 'date-fns';
 import { notFound } from 'next/navigation';
 import JsonLdBlog from '@/components/JsonLdBlog';
+import JsonLd from '@/components/JsonLd';
+import { StaticBreadcrumbs } from '@/components/Breadcrumbs';
 
 export const dynamicParams = true;
 
@@ -37,6 +39,14 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       url: `https://leadspotter.in/blog/${slug}`,
       type: 'article',
       publishedTime: (article.publishedAt || article.createdAt)?.toISOString(),
+      modifiedTime: (article.updatedAt || article.publishedAt || article.createdAt)?.toISOString(),
+      images: article.imageUrl ? [{ url: article.imageUrl }] : [{ url: 'https://leadspotter.in/opengraph-image' }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: article.title,
+      description: article.description || undefined,
+      images: [article.imageUrl || 'https://leadspotter.in/opengraph-image'],
     },
   };
 }
@@ -110,6 +120,16 @@ export default async function BlogArticlePage({ params }: { params: Params }) {
 
   return (
     <div className="bg-white text-gray-900 antialiased">
+      <JsonLd
+        type="BreadcrumbList"
+        data={{
+          items: [
+            { name: "Home", url: "https://leadspotter.in" },
+            { name: "Blog", url: "https://leadspotter.in/blog" },
+            { name: article.title, url: `https://leadspotter.in/blog/${slug}` },
+          ],
+        }}
+      />
       <JsonLdBlog article={article} />
       <LandingBanner />
       <LandingHeader />

@@ -23,6 +23,12 @@ export const metadata: Metadata = {
     description: "See how agencies, freelancers, and sales teams use LeadSpotter to find verified leads.",
     url: "https://leadspotter.in/use-cases",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Use Cases - Lead Generation for Every Industry",
+    description: "See how agencies, freelancers, and sales teams use LeadSpotter to find verified leads.",
+    images: ["https://leadspotter.in/opengraph-image"],
+  },
 };
 
 export default function UseCasesPage() {

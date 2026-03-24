@@ -4,6 +4,7 @@ import { LandingHeader } from '@/components/LandingHeader';
 import { LandingFooter } from '@/components/LandingFooter';
 import { LandingBanner } from '@/components/LandingBanner';
 import JsonLd from '@/components/JsonLd';
+import { StaticBreadcrumbs } from '@/components/Breadcrumbs';
 import { Check, X, Zap, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
@@ -28,6 +29,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Pricing | LeadSpotter',
     description: 'Choose the right plan to scale your lead generation.',
+    images: ['https://leadspotter.in/opengraph-image'],
   },
 };
 
@@ -92,6 +94,10 @@ export default async function PricingPage() {
         <section className="pt-28 md:pt-40 pb-16 relative">
           <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-indigo-100/50 to-transparent rounded-full -translate-y-1/2 translate-x-1/4 blur-3xl" />
           <div className="max-w-5xl mx-auto px-6 text-center relative z-10">
+            <StaticBreadcrumbs items={[
+              { label: 'Home', href: '/' },
+              { label: 'Pricing', href: '/pricing' }
+            ]} />
             <p className="text-indigo-600 font-bold uppercase tracking-widest text-sm mb-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
               Pricing
             </p>

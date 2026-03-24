@@ -15,7 +15,14 @@ export const metadata: Metadata = {
     title: "LeadSpotter | #1 Google Maps Lead Extractor & B2B Sales Engine",
     description: "The most powerful B2B lead extraction tool for Google Maps. Bulk keyword generation and deep data enrichment.",
     url: "https://leadspotter.in",
-  }
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "LeadSpotter | #1 Google Maps Lead Extractor & B2B Sales Engine",
+    description: "Extract thousands of verified B2B leads from Google Maps. Start for free today.",
+    images: ["https://leadspotter.in/opengraph-image"],
+    creator: "@LeadSpotter",
+  },
 };
 
 
@@ -23,11 +30,6 @@ export default function Home() {
   return (
     <div className="bg-white text-gray-900 antialiased overflow-x-hidden">
       <JsonLd />
-      <JsonLd type="BreadcrumbList" data={{
-        items: [
-          { name: "Home", url: "https://leadspotter.in" },
-        ],
-      }} />
       <LandingBanner />
       <LandingHeader />
       <HomeClient />

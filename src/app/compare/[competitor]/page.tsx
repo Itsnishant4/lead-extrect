@@ -58,6 +58,12 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       url: `https://leadspotter.in/compare/leadspotter-vs-${compKey}`,
       type: 'website',
     },
+    twitter: {
+      card: 'summary_large_image',
+      title: `LeadSpotter vs ${comp.name} — Which is Better?`,
+      description: `Side-by-side comparison: features, pricing, and real use cases. See why LeadSpotter is the #1 ${comp.name} alternative.`,
+      images: ['https://leadspotter.in/opengraph-image'],
+    },
   };
 }
 
@@ -124,7 +130,7 @@ export default async function ComparePage({ params }: { params: Params }) {
             <div className="flex items-center gap-2 text-sm text-gray-400 mb-8">
               <Link href="/" className="hover:text-gray-600 transition-colors">Home</Link>
               <span>/</span>
-              <Link href="/compare/leadspotter-vs-apollo" className="hover:text-gray-600 transition-colors">Compare</Link>
+              <Link href="/compare" className="hover:text-gray-600 transition-colors">Compare</Link>
               <span>/</span>
               <span className="text-gray-600">vs {comp.name}</span>
             </div>

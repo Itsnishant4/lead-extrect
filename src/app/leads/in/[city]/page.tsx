@@ -11,6 +11,8 @@ import { sql, like } from 'drizzle-orm';
 
 type Params = Promise<{ city: string }>;
 
+export const revalidate = 86400;
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { city } = await params;
   const capitalizedCity = city.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -30,6 +32,19 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     description: `Discover verified businesses and local leads in ${capitalizedCity}. Extract names, emails, and phone numbers across multiple industries.`,
     alternates: { canonical: `https://leadspotter.in/leads/in/${city}` },
     robots: hasData ? { index: true, follow: true } : { index: false, follow: true },
+    keywords: [`leads in ${capitalizedCity}`, `${capitalizedCity} businesses`, 'b2b leads', 'google maps leads', 'local business directory'],
+    openGraph: {
+      title: `Best B2B Leads in ${capitalizedCity} | LeadSpotter`,
+      description: `Discover verified businesses and local leads in ${capitalizedCity}. Extract names, emails, and phone numbers.`,
+      url: `https://leadspotter.in/leads/in/${city}`,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `Best B2B Leads in ${capitalizedCity} | LeadSpotter`,
+      description: `Discover verified businesses and local leads in ${capitalizedCity}.`,
+      images: ['https://leadspotter.in/opengraph-image'],
+    },
   };
 }
 

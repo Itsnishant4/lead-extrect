@@ -17,7 +17,8 @@ import {
   Megaphone,
   ListChecks,
   Gear,
-  Globe
+  Globe,
+  Plugs,
 } from 'phosphor-react';
 import { logoutAction } from '@/app/actions';
 import { toast } from 'sonner';
@@ -76,6 +77,11 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
       title: 'Plans & Pricing',
       icon: CreditCard,
       url: '/admin/plans',
+    },
+    {
+      title: 'Integrations',
+      icon: Plugs,
+      url: '/admin/integrations',
     },
     {
       title: 'Payment Log',

@@ -1,7 +1,7 @@
 import { Organization, WebSite, WithContext, SoftwareApplication, FAQPage, Product } from "schema-dts";
 
 interface JsonLdProps {
-    type?: 'Organization' | 'WebSite' | 'SoftwareApplication' | 'FAQPage' | 'Product' | 'BreadcrumbList' | 'HowTo';
+    type?: 'Organization' | 'WebSite' | 'SoftwareApplication' | 'FAQPage' | 'Product' | 'BreadcrumbList' | 'HowTo' | 'ItemList' | 'Review';
     data?: any;
 }
 
@@ -43,6 +43,14 @@ export default function JsonLd({ type, data }: JsonLdProps) {
         name: "LeadSpotter",
         url: "https://leadspotter.in",
         description: "Extract verified business leads from Google Maps. Bulk keyword generation, cloud processing, email enrichment, and CRM-ready CSV export.",
+        potentialAction: {
+            "@type": "SearchAction",
+            target: {
+                "@type": "EntryPoint",
+                urlTemplate: "https://leadspotter.in/leads?search={search_term_string}",
+            },
+            "query-input": "required name=search_term_string",
+        } as any,
     };
 
     const softwareJsonLd: WithContext<SoftwareApplication> = {
@@ -60,9 +68,9 @@ export default function JsonLd({ type, data }: JsonLdProps) {
         },
         aggregateRating: {
             "@type": "AggregateRating",
-            ratingValue: "4.9",
-            ratingCount: "50",
-            bestRating: "5",
+            ratingValue: 4.9,
+            ratingCount: 50,
+            bestRating: 5,
         },
         featureList: data?.featureList || "Bulk keyword generation, Google Maps data extraction, Email finder, Phone number extractor, Cloud processing, CSV export, Social media discovery, Lead scoring",
     };
@@ -140,8 +148,9 @@ export default function JsonLd({ type, data }: JsonLdProps) {
         },
         aggregateRating: {
             "@type": "AggregateRating",
-            ratingValue: "4.9",
-            ratingCount: "50",
+            ratingValue: 4.9,
+            ratingCount: 50,
+            bestRating: 5,
         },
     };
 
@@ -224,6 +233,41 @@ export default function JsonLd({ type, data }: JsonLdProps) {
                 <script
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
+                />
+            )}
+            {(type === 'ItemList' && data?.itemListElement) && (
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "ItemList",
+                        name: data.name,
+                        description: data.description,
+                        itemListElement: data.itemListElement,
+                    }) }}
+                />
+            )}
+            {(type === 'Review') && (
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "Review",
+                        itemReviewed: data.itemReviewed || {
+                            "@type": "SoftwareApplication",
+                            name: "LeadSpotter",
+                        },
+                        reviewRating: data.reviewRating || {
+                            "@type": "Rating",
+                            ratingValue: "5",
+                            bestRating: "5",
+                        },
+                        author: data.author || {
+                            "@type": "Person",
+                            name: "User",
+                        },
+                        reviewBody: data.reviewBody,
+                    }) }}
                 />
             )}
         </>

@@ -9,6 +9,7 @@ import {
 import { motion } from "motion/react";
 import { LandingFooter } from "@/components/LandingFooter";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
@@ -88,6 +89,10 @@ export default function FeaturesPageClient() {
       <section className="pt-28 md:pt-40 pb-16 md:pb-24 relative">
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-indigo-100/50 to-transparent rounded-full -translate-y-1/2 translate-x-1/4 blur-3xl" />
         <div className="max-w-5xl mx-auto px-6 text-center relative z-10">
+          <Breadcrumbs items={[
+            { label: 'Home', href: '/' },
+            { label: 'Features', href: '/features' }
+          ]} className="mb-6 flex justify-center" />
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
             className="text-indigo-600 font-bold uppercase tracking-widest text-sm mb-4">All Features</motion.p>
           <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }}

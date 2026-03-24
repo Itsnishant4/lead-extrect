@@ -13,7 +13,17 @@ import dynamic from "next/dynamic";
 
 const InfiniteMovingCards = dynamic(
   () => import("@/components/ui/infinite-moving-cards").then((m) => ({ default: m.InfiniteMovingCards })),
-  { ssr: false }
+  { ssr: false, loading: () => (
+    <div className="flex gap-4 overflow-hidden py-4">
+      {testimonials.slice(0, 3).map((t, i) => (
+        <div key={i} className="flex-shrink-0 w-[350px] p-6 rounded-2xl bg-white border border-gray-100 shadow-sm">
+          <p className="text-gray-600 text-sm mb-4 line-clamp-3">{t.quote}</p>
+          <p className="font-bold text-gray-900 text-sm">{t.name}</p>
+          <p className="text-gray-400 text-xs">{t.title}</p>
+        </div>
+      ))}
+    </div>
+  ) }
 );
 const Globe = dynamic(
   () => import("@/components/magicui/globe").then((m) => ({ default: m.Globe })),
@@ -353,7 +363,49 @@ export function HomeClient() {
         </div>
       </section>
 
+      {/* ━━━━━━ TOP LEADS ━━━━━━ */}
+      <section className="py-24 md:py-32">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-14">
+            <p className="text-indigo-600 font-bold uppercase tracking-widest text-xs mb-3">Popular Searches</p>
+            <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-3">Explore leads by niche & city</h2>
+            <p className="text-gray-400 text-sm max-w-md mx-auto">Start extracting leads for popular business categories.</p>
+          </motion.div>
 
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { niche: "dentists", city: "mumbai", label: "Dentists in Mumbai" },
+              { niche: "restaurants", city: "delhi", label: "Restaurants in Delhi" },
+              { niche: "real-estate-agents", city: "bangalore", label: "Real Estate in Bangalore" },
+              { niche: "gyms", city: "pune", label: "Gyms in Pune" },
+              { niche: "salons", city: "chennai", label: "Salons in Chennai" },
+              { niche: "lawyers", city: "kolkata", label: "Lawyers in Kolkata" },
+              { niche: "plumbers", city: "hyderabad", label: "Plumbers in Hyderabad" },
+              { niche: "interior-designers", city: "ahmedabad", label: "Interior Designers in Ahmedabad" },
+              { niche: "doctors", city: "jaipur", label: "Doctors in Jaipur" },
+            ].map((item, i) => (
+              <motion.div key={item.label} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }}>
+                <Link href={`/leads/${item.niche}/${item.city}`}
+                  className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white hover:border-indigo-200 hover:shadow-md transition-all group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+                      <MapPin size={16} className="text-indigo-500" />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">{item.label}</span>
+                  </div>
+                  <ArrowRight size={16} className="text-gray-300 group-hover:text-indigo-500 transition-colors" />
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="flex justify-center mt-10">
+            <Link href="/leads" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1.5 transition-colors">
+              Browse all lead categories <ArrowRight size={15} />
+            </Link>
+          </div>
+        </div>
+      </section>
 
 
     </div>

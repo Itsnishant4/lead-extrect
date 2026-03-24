@@ -3,6 +3,7 @@ import FeaturesPageClient from "./client";
 import { LandingBanner } from "@/components/LandingBanner";
 import { LandingHeader } from "@/components/LandingHeader";
 import JsonLd from "@/components/JsonLd";
+import { StaticBreadcrumbs } from "@/components/Breadcrumbs";
 
 export const metadata: Metadata = {
   title: "Features - Google Maps Lead Extractor & Business Data Scraper",
@@ -24,6 +25,12 @@ export const metadata: Metadata = {
     description:
       "Bulk keyword generation, cloud extraction, email & phone finder, CSV export, and more. See all LeadSpotter features.",
     url: "https://leadspotter.in/features",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Features - Google Maps Lead Extractor & Business Data Scraper",
+    description: "Bulk keyword generation, cloud extraction, email & phone finder, CSV export, and more.",
+    images: ["https://leadspotter.in/opengraph-image"],
   },
 };
 

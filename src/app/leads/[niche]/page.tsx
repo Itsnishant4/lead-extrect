@@ -11,6 +11,8 @@ import { sql, like } from 'drizzle-orm';
 
 type Params = Promise<{ niche: string }>;
 
+export const revalidate = 86400;
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { niche } = await params;
   const capitalizedNiche = niche.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -30,6 +32,19 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     description: `Discover top ${capitalizedNiche} leads across multiple cities. Extract names, emails, and phone numbers for your next outreach campaign.`,
     alternates: { canonical: `https://leadspotter.in/leads/${niche}` },
     robots: hasData ? { index: true, follow: true } : { index: false, follow: true },
+    keywords: [`${capitalizedNiche} leads`, `${capitalizedNiche} database`, 'b2b leads', 'google maps leads', 'business directory', `${capitalizedNiche} email list`],
+    openGraph: {
+      title: `Best ${capitalizedNiche} Leads Database | LeadSpotter`,
+      description: `Discover top ${capitalizedNiche} leads across multiple cities. Extract names, emails, and phone numbers.`,
+      url: `https://leadspotter.in/leads/${niche}`,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `Best ${capitalizedNiche} Leads Database | LeadSpotter`,
+      description: `Discover top ${capitalizedNiche} leads across multiple cities.`,
+      images: ['https://leadspotter.in/opengraph-image'],
+    },
   };
 }
 

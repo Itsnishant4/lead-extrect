@@ -107,6 +107,23 @@ export class TaskService {
     return Number(result[0]?.count || 0);
   }
 
+  static async getCompletedTasks(userId: number) {
+    return await db
+      .select({
+        id: tasks.id,
+        name: tasks.name,
+        status: tasks.status,
+        totalLeads: tasks.totalLeads,
+        createdAt: tasks.createdAt,
+      })
+      .from(tasks)
+      .where(and(
+        eq(tasks.userId, userId),
+        eq(tasks.status, 'completed')
+      ))
+      .orderBy(desc(tasks.createdAt));
+  }
+
   static async getTaskLeadCount(taskId: number): Promise<number> {
     const [result] = await db
       .select({ count: count() })

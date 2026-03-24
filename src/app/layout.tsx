@@ -69,7 +69,7 @@ export const metadata: Metadata = {
     description: "Extract verified business leads in bulk. Automate your prospecting with our powerful, cloud-based extraction tool.",
     images: [
       {
-        url: "/opengraph-image",
+        url: "https://leadspotter.in/opengraph-image",
         width: 1920,
         height: 1080,
         alt: "LeadSpotter — Turn Maps into your Lead Machine",
@@ -80,7 +80,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "LeadSpotter | Lead Extraction Tool",
     description: "Extract verified business leads in bulk. Start for free today.",
-    images: ["/opengraph-image"],
+    images: ["https://leadspotter.in/opengraph-image"],
     creator: "@LeadSpotter",
   },
   robots: {
@@ -121,7 +121,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${playfair.variable}`}>
       <head>
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         <link rel="preconnect" href="https://www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="antialiased min-h-screen font-sans">
         <GoogleAnalytics />
