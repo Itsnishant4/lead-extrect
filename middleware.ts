@@ -76,6 +76,8 @@ export async function middleware(request: NextRequest) {
     '/features/', 
     '/leads/', 
     '/compare/', 
+    '/alternatives/',
+    '/industries/',
     '/sitemap/',
     '/sitemap.xml',
     '/favicon',

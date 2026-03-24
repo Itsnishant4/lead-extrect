@@ -16,7 +16,7 @@ const industriesData: Record<string, {
   stats: string;
   useCase: string;
 }> = {
-  'dentists': {
+  ' ': {
     name: 'Dentists',
     description: 'Extract verified dental practice leads from Google Maps. Find dentist offices with contact information, ratings, and social media profiles.',
     keywords: ['dentist', 'dental clinic', 'dental office', 'orthodontist', 'dental care'],
