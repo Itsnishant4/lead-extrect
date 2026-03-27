@@ -1,10 +1,116 @@
 import { db } from '@/lib/db/index';
-import { integrations, userIntegrations, integrationLogs, plans, tasks, leads, taskLeads } from '@/lib/db/schema';
+import { integrations, userIntegrations, integrationLogs, plans, tasks, leads, taskLeads, settings } from '@/lib/db/schema';
 import { eq, and, sql, desc, count } from 'drizzle-orm';
 import { decrypt } from '@/lib/integrations/encryption';
 import { dispatchSync } from '@/lib/integrations/dispatcher';
+import { SettingsService } from './settings.service';
+import {
+  WEBHOOK_SYNC_KEY_HASH_SETTING,
+  WEBHOOK_SYNC_KEY_LAST4_SETTING,
+  WEBHOOK_SYNC_KEY_CREATED_AT_SETTING,
+  generateWebhookSyncKey,
+  getWebhookSyncKeyLast4,
+  hashWebhookSyncKey,
+} from '@/lib/webhook-sync';
 
 export class IntegrationService {
+  static async getWebhookSyncKeyInfo(userId: number) {
+    const rows = await db.select().from(settings).where(eq(settings.userId, userId));
+    const values = new Map(rows.map((row) => [row.key, row.value]));
+
+    const last4Raw = values.get(WEBHOOK_SYNC_KEY_LAST4_SETTING);
+    const createdAtRaw = values.get(WEBHOOK_SYNC_KEY_CREATED_AT_SETTING);
+    const hashRaw = values.get(WEBHOOK_SYNC_KEY_HASH_SETTING);
+
+    const parseValue = (value: string | undefined) => {
+      if (value === undefined) return null;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    };
+
+    return {
+      hasKey: Boolean(parseValue(hashRaw) as string | null),
+      last4: parseValue(last4Raw) as string | null,
+      createdAt: parseValue(createdAtRaw) as string | null,
+    };
+  }
+
+  static async generateWebhookSyncKeyForUser(userId: number) {
+    const rawKey = generateWebhookSyncKey();
+    const keyHash = hashWebhookSyncKey(rawKey);
+    const createdAt = new Date().toISOString();
+
+    await SettingsService.updateSetting(userId, WEBHOOK_SYNC_KEY_HASH_SETTING, keyHash);
+    await SettingsService.updateSetting(userId, WEBHOOK_SYNC_KEY_LAST4_SETTING, getWebhookSyncKeyLast4(rawKey));
+    await SettingsService.updateSetting(userId, WEBHOOK_SYNC_KEY_CREATED_AT_SETTING, createdAt);
+
+    return {
+      key: rawKey,
+      info: {
+        hasKey: true,
+        last4: getWebhookSyncKeyLast4(rawKey),
+        createdAt,
+      },
+    };
+  }
+
+  static async resolveUserIdByWebhookSyncKey(rawKey: string): Promise<number | null> {
+    const keyHash = hashWebhookSyncKey(rawKey);
+    const rows = await db.select({ userId: settings.userId })
+      .from(settings)
+      .where(and(
+        eq(settings.key, WEBHOOK_SYNC_KEY_HASH_SETTING),
+        eq(settings.value, JSON.stringify(keyHash))
+      ))
+      .limit(1);
+
+    return rows[0]?.userId ?? null;
+  }
+
+  static async syncAllForTask(userId: number, taskId: number) {
+    const connections = await this.getUserIntegrations(userId);
+    const activeConnections = connections.filter(
+      (connection) => connection.isEnabled && connection.integrationIsActive
+    );
+
+    if (activeConnections.length === 0) {
+      return { totalSynced: 0, results: [], message: 'No active integrations' };
+    }
+
+    const results: Array<{
+      integration: string;
+      success: boolean;
+      synced: number;
+      error?: string;
+    }> = [];
+    let totalSynced = 0;
+
+    for (const connection of activeConnections) {
+      const result = await this.syncTaskData(userId, connection.id, taskId, {
+        ip: 'system',
+      });
+
+      if (result.success) {
+        totalSynced += result.leadsSynced;
+      }
+
+      results.push({
+        integration: connection.slug,
+        success: result.success,
+        synced: result.leadsSynced,
+        error: result.error,
+      });
+    }
+
+    return {
+      totalSynced,
+      results,
+    };
+  }
+
   static async getAllIntegrationsAdmin() {
     return db.select().from(integrations).orderBy(integrations.sortOrder, integrations.name);
   }

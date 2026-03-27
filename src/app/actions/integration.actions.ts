@@ -243,6 +243,31 @@ export async function getCompletedTasksAction() {
   }
 }
 
+export async function getWebhookSyncKeyInfoAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const data = await IntegrationService.getWebhookSyncKeyInfo(session.id);
+    return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function generateWebhookSyncKeyAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const data = await IntegrationService.generateWebhookSyncKeyForUser(session.id);
+    await logAction('webhook_sync_key_generate', 'success', { last4: data.info.last4 });
+    return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
 export async function syncTaskToIntegrationAction(
   userIntegrationId: number,
   taskId: number,

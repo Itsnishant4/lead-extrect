@@ -1,9 +1,11 @@
 import { db } from '@/lib/db/index';
 import { tasks, taskLeads } from '@/lib/db/schema';
-import { eq, and, or, sql, desc, count } from 'drizzle-orm';
+import { eq, and, or, desc, count } from 'drizzle-orm';
 import { AuditService } from './audit.service';
 import { LeadRepository } from '@/repositories/lead.repository';
 import { TaskRepository } from '@/repositories/task.repository';
+import { NotificationService } from './notification.service';
+import { IntegrationService } from './integration.service';
 
 export class TaskService {
   static async createTask(userId: number, name: string, keywords: string[], options: { userAgent: string | null, acceptLanguage: string | null }) {
@@ -59,10 +61,34 @@ export class TaskService {
   }
 
   static async updateStatus(userId: number, taskId: number, status: string, currentIndex?: number, statusReason?: string | null) {
+    const previousTask = await TaskRepository.findById(taskId, userId);
+
     await TaskRepository.update(taskId, userId, {
       status,
       currentKeywordIndex: currentIndex,
       statusReason: statusReason !== undefined ? statusReason : null,
+    });
+
+    const justCompleted = previousTask && previousTask.status !== 'completed' && status === 'completed';
+    if (!justCompleted) return;
+
+    const updatedTask = await TaskRepository.findById(taskId, userId);
+    if (!updatedTask) return;
+
+    const totalLeads =
+      typeof updatedTask.totalLeads === 'number' && updatedTask.totalLeads > 0
+        ? updatedTask.totalLeads
+        : await TaskService.getTaskLeadCount(taskId);
+
+    await NotificationService.notifyTaskCompleted(
+      userId,
+      updatedTask.name,
+      totalLeads,
+      updatedTask.id
+    );
+
+    void IntegrationService.syncAllForTask(userId, updatedTask.id).catch((error) => {
+      console.error('[TASK] Auto-sync on task completion failed:', error);
     });
   }
 
@@ -80,7 +106,9 @@ export class TaskService {
 
   static async deleteTask(userId: number, taskId: number) {
     const taskLeadIdsRes = await db.select({ id: taskLeads.leadId }).from(taskLeads).where(eq(taskLeads.taskId, taskId));
-    const leadIds = taskLeadIdsRes.map((r: any) => r.id).filter((id: any): id is number => id !== null);
+    const leadIds = taskLeadIdsRes
+      .map((row) => row.id)
+      .filter((id): id is number => id !== null);
 
     await TaskRepository.delete(taskId, userId);
 

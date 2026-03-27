@@ -17,6 +17,7 @@ interface CreateNotificationParams {
   title: string;
   message: string;
   metadata?: Record<string, any>;
+  pushUrl?: string;
 }
 
 export class NotificationService {
@@ -39,7 +40,7 @@ export class NotificationService {
       title: params.title,
       body: params.message,
       tag: `${params.type}-${notificationId}`,
-      url: '/leads',
+      url: params.pushUrl || '/leads',
     }).catch((err) => {
       console.error('[NOTIFICATION] Push send error:', err.message || err);
     });
@@ -112,6 +113,7 @@ export class NotificationService {
       title: 'Task Completed',
       message: `"${taskName}" finished successfully with ${totalLeads.toLocaleString()} leads extracted.`,
       metadata: { taskId },
+      pushUrl: '/tasks',
     });
   }
 

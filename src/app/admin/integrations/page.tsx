@@ -95,6 +95,10 @@ const defaultForm: IntegrationForm = {
   sortOrder: 0,
 };
 
+function isImageLogo(value: string | null | undefined) {
+  return Boolean(value && /^(https?:\/\/|\/)/.test(value));
+}
+
 export default function AdminIntegrationsPage() {
   const queryClient = useQueryClient();
   const { open } = useSidebar();
@@ -359,10 +363,16 @@ export default function AdminIntegrationsPage() {
                           <TableRow key={integration.id} className="hover:bg-muted/30 transition-colors">
 <TableCell className="font-semibold">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white overflow-hidden">
-                  {integration.iconUrl && (
-                    <img src={integration.iconUrl} alt={integration.name} className=" object-cover " />
-                  ) }
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white overflow-hidden border border-slate-200">
+                  {integration.iconUrl ? (
+                    isImageLogo(integration.iconUrl) ? (
+                      <img src={integration.iconUrl} alt={integration.name} className="h-full w-full object-contain" />
+                    ) : (
+                      <span className="text-base leading-none">{integration.iconUrl}</span>
+                    )
+                  ) : (
+                    <span className="text-xs font-bold text-slate-500">{integration.name?.charAt(0) || "?"}</span>
+                  )}
                 </div>
                                 <div>
                                   <div>{integration.name}</div>
@@ -570,13 +580,16 @@ export default function AdminIntegrationsPage() {
 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-widest text-slate-400">Icon (emoji)</Label>
+                <Label className="text-xs font-bold uppercase tracking-widest text-slate-400">Logo URL / Icon</Label>
                 <Input
                   value={formData.iconUrl}
                   onChange={(e) => setFormData(prev => ({ ...prev, iconUrl: e.target.value }))}
-                  placeholder="📊"
+                  placeholder="https://example.com/logo.png or 📊"
                   className="bg-muted/5 border-none shadow-sm"
                 />
+                <p className="text-[10px] text-muted-foreground">
+                  Use an image URL for a hosted logo, or a short emoji/icon fallback.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-widest text-slate-400">OAuth Provider</Label>

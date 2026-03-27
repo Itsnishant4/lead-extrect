@@ -8,7 +8,7 @@ import { LandingBanner } from "@/components/LandingBanner";
 
 export const metadata: Metadata = {
   title: "Documentation | LeadSpotter - Integrations, Webhooks & API",
-  description: "Learn how to integrate LeadSpotter with Google Sheets, Webhooks, and automate your lead workflow. Complete developer documentation.",
+  description: "Learn how LeadSpotter syncs completed tasks to Google Sheets, webhooks, Zapier, and Make, plus how to use per-account webhook sync keys.",
 };
 
 const sections = [
@@ -16,7 +16,7 @@ const sections = [
     id: "overview",
     title: "Overview",
     icon: <FileText className="w-5 h-5" />,
-    content: `LeadSpotter provides powerful integrations to automate your lead workflow. Connect with Google Sheets, receive real-time webhooks, and sync data with your favorite tools.`
+    content: `LeadSpotter syncs completed tasks to Google Sheets, webhook destinations, Zapier, Make, and other connected tools.`
   },
   {
     id: "googlesheets",
@@ -28,21 +28,21 @@ const sections = [
     id: "webhooks",
     title: "Webhooks",
     icon: <Webhook className="w-5 h-5" />,
-    content: `Receive real-time notifications when new leads are extracted or updated.`
+    content: `Send completed-task lead payloads to your own webhook URLs and trigger sync externally with a per-account key.`
   },
   {
     id: "api",
     title: "API Reference",
     icon: <Code className="w-5 h-5" />,
-    content: `Build custom integrations with our REST API.`
+    content: `Use the sync endpoint to trigger integrations for a completed task.`
   }
 ];
 
 const features = [
   {
     icon: <RefreshCw className="w-6 h-6" />,
-    title: "Manual Export",
-    description: "You're in control. Select task, choose leads, then export when ready.",
+    title: "Task Sync",
+    description: "Sync a completed task manually from the Integrations page or automatically when the task finishes.",
     color: "from-violet-500 to-purple-500"
   },
   {
@@ -53,8 +53,8 @@ const features = [
   },
   {
     icon: <Zap className="w-6 h-6" />,
-    title: "On-Demand Webhooks",
-    description: "Trigger webhooks manually after selecting leads from your task.",
+    title: "Automatic Webhooks",
+    description: "Webhook destinations receive a task-completed payload after your extraction finishes.",
     color: "from-green-500 to-emerald-500"
   },
   {
@@ -86,7 +86,7 @@ export default function DocsPage() {
              Integrations <br /><span className="text-indigo-600">Documentation</span>
             </h1>
             <p className="max-w-2xl mx-auto text-gray-500 text-lg">
-              Connect LeadSpotter with Google Sheets and webhooks. You control the flow — select your task, choose leads, then export or send to your preferred destination.
+              Connect LeadSpotter with Google Sheets, webhooks, Zapier, and Make. Completed tasks can sync automatically, and you can also trigger sync securely from external workers.
             </p>
             <div className="flex mt-12 flex-wrap justify-center gap-4">
               <Link href="/signup">
@@ -149,15 +149,15 @@ export default function DocsPage() {
                   </li>
                   <li className="flex gap-3">
                     <span className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold">2</span>
-                    <span className="text-gray-700">Click "Connect Google Sheets" and authorize</span>
+                    <span className="text-gray-700">Click &quot;Connect Google Sheets&quot; and authorize</span>
                   </li>
                   <li className="flex gap-3">
                     <span className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold">3</span>
-                    <span className="text-gray-700">Select which task's leads you want to export</span>
+                    <span className="text-gray-700">Choose a completed task to sync</span>
                   </li>
                   <li className="flex gap-3">
                     <span className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold">4</span>
-                    <span className="text-gray-700">Click "Export to Google Sheets" to sync selected leads</span>
+                    <span className="text-gray-700">Click &quot;Sync Task&quot; to send all leads from that task into a new spreadsheet</span>
                   </li>
                 </ol>
               </div>
@@ -165,27 +165,27 @@ export default function DocsPage() {
               <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm">
                 <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
                   <RefreshCw className="w-5 h-5 text-indigo-500" />
-                  Manual Export Process
+                  Sync Behavior
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  Unlike auto-sync, you have full control. Choose exactly which leads to export:
+                  Google Sheets can be synced from completed tasks in the Integrations page:
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-2 text-sm text-gray-700">
                     <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    Select specific tasks to export leads from
+                    Pick any completed task
                   </li>
                   <li className="flex items-start gap-2 text-sm text-gray-700">
                     <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    Filter leads before exporting (by rating, location, etc.)
+                    Create a fresh spreadsheet for that sync
                   </li>
                   <li className="flex items-start gap-2 text-sm text-gray-700">
                     <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    Choose target Google Sheet or create new one
+                    Track last sync time from the Integrations page
                   </li>
                   <li className="flex items-start gap-2 text-sm text-gray-700">
                     <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    Export anytime after extraction is complete
+                    Re-sync manually whenever needed
                   </li>
                 </ul>
               </div>
@@ -223,7 +223,7 @@ export default function DocsPage() {
               </div>
               <div>
                 <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Webhooks</h2>
-                <p className="text-gray-600">Get real-time notifications for new leads</p>
+                <p className="text-gray-600">Post completed-task lead payloads to your own automation endpoints</p>
               </div>
             </div>
 
@@ -231,15 +231,15 @@ export default function DocsPage() {
               <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm">
                 <h3 className="text-xl font-bold mb-4">What are Webhooks?</h3>
                 <p className="text-gray-600 mb-4">
-                  Webhooks allow you to receive real-time HTTP notifications when events occur in LeadSpotter.
-                  Instead of polling our API, your server receives instant updates.
+                  Webhook integrations send an outbound HTTP POST to the URL you configure for the connected integration.
+                  They are designed for completed task delivery, not per-lead event streaming.
                 </p>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
                     <Zap className="w-5 h-5 text-violet-500 mt-0.5" />
                     <div>
-                      <p className="font-medium text-gray-900">Instant Delivery</p>
-                      <p className="text-sm text-gray-600">Receive leads as soon as they're extracted</p>
+                      <p className="font-medium text-gray-900">Completion Trigger</p>
+                      <p className="text-sm text-gray-600">Send data when a task reaches the completed state</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
@@ -256,10 +256,7 @@ export default function DocsPage() {
                 <h3 className="text-xl font-bold mb-4">Supported Events</h3>
                 <div className="space-y-3">
                   {[
-                    { name: "lead.created", desc: "New lead extracted" },
-                    { name: "lead.updated", desc: "Lead data changed" },
-                    { name: "extraction.started", desc: "Extraction job started" },
-                    { name: "extraction.completed", desc: "Extraction job finished" },
+                    { name: "task.completed", desc: "Completed task payload sent to your configured webhook URL" },
                   ].map((event) => (
                     <div key={event.name} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
                       <code className="text-sm font-mono text-violet-600">{event.name}</code>
@@ -282,23 +279,26 @@ export default function DocsPage() {
               </div>
               <pre className="text-sm overflow-x-auto">
                 <code className="text-gray-300">{`{
-  "event": "lead.created",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "data": {
-    "id": "lead_abc123",
-    "business_name": "Joe's Pizza",
-    "address": "123 Main Street, New York, NY 10001",
-    "phone": "+1-555-123-4567",
-    "email": "contact@joespizza.com",
-    "website": "https://joespizza.com",
-    "rating": 4.5,
-    "review_count": 234,
-    "category": "Pizza Restaurant",
-    "latitude": 40.7128,
-    "longitude": -74.0060,
-    "maps_url": "https://maps.google.com/...",
-    "extraction_job_id": "job_xyz789"
-  }
+  "event": "task.completed",
+  "timestamp": "2026-03-24T12:00:00.000Z",
+  "leads": [
+    {
+      "name": "Joe's Pizza",
+      "address": "123 Main Street, New York, NY 10001",
+      "city": "New York",
+      "phone": "+1-555-123-4567",
+      "email": "contact@joespizza.com",
+      "website": "https://joespizza.com",
+      "rating": 4.5,
+      "reviewsCount": 234,
+      "category": "Pizza Restaurant",
+      "leadScore": 82,
+      "facebook": null,
+      "instagram": "@joespizza",
+      "linkedin": null,
+      "twitter": null
+    }
+  ]
 }`}</code>
               </pre>
             </div>
@@ -312,21 +312,21 @@ export default function DocsPage() {
               <div className="grid md:grid-cols-3 gap-6">
                 <div className="bg-white rounded-xl p-5 shadow-sm">
                   <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold mb-4">1</div>
-                  <h4 className="font-bold text-gray-900 mb-2">Configure Endpoint</h4>
-                  <p className="text-sm text-gray-600 mb-3">Go to Settings → Integrations → Webhooks and add your endpoint URL</p>
+                  <h4 className="font-bold text-gray-900 mb-2">Connect Webhook</h4>
+                  <p className="text-sm text-gray-600 mb-3">Go to Integrations and connect Webhook, Zapier, or Make with your destination URL</p>
                   <code className="text-xs bg-gray-100 px-2 py-1 rounded text-violet-600">https://your-server.com/webhook</code>
                 </div>
                 <div className="bg-white rounded-xl p-5 shadow-sm">
                   <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold mb-4">2</div>
-                  <h4 className="font-bold text-gray-900 mb-2">Select Task</h4>
-                  <p className="text-sm text-gray-600 mb-3">Choose which task's leads should trigger webhook notifications</p>
+                  <h4 className="font-bold text-gray-900 mb-2">Complete Task</h4>
+                  <p className="text-sm text-gray-600 mb-3">When a task is completed, LeadSpotter can sync connected integrations automatically</p>
                   <code className="text-xs bg-gray-100 px-2 py-1 rounded text-violet-600">Task: Pizza NYC</code>
                 </div>
                 <div className="bg-white rounded-xl p-5 shadow-sm">
                   <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold mb-4">3</div>
-                  <h4 className="font-bold text-gray-900 mb-2">Send to Webhook</h4>
-                  <p className="text-sm text-gray-600 mb-3">Click "Send to Webhook" button after selecting leads from task</p>
-                  <code className="text-xs bg-gray-100 px-2 py-1 rounded text-violet-600">Send Selected Leads</code>
+                  <h4 className="font-bold text-gray-900 mb-2">Trigger Externally If Needed</h4>
+                  <p className="text-sm text-gray-600 mb-3">Generate your account sync key and call the sync endpoint from an external worker or automation</p>
+                  <code className="text-xs bg-gray-100 px-2 py-1 rounded text-violet-600">POST /api/integrations/sync</code>
                 </div>
               </div>
             </div>
@@ -344,30 +344,30 @@ export default function DocsPage() {
               </div>
               <div>
                 <h2 className="text-3xl md:text-4xl font-bold tracking-tight">API Reference</h2>
-                <p className="text-gray-600">Build custom integrations with our REST API</p>
+                <p className="text-gray-600">Trigger integration sync securely for a completed task</p>
               </div>
             </div>
 
             <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm mb-8">
               <div className="flex flex-wrap gap-3 mb-6">
-                <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium">GET</span>
-                <code className="text-gray-700 font-mono">/api/leads</code>
-                <span className="text-gray-500 text-sm">Fetch all leads for authenticated user</span>
+                <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">POST</span>
+                <code className="text-gray-700 font-mono">/api/integrations/sync</code>
+                <span className="text-gray-500 text-sm">Trigger sync for all active integrations on a completed task</span>
               </div>
               <div className="flex flex-wrap gap-3 mb-6">
                 <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">POST</span>
-                <code className="text-gray-700 font-mono">/api/extraction/start</code>
-                <span className="text-gray-500 text-sm">Start a new extraction job</span>
+                <code className="text-gray-700 font-mono">x-webhook-key: YOUR_WEBHOOK_SYNC_KEY</code>
+                <span className="text-gray-500 text-sm">Per-account secret generated from the Integrations page</span>
               </div>
               <div className="flex flex-wrap gap-3 mb-6">
                 <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">POST</span>
-                <code className="text-gray-700 font-mono">/api/extraction/stop</code>
-                <span className="text-gray-500 text-sm">Stop a running extraction job</span>
+                <code className="text-gray-700 font-mono">{`{ "taskId": 123 }`}</code>
+                <span className="text-gray-500 text-sm">The task must belong to the key owner and already be completed</span>
               </div>
               <div className="flex flex-wrap gap-3">
-                <span className="px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-sm font-medium">PUT</span>
-                <code className="text-gray-700 font-mono">/api/integrations/webhook</code>
-                <span className="text-gray-500 text-sm">Update webhook configuration</span>
+                <span className="px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-sm font-medium">BEHAVIOR</span>
+                <code className="text-gray-700 font-mono">task.completed</code>
+                <span className="text-gray-500 text-sm">Connected integrations are synced for that completed task</span>
               </div>
             </div>
 
@@ -380,10 +380,10 @@ export default function DocsPage() {
                 <span className="text-gray-400 text-sm ml-4">Authentication Example</span>
               </div>
               <pre className="text-sm overflow-x-auto">
-                <code className="text-gray-300">{`# Include your API key in the header
-curl -X GET "https://api.leadspotter.in/v1/leads" \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json"`}</code>
+                <code className="text-gray-300">{`curl -X POST "https://your-domain.com/api/integrations/sync" \\
+  -H "Content-Type: application/json" \\
+  -H "x-webhook-key: YOUR_WEBHOOK_SYNC_KEY" \\
+  -d '{"taskId": 123}'`}</code>
               </pre>
             </div>
           </div>

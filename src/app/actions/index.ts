@@ -156,5 +156,7 @@ export {
   testIntegrationAction,
   getIntegrationLogsAction,
   getCompletedTasksAction,
+  getWebhookSyncKeyInfoAction,
+  generateWebhookSyncKeyAction,
   syncTaskToIntegrationAction,
 } from './integration.actions';
