@@ -4,8 +4,13 @@ import { eq } from 'drizzle-orm';
 
 export class SiteConfigService {
   static async get(key: string): Promise<string | null> {
-    const row = await db.select().from(siteConfig).where(eq(siteConfig.key, key)).limit(1);
-    return row[0]?.value ?? null;
+    try {
+      const row = await db.select().from(siteConfig).where(eq(siteConfig.key, key)).limit(1);
+      return row[0]?.value ?? null;
+    } catch (error) {
+      console.error(`[SiteConfig] Failed to get ${key}:`, error);
+      return null;
+    }
   }
 
   static async getJSON<T = any>(key: string): Promise<T | null> {

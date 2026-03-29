@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/index';
-import { searches, taskLeads, leadSources, serverLogs, leads, savedLists, savedListItems, tasks, keywordHistory, proxies, exportTemplates, settings, auditLogs } from '@/lib/db/schema';
+import { searches, taskLeads, leadSources, leads, savedLists, savedListItems, tasks, keywordHistory, proxies, exportTemplates, settings, auditLogs } from '@/lib/db/schema';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { LeadRepository } from '@/repositories/lead.repository';
 
@@ -28,7 +28,6 @@ export class LeadService {
       const candidateIds = candidateIdsRes.map(r => r.id).filter((id): id is number => id !== null);
 
       // 2. Comprehensive delete in correct order
-      await tx.delete(serverLogs).where(eq(serverLogs.userId, userId));
       await tx.delete(taskLeads).where(inArray(taskLeads.taskId, tx.select({ id: tasks.id }).from(tasks).where(eq(tasks.userId, userId))));
       await tx.delete(leadSources).where(inArray(leadSources.searchId, tx.select({ id: searches.id }).from(searches).where(eq(searches.userId, userId))));
       await tx.delete(savedListItems).where(inArray(savedListItems.listId, tx.select({ id: savedLists.id }).from(savedLists).where(eq(savedLists.userId, userId))));

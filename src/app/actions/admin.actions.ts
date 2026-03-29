@@ -4,13 +4,15 @@ import { getSession } from '@/lib/auth';
 import { AdminService } from '@/services/admin.service';
 import { TaskService } from '@/services/task.service';
 import { handleActionError } from './helpers';
+import { withCache } from '@/lib/cache';
 
 export async function getAdminDashboardStatsAction() {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
     await AdminService.checkAdmin(session.id);
-    const data = await AdminService.getDashboardStats();
+    // Cache for 25 seconds (slightly less than polling interval of 30s)
+    const data = await withCache('admin-dashboard-stats', () => AdminService.getDashboardStats(), 25000);
     return { success: true, data };
   } catch (error: any) {
     return handleActionError(error);
@@ -190,8 +192,68 @@ export async function getUserLocationsAction() {
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
     await AdminService.checkAdmin(session.id);
-    const data = await AdminService.getUserLocations();
+    // Cache for 25 seconds - reduces redundant queries across admin/live and live-user-map
+    const data = await withCache('admin-user-locations', () => AdminService.getUserLocations(), 25000);
     return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function getAllSubscribersAction() {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    const { db } = await import('@/lib/db/index');
+    const { users } = await import('@/lib/db/schema');
+    const { desc } = await import('drizzle-orm');
+    
+    const subscribers = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      planType: users.planType,
+      leadsExtracted: users.leadsExtracted,
+      bonusCredits: users.bonusCredits,
+      subscriptionExpiry: users.subscriptionExpiry,
+      createdAt: users.createdAt,
+      isSuspended: users.isSuspended,
+    }).from(users).orderBy(desc(users.createdAt));
+    
+    return { success: true, data: subscribers };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
+
+export async function sendNotificationToAllAction(title: string, message: string) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    await AdminService.checkAdmin(session.id);
+    const { db } = await import('@/lib/db/index');
+    const { users } = await import('@/lib/db/schema');
+    const { ne } = await import('drizzle-orm');
+    const { NotificationService } = await import('@/services/notification.service');
+    
+    // Get all active users
+    const allUsers = await db.select({ id: users.id })
+      .from(users)
+      .where(ne(users.isSuspended, true));
+    
+    // Create notification for each user using NotificationService (which also sends push)
+    for (const user of allUsers) {
+      await NotificationService.create({
+        userId: user.id,
+        type: 'general',
+        title,
+        message,
+        pushUrl: '/dashboard',
+      });
+    }
+    
+    return { success: true, data: { count: allUsers.length } };
   } catch (error: any) {
     return handleActionError(error);
   }

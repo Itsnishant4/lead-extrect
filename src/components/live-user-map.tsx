@@ -16,7 +16,7 @@ export function LiveUserMap() {
       if (!res.success) throw new Error((res as any).error);
       return (res as any).data;
     },
-    refetchInterval: 15000,
+    refetchInterval: 30000,
   });
 
   const activeUsers = userLocations?.activeUsers || [];

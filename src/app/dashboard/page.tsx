@@ -80,12 +80,25 @@ export default function DashboardPage() {
   // Fill missing days in leadsPerDay for smooth chart
   const chartData = (() => {
     const map = new Map<string, number>();
-    (stats.leadsPerDay || []).forEach((d: any) => map.set(d.date, d.count));
+    (stats.leadsPerDay || []).forEach((d: any) => map.set(d.date, Number(d.total) || 0));
     const days = [];
     for (let i = 29; i >= 0; i--) {
       const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
       const key = format(date, 'yyyy-MM-dd');
-      days.push({ date: format(date, 'MMM dd'), searches: map.get(key) || 0 });
+      days.push({ date: format(date, 'MMM dd'), leads: map.get(key) || 0 });
+    }
+    return days;
+  })();
+
+  // Fill missing days in syncStats for smooth chart
+  const syncChartData = (() => {
+    const map = new Map<string, number>();
+    (stats.syncStats || []).forEach((d: any) => map.set(d.date, Number(d.total) || 0));
+    const days = [];
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const key = format(date, 'yyyy-MM-dd');
+      days.push({ date: format(date, 'MMM dd'), synced: map.get(key) || 0 });
     }
     return days;
   })();
@@ -200,57 +213,106 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 mb-8">
-          {/* Searches Over Time - Area Chart */}
+          {/* Leads Extracted Over Time - Area Chart */}
           <div className="glass-card rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <TrendingUp size={16} className="text-indigo-500" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-foreground">Search Activity</h3>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-foreground">Leads Extraction Activity</h3>
               </div>
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Last 30 days</span>
             </div>
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="searchGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 10, fill: '#94a3b8' }}
-                    tickLine={false}
-                    axisLine={false}
-                    interval={6}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 10, fill: '#94a3b8' }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={30}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(255,255,255,0.95)',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '12px',
-                      fontSize: '12px',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="searches"
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    fill="url(#searchGradient)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="leadsGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={6}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={30}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(255,255,255,0.95)',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="leads"
+                  stroke="#6366f1"
+                  strokeWidth={2}
+                  fill="url(#leadsGradient)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Sync Activity Over Time */}
+          <div className="glass-card rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Layers size={16} className="text-emerald-500" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-foreground">Integration Sync Activity</h3>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Last 30 days</span>
             </div>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={syncChartData}>
+                <defs>
+                  <linearGradient id="syncGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={6}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={30}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(255,255,255,0.95)',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="synced"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  fill="url(#syncGradient)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
@@ -300,31 +362,29 @@ export default function DashboardPage() {
               <h3 className="text-sm font-bold text-slate-900 dark:text-foreground">Top Categories</h3>
             </div>
             {stats.topCategories && stats.topCategories.length > 0 ? (
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats.topCategories.slice(0, 6)} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="category"
-                      tick={{ fontSize: 10, fill: '#94a3b8' }}
-                      tickLine={false}
-                      axisLine={false}
-                      width={100}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'rgba(255,255,255,0.95)',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#6366f1" radius={[0, 6, 6, 0]} barSize={16} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={stats.topCategories.slice(0, 6)} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="category"
+                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={100}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(255,255,255,0.95)',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Bar dataKey="count" fill="#6366f1" radius={[0, 6, 6, 0]} barSize={16} />
+                </BarChart>
+              </ResponsiveContainer>
             ) : (
               <div className="h-48 flex items-center justify-center">
                 <p className="text-xs text-slate-400">No data yet</p>

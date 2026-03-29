@@ -63,6 +63,8 @@ export {
   recalculateUserUsageAction,
   getUserHistoryAdminAction,
   getUserLocationsAction,
+  getAllSubscribersAction,
+  sendNotificationToAllAction,
 } from './admin.actions';
 
 // Blog

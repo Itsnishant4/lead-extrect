@@ -33,7 +33,7 @@ export default function AdminLogsPage() {
       if (!res.success) throw new Error((res as any).error);
       return (res as any).data;
     },
-    refetchInterval: 3000
+    refetchInterval: 30000
   });
 
   const logs = data?.recentLogs || [];

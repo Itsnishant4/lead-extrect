@@ -5,7 +5,7 @@ import { verifyToken } from '@/lib/auth-edge';
 // In-memory cache for user validation (reset on deployment)
 // Map<userId, timestamp when validated>
 const userValidationCache = new Map<number, number>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes - balance between performance and security
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes - trust JWT longer, reduce DB calls
 
 export async function middleware(request: NextRequest) {
   const session = request.cookies.get('session');

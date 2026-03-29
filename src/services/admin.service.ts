@@ -1,5 +1,5 @@
 import { db, raw } from '@/lib/db/index';
-import { users, leads, tasks, searches, auditLogs, serverLogs, transactions, plans, taskLeads, leadSources } from '@/lib/db/schema';
+import { users, leads, tasks, searches, auditLogs, transactions, plans, taskLeads, leadSources } from '@/lib/db/schema';
 import { eq, sql, desc, and, or, gt, count, inArray } from 'drizzle-orm';
 
 export class AdminService {
@@ -39,18 +39,7 @@ export class AdminService {
     .orderBy(desc(auditLogs.createdAt))
     .limit(10);
 
-    const workerLogs = await db.select({
-      id: serverLogs.id,
-      level: serverLogs.level,
-      message: serverLogs.message,
-      taskId: serverLogs.taskId,
-      createdAt: serverLogs.createdAt,
-    })
-    .from(serverLogs)
-    .orderBy(desc(serverLogs.createdAt))
-    .limit(100);
-
-    return { stats, recentLogs, workerLogs };
+    return { stats, recentLogs, workerLogs: [] };
   }
 
   static async getChartData() {

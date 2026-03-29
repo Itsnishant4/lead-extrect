@@ -89,8 +89,8 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     },
     refetchInterval: (query) => {
       const data = query.state.data as Task[];
-      // Polling every 4 seconds when tasks are running, pending, or uploading, 15 seconds otherwise
-      return (data && data.some(t => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 4000 : 15000;
+      // Polling every 15 seconds when tasks are running, pending, or uploading, 30 seconds otherwise
+      return (data && data.some(t => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 15000 : 30000;
     },
   });
 

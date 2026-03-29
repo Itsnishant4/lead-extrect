@@ -82,7 +82,7 @@ export function DashboardHeader({ activePage, navStyle = 'default' }: DashboardH
   const { data: unreadData } = useQuery({
     queryKey: ['notification-unread-count'],
     queryFn: () => getUnreadNotificationCountAction(),
-    refetchInterval: 30_000, // poll every 30s
+    refetchInterval: 60_000, // poll every 60s
     enabled: !!user,
   });
   const unreadCount = (unreadData?.success && 'count' in unreadData) ? (unreadData.count as number) : 0;
@@ -91,7 +91,7 @@ export function DashboardHeader({ activePage, navStyle = 'default' }: DashboardH
     queryKey: ['notifications'],
     queryFn: () => getNotificationsAction(),
     enabled: !!user && showNotifications,
-    refetchInterval: showNotifications ? 15_000 : false,
+    refetchInterval: showNotifications ? 30_000 : false,
   });
   const notifications = (notifsData?.success && 'data' in notifsData && notifsData.data) ? notifsData.data : [];
 

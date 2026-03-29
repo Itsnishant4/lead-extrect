@@ -4,7 +4,12 @@ import { eq, asc, desc } from 'drizzle-orm';
 
 export class PlanService {
   static async getAllPlans() {
-    return await db.select().from(plans).where(eq(plans.isActive, true)).orderBy(asc(plans.sortOrder));
+    try {
+      return await db.select().from(plans).where(eq(plans.isActive, true)).orderBy(asc(plans.sortOrder));
+    } catch (error) {
+      console.error('[PlanService] Failed to get plans:', error);
+      return [];
+    }
   }
 
   static async getAllPlansAdmin() {

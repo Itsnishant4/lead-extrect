@@ -82,21 +82,26 @@ export class BlogService {
   }
 
   static async getPostsPublic() {
-    return await db.select({
-      id: blogPosts.id,
-      slug: blogPosts.slug,
-      title: blogPosts.title,
-      description: blogPosts.description,
-      author: blogPosts.author,
-      category: blogPosts.category,
-      readTime: blogPosts.readTime,
-      imageUrl: blogPosts.imageUrl,
-      publishedAt: blogPosts.publishedAt,
-      createdAt: blogPosts.createdAt,
-    })
-    .from(blogPosts)
-    .where(eq(blogPosts.isPublished, true))
-    .orderBy(desc(blogPosts.publishedAt));
+    try {
+      return await db.select({
+        id: blogPosts.id,
+        slug: blogPosts.slug,
+        title: blogPosts.title,
+        description: blogPosts.description,
+        author: blogPosts.author,
+        category: blogPosts.category,
+        readTime: blogPosts.readTime,
+        imageUrl: blogPosts.imageUrl,
+        publishedAt: blogPosts.publishedAt,
+        createdAt: blogPosts.createdAt,
+      })
+      .from(blogPosts)
+      .where(eq(blogPosts.isPublished, true))
+      .orderBy(desc(blogPosts.publishedAt));
+    } catch (error) {
+      console.error('[BlogService] Failed to get posts:', error);
+      return [];
+    }
   }
 
   static async getPostBySlugPublic(slug: string) {

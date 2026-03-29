@@ -329,97 +329,7 @@ export default function IntegrationsPage() {
           </div>
         </div>
 
-        <Card className="mb-8 border-indigo-200 bg-white/80 shadow-sm">
-          <CardContent className="pt-6">
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
-                    <KeyRound size={18} />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900">Webhook Sync Key</h2>
-                    <p className="text-sm text-gray-500">
-                      Generate a per-account key for external workers or automations to trigger sync for completed tasks.
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  onClick={handleGenerateWebhookKey}
-                  disabled={isGeneratingWebhookKey}
-                  className="bg-indigo-600 hover:bg-indigo-700"
-                >
-                  {isGeneratingWebhookKey ? <Loader2 size={16} className="mr-2 animate-spin" /> : null}
-                  {webhookKeyInfo?.hasKey ? 'Regenerate Key' : 'Generate Key'}
-                </Button>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                  <p className="mb-2 text-xs font-bold uppercase tracking-widest text-gray-400">Sync Endpoint</p>
-                  <div className="flex items-center gap-2">
-                    <code className="min-w-0 flex-1 overflow-x-auto rounded bg-white px-3 py-2 text-xs text-indigo-700">
-                      {(appOrigin || '') + '/api/integrations/sync'}
-                    </code>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyText(`${appOrigin}/api/integrations/sync`, 'Endpoint')}
-                    >
-                      <Copy size={14} />
-                    </Button>
-                  </div>
-                  <p className="mt-2 text-xs text-gray-500">Send `POST` with `x-webhook-key` and a completed `taskId`.</p>
-                </div>
-
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                  <p className="mb-2 text-xs font-bold uppercase tracking-widest text-gray-400">Key Status</p>
-                  {webhookKeyInfo?.hasKey ? (
-                    <div className="space-y-1 text-sm text-gray-600">
-                      <p>Active key ending in <span className="font-semibold text-gray-900">{webhookKeyInfo.last4}</span></p>
-                      <p>Generated {webhookKeyInfo.createdAt ? new Date(webhookKeyInfo.createdAt).toLocaleString() : 'recently'}</p>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">No key generated yet.</p>
-                  )}
-                </div>
-              </div>
-
-              {generatedWebhookKey && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                  <p className="mb-2 text-sm font-semibold text-amber-900">Save this key now</p>
-                  <div className="flex items-center gap-2">
-                    <code className="min-w-0 flex-1 overflow-x-auto rounded bg-white px-3 py-2 text-xs text-amber-900">
-                      {generatedWebhookKey}
-                    </code>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyText(generatedWebhookKey, 'Webhook key')}
-                    >
-                      <Copy size={14} />
-                    </Button>
-                  </div>
-                  <p className="mt-2 text-xs text-amber-800">
-                    For security, the full key is only shown after generation. Regenerating invalidates the previous one.
-                  </p>
-                </div>
-              )}
-
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <p className="mb-2 text-xs font-bold uppercase tracking-widest text-gray-400">Example Request</p>
-                <pre className="overflow-x-auto text-xs text-gray-700">
-                  <code>{`curl -X POST "${appOrigin || 'https://your-domain.com'}/api/integrations/sync" \\
-  -H "Content-Type: application/json" \\
-  -H "x-webhook-key: ${generatedWebhookKey || 'YOUR_WEBHOOK_SYNC_KEY'}" \\
-  -d '{"taskId": 123}'`}</code>
-                </pre>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {integrations.map((integration) => (
@@ -432,7 +342,7 @@ export default function IntegrationsPage() {
                     : 'border-gray-200 hover:border-indigo-200 hover:shadow-md'
                 }`}
             >
-              <CardContent className="pt-6">
+              <CardContent className="pt-2">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-white border border-gray-200 flex items-center justify-center shadow-sm overflow-hidden">
@@ -546,6 +456,98 @@ export default function IntegrationsPage() {
             </Card>
           ))}
         </div>
+
+        <Card className="mt-8 border-indigo-200 bg-white/80 shadow-sm">
+          <CardContent className="pt-6">
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
+                    <KeyRound size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">Webhook Sync Key</h2>
+                    <p className="text-sm text-gray-500">
+                      Generate a per-account key for external workers or automations to trigger sync for completed tasks.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={handleGenerateWebhookKey}
+                  disabled={isGeneratingWebhookKey}
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                >
+                  {isGeneratingWebhookKey ? <Loader2 size={16} className="mr-2 animate-spin" /> : null}
+                  {webhookKeyInfo?.hasKey ? 'Regenerate Key' : 'Generate Key'}
+                </Button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-widest text-gray-400">Sync Endpoint</p>
+                  <div className="flex items-center gap-2">
+                    <code className="min-w-0 flex-1 overflow-x-auto rounded bg-white px-3 py-2 text-xs text-indigo-700">
+                      {(appOrigin || '') + '/api/integrations/sync'}
+                    </code>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyText(`${appOrigin}/api/integrations/sync`, 'Endpoint')}
+                    >
+                      <Copy size={14} />
+                    </Button>
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">Send `POST` with `x-webhook-key` and a completed `taskId`.</p>
+                </div>
+
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-widest text-gray-400">Key Status</p>
+                  {webhookKeyInfo?.hasKey ? (
+                    <div className="space-y-1 text-sm text-gray-600">
+                      <p>Active key ending in <span className="font-semibold text-gray-900">{webhookKeyInfo.last4}</span></p>
+                      <p>Generated {webhookKeyInfo.createdAt ? new Date(webhookKeyInfo.createdAt).toLocaleString() : 'recently'}</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">No key generated yet.</p>
+                  )}
+                </div>
+              </div>
+
+              {generatedWebhookKey && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="mb-2 text-sm font-semibold text-amber-900">Save this key now</p>
+                  <div className="flex items-center gap-2">
+                    <code className="min-w-0 flex-1 overflow-x-auto rounded bg-white px-3 py-2 text-xs text-amber-900">
+                      {generatedWebhookKey}
+                    </code>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyText(generatedWebhookKey, 'Webhook key')}
+                    >
+                      <Copy size={14} />
+                    </Button>
+                  </div>
+                  <p className="mt-2 text-xs text-amber-800">
+                    For security, the full key is only shown after generation. Regenerating invalidates the previous one.
+                  </p>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="mb-2 text-xs font-bold uppercase tracking-widest text-gray-400">Example Request</p>
+                <pre className="overflow-x-auto text-xs text-gray-700">
+                  <code>{`curl -X POST "${appOrigin || 'https://your-domain.com'}/api/integrations/sync" \\
+  -H "Content-Type: application/json" \\
+  -H "x-webhook-key: ${generatedWebhookKey || 'YOUR_WEBHOOK_SYNC_KEY'}" \\
+  -d '{"taskId": 123}'`}</code>
+                </pre>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {integrations.length === 0 && (
           <Card className="border-dashed">

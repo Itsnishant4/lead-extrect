@@ -19,6 +19,7 @@ import {
   Gear,
   Globe,
   Plugs,
+  Bell,
 } from 'phosphor-react';
 import { logoutAction } from '@/app/actions';
 import { toast } from 'sonner';
@@ -69,6 +70,11 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
       url: '/admin/users',
     },
     {
+      title: 'Subscribers',
+      icon: Bell,
+      url: '/admin/subscribers',
+    },
+    {
       title: 'Blog Management',
       icon: FileText,
       url: '/admin/blog',
@@ -102,11 +108,6 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
       title: 'System Settings',
       icon: Gear,
       url: '/admin/settings',
-    },
-    {
-      title: 'System Logs',
-      icon: Layout,
-      url: '/admin/logs',
     },
   ];
 

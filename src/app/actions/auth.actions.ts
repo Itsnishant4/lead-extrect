@@ -6,6 +6,7 @@ import { AuthService } from '@/services/auth.service';
 import { UserService } from '@/services/user.service';
 import { signupSchema, loginSchema, otpSchema, resetPasswordSchema } from '@/lib/validations';
 import { getClientInfo, handleActionError } from './helpers';
+import { withCache } from '@/lib/cache';
 
 export async function signupAction(name: string, email: string, password: string) {
   try {
@@ -103,7 +104,8 @@ export async function getDashboardStatsAction() {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
-    const data = await UserService.getDashboardStats(session.id);
+    // Cache for 25 seconds per user
+    const data = await withCache(`user-dashboard-stats-${session.id}`, () => UserService.getDashboardStats(session.id), 25000);
     return { success: true, data };
   } catch (error: any) {
     return handleActionError(error);

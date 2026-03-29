@@ -44,7 +44,7 @@ export default function TasksPage() {
       if (res.success && 'data' in res) return (res.data as any[]) || [];
       return [];
     },
-    refetchInterval: 5000
+    refetchInterval: 15000
   });
 
   // Fetch user's plan features for export permissions
