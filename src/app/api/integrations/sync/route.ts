@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { IntegrationService } from '@/services/integration.service';
 
+export const dynamic = 'force-dynamic';
+
 // Called by external workers/automations to sync a completed task
 // POST /api/integrations/sync with x-webhook-key header and { taskId }
 export async function POST(request: NextRequest) {

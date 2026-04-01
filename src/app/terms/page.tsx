@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import TermsPageClient from "./client";
-import { LandingBanner } from "@/components/LandingBanner";
 import { LandingHeader } from "@/components/LandingHeader";
 import JsonLd from "@/components/JsonLd";
 
@@ -35,7 +34,6 @@ export default function TermsPage() {
           ],
         }}
       />
-      <LandingBanner />
       <LandingHeader />
       <TermsPageClient />
     </>

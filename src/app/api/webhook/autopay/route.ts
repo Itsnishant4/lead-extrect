@@ -5,6 +5,8 @@ import { checkRateLimit } from '@/lib/security/ratelimit';
 import { z } from 'zod';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 const webhookPayloadSchema = z.object({
   order_id: z.string(),
   amount: z.string().optional(),
