@@ -55,6 +55,8 @@ export function LoginForm({
           callback: handleGoogleResponse,
           auto_select: false,
           cancel_on_tap_outside: true,
+          // Disable FedCM to avoid NetworkError in some browsers
+          use_fedcm_for_prompt: false,
         })
 
         // Render the button
@@ -70,10 +72,6 @@ export function LoginForm({
             width: 400,
           }
         )
-
-        // Also display the One Tap dialog
-        // @ts-ignore
-        window.google.accounts.id.prompt()
 
         setIsGoogleInitialized(true)
       }
@@ -96,8 +94,15 @@ export function LoginForm({
   const handleGoogleClick = () => {
     // @ts-ignore
     if (window.google?.accounts?.id) {
+      // Use the popup flow instead of One Tap to avoid FedCM errors
       // @ts-ignore
-      window.google.accounts.id.prompt()
+      window.google.accounts.id.prompt((notification) => {
+        // If One Tap fails or is dismissed, the button click should still work
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          // One Tap not available - user can still use the button
+          console.log('One Tap not displayed, using button flow')
+        }
+      })
     }
   }
 
