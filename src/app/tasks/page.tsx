@@ -23,7 +23,8 @@ import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
 import { ExportFilters, FilterSettings } from '@/components/ExportFilters';
 import type { ExportFormat } from '@/lib/export-utils';
-
+import Lottie from "lottie-react";
+import taskanimation from "../../../public/taskloading.json"
 export default function TasksPage() {
   const queryClient = useQueryClient();
   // Track which task+action is loading
@@ -211,10 +212,21 @@ export default function TasksPage() {
                       <div className={cn(
                         "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500",
                         task.status === 'completed' ? "bg-emerald-100 text-emerald-600" :
-                          task.status === 'running' ? "bg-indigo-100 text-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.2)]" :
+                          // task.status === 'running' ? "bg-indigo-100 text-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.2)]" :
                             task.status === 'failed' ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400"
                       )}>
-                        <Rocket className={cn("h-6 w-6", task.status === 'running' && "animate-pulse")} />
+                        {
+                          task.status === 'running' ? (
+                            <Lottie
+                              animationData={taskanimation}
+                              loop={true}
+                              autoplay={true}
+                              className=""
+                            />
+                          ) : (
+                            <Rocket className={cn("h-6 w-6", task.status === 'running' && "animate-pulse")} />
+                          )
+                        }
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-slate-900 text-lg truncate">{task.name}</h3>

@@ -5,7 +5,7 @@ import { sql, gt } from 'drizzle-orm';
 
 export const revalidate = 3600;
 
-const PAGE_SIZE = 5000;
+const PAGE_SIZE = 25000;
 
 export async function GET(
   request: NextRequest,

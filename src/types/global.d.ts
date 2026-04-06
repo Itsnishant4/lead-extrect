@@ -10,3 +10,8 @@ declare global {
     trackUpgradeClick: (planType: string) => void;
   }
 }
+
+declare module "*.lottie" {
+  const value: string;
+  export default value;
+}
