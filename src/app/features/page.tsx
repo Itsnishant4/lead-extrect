@@ -47,7 +47,7 @@ export default function FeaturesPage() {
         }}
       />
       <LandingBanner />
-      <LandingHeader />
+      <LandingHeader hasBanner={true} />
       <FeaturesPageClient />
     </>
   );

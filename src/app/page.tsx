@@ -32,7 +32,7 @@ export default function Home() {
     <div className="bg-white text-gray-900 antialiased overflow-x-hidden">
       <JsonLd />
       <LandingBanner />
-      <LandingHeader />
+      <LandingHeader hasBanner={true} />
       <HomeClient />
       <LandingFooter />
     </div>

@@ -39,7 +39,7 @@ export default async function PricingPage() {
   return (
     <div className="bg-white text-gray-900 antialiased overflow-x-hidden min-h-screen flex flex-col">
       <LandingBanner />
-      <LandingHeader />
+      <LandingHeader hasBanner={true} />
       <JsonLd
         type="BreadcrumbList"
         data={{

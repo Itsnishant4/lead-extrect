@@ -34,7 +34,7 @@ export default function TermsPage() {
           ],
         }}
       />
-      <LandingHeader />
+      <LandingHeader hasBanner={false} />
       <TermsPageClient />
     </>
   );

@@ -16,6 +16,7 @@ export const FloatingNav = ({
   logo,
   rightContent,
   alwaysVisible = false,
+  hasBanner = false,
 }: {
   navItems: {
     name: string;
@@ -27,6 +28,7 @@ export const FloatingNav = ({
   logo?: React.ReactNode;
   rightContent?: React.ReactNode;
   alwaysVisible?: boolean;
+  hasBanner?: boolean;
 }) => {
   const { scrollYProgress } = useScroll();
   const [visible, setVisible] = useState(true);
@@ -58,6 +60,11 @@ export const FloatingNav = ({
     }
   });
 
+  // Header positioning: with banner = top-14/12, without banner = top-4
+  const topPosition = isAtTop 
+    ? (hasBanner ? "top-14 sm:top-12" : "top-4") 
+    : "top-4";
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -74,7 +81,7 @@ export const FloatingNav = ({
         }}
         className={cn(
           "flex fixed mx-auto inset-x-4 md:inset-x-0 rounded-full bg-white/80 backdrop-blur-xl border border-indigo-100/60 shadow-[0_8px_32px_rgba(99,102,241,0.08),0_1px_2px_rgba(99,102,241,0.04)] z-[5000] px-3 md:px-4 py-2.5 items-center justify-between gap-2 md:gap-4 max-w-4xl transition-all duration-300",
-          isAtTop ? "top-14 sm:top-12" : "top-6",
+          topPosition,
           className
         )}
       >

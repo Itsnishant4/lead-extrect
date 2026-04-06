@@ -34,7 +34,7 @@ export default function PrivacyPage() {
           ],
         }}
       />
-      <LandingHeader />
+      <LandingHeader hasBanner={false} />
       <PrivacyPageClient />
     </>
   );
