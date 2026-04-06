@@ -128,6 +128,40 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="antialiased min-h-screen font-sans">
+        <noscript>
+          <style>{`
+            .noscript-fallback {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              padding: 2rem;
+              font-family: system-ui, -apple-system, sans-serif;
+              text-align: center;
+            }
+            .noscript-fallback h1 {
+              font-size: 1.5rem;
+              font-weight: 700;
+              margin-bottom: 1rem;
+              color: #1e1b4b;
+            }
+            .noscript-fallback p {
+              color: #64748b;
+              max-width: 500px;
+              line-height: 1.6;
+            }
+            .noscript-fallback a {
+              color: #6366f1;
+              text-decoration: underline;
+            }
+          `}</style>
+          <div className="noscript-fallback">
+            <h1>JavaScript Required</h1>
+            <p>LeadSpotter requires JavaScript to function. Please enable JavaScript in your browser settings and reload the page.</p>
+            <p style={{ marginTop: '1rem' }}>If you are trying to access our <a href="/privacy">Privacy Policy</a> or <a href="/terms">Terms of Service</a>, these pages should work without JavaScript.</p>
+          </div>
+        </noscript>
         <GoogleAnalytics />
 
         <QueryProvider>
