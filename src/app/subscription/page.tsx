@@ -16,6 +16,7 @@ import { PTMCheckout } from '@/lib/sdk/PTMCheckout';
 export default function SubscriptionPage() {
   const { user, isLoadingUser: isLoading, refreshUser } = useAutomation();
   const [isCheckingOut, setIsCheckingOut] = useState<number | null>(null);
+  const [showMore, setShowMore] = useState(false);
 
   const { data: plans = [], isLoading: isLoadingPlans } = useQuery({
     queryKey: ['public-plans'],
@@ -278,13 +279,28 @@ export default function SubscriptionPage() {
 
                       {/* Included Features (checkmark) */}
                       <ul className="space-y-3 flex-1 mb-4">
-                        {(plan.features || []).map((feature: string, i: number) => (
-                          <li key={`f-${i}`} className="flex items-start gap-3 text-sm">
+                        
+
+                          {(plan.features || []).map((feature: string, i: number) => (
+                            i < 5 && (
+                            <li key={`f-${i}`} className="flex items-start gap-3 text-sm">
                             <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-50/80 dark:bg-emerald-950/60 flex items-center justify-center shrink-0">
                               <Check size={14} className="text-emerald-500" />
                             </div>
                             <span className="text-slate-600 dark:text-slate-300">{feature}</span>
                           </li>
+                          )
+                        ))}
+
+                        {showMore && (plan.features || []).map((feature: string, i: number) => (
+                          i > 5 && (
+                            <li key={`f-${i}`} className="flex items-start gap-3 text-sm">
+                            <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-50/80 dark:bg-emerald-950/60 flex items-center justify-center shrink-0">
+                              <Check size={14} className="text-emerald-500" />
+                            </div>
+                            <span className="text-slate-600 dark:text-slate-300">{feature}</span>
+                          </li>
+                          )
                         ))}
 
                         {/* Unavailable Features (X mark) */}
@@ -296,6 +312,13 @@ export default function SubscriptionPage() {
                             <span className="text-slate-400 dark:text-slate-500 line-through">{feature}</span>
                           </li>
                         ))}
+
+                        { plan.features && plan.features.length + plan.unavailableFeatures.length > 5 && (
+                          <li className="flex relative flex-col items-start gap-3 text-sm w-full mx-auto">
+                            <span onClick={() => setShowMore(!showMore)} className="text-slate-800 cursor-pointer dark:text-slate-300 text-center mx-auto font-semibold">{showMore ? 'Read Less' : 'Read More'}</span>
+                          </li>
+                          
+                        )}
                       </ul>
 
                       {/* Button */}

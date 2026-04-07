@@ -71,7 +71,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .from(seoHubRegistry)
       .where(gt(seoHubRegistry.totalLeads, 0))
       .orderBy(sql`${seoHubRegistry.niche}, ${seoHubRegistry.city}`)
-      .limit(50000);
 
     leadsPages = leadsData.map((row) => {
       const niche = row.niche.toLowerCase()

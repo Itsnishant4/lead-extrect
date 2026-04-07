@@ -13,7 +13,6 @@ import {
   Pause,
   Play,
   Trash2,
-  RefreshCw,
   Clock,
   Loader2,
   AlertCircle,
@@ -178,15 +177,13 @@ export default function TasksPage() {
     <div className="min-h-screen  bg-gradient-to-br from-indigo-50 via-indigo-100 to-violet-50">
       <DashboardHeader activePage="campaigns" />
 
-      <main className="pt-28 pb-20 max-w-5xl mx-auto px-6">
+      <main className="pt-28 pb-20 max-w-4xl mx-auto px-6">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl serif-font font-bold text-slate-900">Automation Tasks</h1>
             <p className="text-slate-500 mt-1">Monitor and manage your background extraction campaigns.</p>
           </div>
-          <Button variant="outline" className="gap-2" onClick={() => queryClient.invalidateQueries({ queryKey: ['tasks'] })}>
-            <RefreshCw size={16} /> Refresh
-          </Button>
+    
         </div>
 
         {isLoading ? (
@@ -212,7 +209,7 @@ export default function TasksPage() {
                       <div className={cn(
                         "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500",
                         task.status === 'completed' ? "bg-emerald-100 text-emerald-600" :
-                          // task.status === 'running' ? "bg-indigo-100 text-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.2)]" :
+                          task.status === 'running' ? "bg-slate-100 text-indigo-600 " :
                             task.status === 'failed' ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400"
                       )}>
                         {
@@ -221,7 +218,7 @@ export default function TasksPage() {
                               animationData={taskanimation}
                               loop={true}
                               autoplay={true}
-                              className=""
+                              className=" h-9 w-9 "
                             />
                           ) : (
                             <Rocket className={cn("h-6 w-6", task.status === 'running' && "animate-pulse")} />
