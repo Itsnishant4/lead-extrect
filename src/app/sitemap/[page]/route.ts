@@ -7,6 +7,19 @@ export const revalidate = 3600;
 
 const PAGE_SIZE = 25000;
 
+function sanitizeDate(value: unknown): Date {
+  if (!value) return new Date();
+  const date = new Date(Number(value) * 1000);
+  if (isNaN(date.getTime())) return new Date();
+  const year = date.getFullYear();
+  if (year < 2020 || year > 2100) return new Date();
+  return date;
+}
+
+function formatDate(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ page: string }> }
@@ -51,7 +64,7 @@ export async function GET(
         .replace(/^-|-$/g, '');
       return {
         url: `${baseUrl}/leads/${niche}/${city}`,
-        lastModified: row.lastUpdated ? new Date(Number(row.lastUpdated) * 1000) : new Date(),
+        lastModified: sanitizeDate(row.lastUpdated),
         changeFrequency: 'weekly' as const,
         priority: 0.7,
       };
@@ -64,7 +77,7 @@ export async function GET(
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${leadsPages.map(entry => `  <url>
     <loc>${entry.url}</loc>
-    <lastmod>${entry.lastModified.toISOString()}</lastmod>
+    <lastmod>${formatDate(entry.lastModified)}</lastmod>
     <changefreq>${entry.changeFrequency}</changefreq>
     <priority>${entry.priority}</priority>
   </url>`).join('\n')}

@@ -5,6 +5,15 @@ import { sql, gt, eq } from 'drizzle-orm';
 
 export const revalidate = 3600; // Revalidate every hour
 
+function sanitizeDate(value: unknown): Date {
+  if (!value) return new Date();
+  const date = new Date(Number(value) * 1000);
+  if (isNaN(date.getTime())) return new Date();
+  const year = date.getFullYear();
+  if (year < 2020 || year > 2100) return new Date();
+  return date;
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://leadspotter.in';
 
@@ -89,7 +98,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .replace(/^-|-$/g, '');
       return {
         url: `${baseUrl}/leads/${niche}/${city}`,
-        lastModified: row.lastUpdated ? new Date(Number(row.lastUpdated) * 1000) : new Date(),
+        lastModified: sanitizeDate(row.lastUpdated),
         changeFrequency: 'weekly' as const,
         priority: 0.7,
       };
@@ -112,7 +121,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     blogPages = posts.map((post) => ({
       url: `${baseUrl}/blog/${encodeURIComponent(post.slug)}`,
-      lastModified: post.updatedAt ? new Date(Number(post.updatedAt) * 1000) : new Date(),
+      lastModified: sanitizeDate(post.updatedAt),
       changeFrequency: 'monthly' as const,
       priority: 0.7,
     }));
