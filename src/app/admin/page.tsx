@@ -113,7 +113,7 @@ export default function AdminDashboard() {
       const res = await getAdminTasksAction();
       return res.success ? ((res as any).data || []) : [];
     },
-    refetchInterval: 30000,
+    refetchInterval: 120000,
   });
 
   const taskStatusMutation = useMutation({

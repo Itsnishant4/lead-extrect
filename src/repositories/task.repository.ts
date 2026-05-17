@@ -3,6 +3,10 @@ import { tasks, searches, leadSources, taskLeads } from '@/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 
 export class TaskRepository {
+  // NOTE: 'keywords' column is intentionally excluded from all read queries.
+  // It stores massive JSON blobs (10K+ keywords) that would be transferred on every poll.
+  // Use raw SQL with json_each() in the worker when you need to access keywords.
+
   static async findById(id: number, userId: number, tx: any = db) {
     const result = await tx.select({
       id: tasks.id,
@@ -38,8 +42,7 @@ export class TaskRepository {
       totalKeywords: tasks.totalKeywords,
       currentKeywordIndex: tasks.currentKeywordIndex,
       totalLeads: tasks.totalLeads,
-      userAgent: tasks.userAgent,
-      acceptLanguage: tasks.acceptLanguage,
+      // NOTE: userAgent, acceptLanguage excluded from list queries — not needed for display
       lastLogsSentAt: tasks.lastLogsSentAt,
       lastHeartbeat: tasks.lastHeartbeat,
       exportFileIds: tasks.exportFileIds,

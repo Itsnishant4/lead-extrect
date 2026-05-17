@@ -69,20 +69,18 @@ export async function getTasksAction() {
     const data = await TaskService.getTasks(session.id);
     
     // AUTO-RECOVERY LOGIC:
-    // Check if any task is 'running' but hasn't had a heartbeat in 3 minutes.
-    // If so, it might be stalled due to a server restart or network issue.
-    const threeMinutesAgoSeconds = Math.floor(Date.now() / 1000) - (3 * 60);
+    // OPTIMIZED: Increased stall threshold from 3min to 10min, limit to 1 recovery per poll.
+    // This prevents the read-only poll from becoming a write-heavy operation.
+    const tenMinutesAgoSeconds = Math.floor(Date.now() / 1000) - (10 * 60);
     const stalledTasks = data.filter((t: any) => 
       t.status === 'running' && 
-      (!t.lastHeartbeat || Math.floor(new Date(t.lastHeartbeat).getTime() / 1000) < threeMinutesAgoSeconds)
+      (!t.lastHeartbeat || Math.floor(new Date(t.lastHeartbeat).getTime() / 1000) < tenMinutesAgoSeconds)
     );
 
+    // Only recover 1 task per poll to avoid write amplification
     if (stalledTasks.length > 0) {
-      console.log(`[ACTIONS] Found ${stalledTasks.length} stalled tasks for user ${session.id}. Recovering...`);
-      for (const task of stalledTasks) {
-        // Trigger recovery via the standardized runTask method
-        void TaskService.runTask(task.id, session.id, 'Auto-recovered — worker stalled');
-      }
+      console.log(`[ACTIONS] Found ${stalledTasks.length} stalled tasks for user ${session.id}. Recovering first one...`);
+      void TaskService.runTask(stalledTasks[0].id, session.id, 'Auto-recovered — worker stalled');
     }
 
     return { success: true, data };

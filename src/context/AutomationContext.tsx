@@ -87,10 +87,11 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       if (!res.success) return [];
       return ((res as any).data || []) as unknown as Task[];
     },
+    staleTime: 15_000, // Consider data fresh for 15s — prevents refetch on tab switch/remount
     refetchInterval: (query) => {
       const data = query.state.data as Task[];
-      // Polling every 15 seconds when tasks are running, pending, or uploading, 30 seconds otherwise
-      return (data && data.some(t => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 15000 : 30000;
+      // OPTIMIZED: 30s when active tasks, 2 minutes when idle (was 15s/30s)
+      return (data && data.some(t => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 30000 : 120000;
     },
   });
 

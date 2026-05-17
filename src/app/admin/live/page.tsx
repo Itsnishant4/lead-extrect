@@ -35,7 +35,7 @@ export default function LiveViewPage() {
       if (!res.success) throw new Error((res as any).error);
       return (res as any).data;
     },
-    refetchInterval: 30000,
+    refetchInterval: 120000,
   });
 
   const activeUsers = (userLocations?.activeUsers || []) as UserLocation[];
