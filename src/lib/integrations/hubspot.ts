@@ -15,7 +15,7 @@ export async function syncToHubSpot(
   refreshToken: string | null,
   tokenExpiry: number | null,
   leads: HubSpotLead[]
-): Promise<{ success: boolean; error?: string; syncedCount: number }> {
+): Promise<{ success: boolean; error?: string; syncedCount: number; refreshedToken?: { accessToken: string; expiresAt?: Date } }> {
   if (!leads.length) return { success: true, syncedCount: 0 };
 
   try {
@@ -23,8 +23,19 @@ export async function syncToHubSpot(
     const decryptedRefresh = refreshToken ? maybeDecryptToken(refreshToken) : null;
     const expiresAt = normalizeTokenExpiry(tokenExpiry);
 
+    let refreshedTokenInfo: { accessToken: string; expiresAt?: Date } | undefined;
+
+    const getRefreshedTokenLocal = async (rt: string) => {
+      const refreshed = await refreshAccessToken('hubspot', rt);
+      refreshedTokenInfo = {
+        accessToken: refreshed.accessToken,
+        expiresAt: refreshed.expiresAt,
+      };
+      return refreshed.accessToken;
+    };
+
     if (shouldRefreshToken(expiresAt, decryptedRefresh)) {
-      token = await getRefreshedToken(decryptedRefresh!);
+      token = await getRefreshedTokenLocal(decryptedRefresh!);
     }
 
     let syncedCount = 0;
@@ -39,7 +50,7 @@ export async function syncToHubSpot(
 
       let response = await createHubSpotContact(token, properties);
       if (response.status === 401 && decryptedRefresh) {
-        token = await getRefreshedToken(decryptedRefresh);
+        token = await getRefreshedTokenLocal(decryptedRefresh);
         response = await createHubSpotContact(token, properties);
       }
 
@@ -61,10 +72,11 @@ export async function syncToHubSpot(
         success: true,
         error: `${lastError} Some leads may have been skipped.`,
         syncedCount,
+        refreshedToken: refreshedTokenInfo,
       };
     }
 
-    return { success: true, syncedCount };
+    return { success: true, syncedCount, refreshedToken: refreshedTokenInfo };
   } catch (error: any) {
     return { success: false, error: error.message, syncedCount: 0 };
   }
@@ -117,9 +129,4 @@ function normalizeTokenExpiry(tokenExpiry: number | null): number | null {
 function shouldRefreshToken(tokenExpiry: number | null, refreshToken: string | null): boolean {
   if (!tokenExpiry || !refreshToken) return false;
   return Date.now() / 1000 > tokenExpiry - 300;
-}
-
-async function getRefreshedToken(refreshToken: string): Promise<string> {
-  const refreshed = await refreshAccessToken('hubspot', refreshToken);
-  return refreshed.accessToken;
 }

@@ -47,8 +47,7 @@ export default function TasksPage() {
     staleTime: 15_000, // Share data with AutomationContext — prevents duplicate queries
     refetchInterval: (query) => {
       const data = query.state.data as any[];
-      // OPTIMIZED: 30s when active, 2 minutes when idle (was constant 15s)
-      return (data && data.some((t: any) => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 30000 : 120000;
+      return (data && data.some((t: any) => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 1000 : 120000;
     },
   });
 

@@ -78,7 +78,10 @@ export default function AdminTasksPage() {
       if (!res.success) throw new Error((res as any).error)
       return (res as any).data || []
     },
-    refetchInterval: 120000,
+    refetchInterval: (query) => {
+      const data = query.state.data as any[];
+      return (data && data.some((t: any) => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 1000 : 5000;
+    },
   })
 
   const updateStatusMutation = useMutation({

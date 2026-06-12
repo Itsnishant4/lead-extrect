@@ -13,7 +13,7 @@ interface SyncContext {
   apiKey: string | null;
 }
 
-type SyncHandler = (ctx: SyncContext, leads: any[]) => Promise<{ success: boolean; error?: string; syncedCount: number }>;
+type SyncHandler = (ctx: SyncContext, leads: any[]) => Promise<{ success: boolean; error?: string; syncedCount: number; refreshedToken?: { accessToken: string; expiresAt?: Date } }>;
 
 const HANDLERS: Record<string, SyncHandler> = {
   'google-sheets': async (ctx, leads) => {
@@ -97,7 +97,7 @@ async function sendSlackNotification(ctx: SyncContext, leads: any[]): Promise<{ 
   }
 }
 
-export async function dispatchSync(ctx: SyncContext, leads: any[]): Promise<{ success: boolean; error?: string; syncedCount: number }> {
+export async function dispatchSync(ctx: SyncContext, leads: any[]): Promise<{ success: boolean; error?: string; syncedCount: number; refreshedToken?: { accessToken: string; expiresAt?: Date } }> {
   const handler = HANDLERS[ctx.slug];
   if (!handler) {
     return { success: false, error: `No sync handler for: ${ctx.slug}`, syncedCount: 0 };

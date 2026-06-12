@@ -20,7 +20,7 @@ export const users = sqliteTable('users', {
   latitude: real('latitude'),
   longitude: real('longitude'),
   lastActive: integer('last_active', { mode: 'timestamp' }),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   lastActiveIdx: index('idx_users_last_active').on(table.lastActive),
 }));
@@ -37,15 +37,15 @@ export const tasks = sqliteTable('tasks', {
   keywords: text('keywords', { mode: 'json' }),
   userAgent: text('user_agent'),
   acceptLanguage: text('accept_language'),
-  lastLogsSentAt: integer('last_logs_sent_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-  lastHeartbeat: integer('last_heartbeat', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  lastLogsSentAt: integer('last_logs_sent_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+  lastHeartbeat: integer('last_heartbeat', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
   exportFileIds: text('export_file_ids'),
   exportStatus: text('export_status'),
   exportCreatedAt: integer('export_created_at', { mode: 'timestamp' }),
   exportedLeadsCount: integer('exported_leads_count').default(0),
   retryCount: integer('retry_count').default(0),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   userIdIdx: index('idx_tasks_user_id').on(table.userId),
   statusIdx: index('idx_tasks_status').on(table.status),
@@ -58,7 +58,7 @@ export const serverLogs = sqliteTable('server_logs', {
   taskId: integer('task_id'),
   level: text('level').default('INFO'),
   message: text('message'),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   taskIdIdx: index('idx_server_logs_task_id').on(table.taskId),
   userIdIdx: index('idx_server_logs_user_id').on(table.userId),
@@ -69,7 +69,7 @@ export const searches = sqliteTable('searches', {
   userId: integer('user_id').references(() => users.id),
   query: text('query').notNull(),
   taskId: integer('task_id').references(() => tasks.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   userIdIdx: index('idx_searches_user_id').on(table.userId),
   queryIdx: index('idx_searches_query').on(table.query),
@@ -109,7 +109,7 @@ export const leads = sqliteTable('leads', {
   websitePhone: text('website_phone'),
   leadScore: integer('lead_score').default(0),
   emailVerified: integer('email_verified', { mode: 'boolean' }).default(false),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   placeIdIdx: index('idx_leads_place_id').on(table.placeId),
   cityIdx: index('idx_leads_city').on(table.city),
@@ -121,7 +121,7 @@ export const leadSources = sqliteTable('lead_sources', {
   leadId: integer('lead_id').references(() => leads.id),
   searchId: integer('search_id').references(() => searches.id),
   taskId: integer('task_id').references(() => tasks.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   pk: unique('lead_sources_lead_id_search_id_unique').on(table.leadId, table.searchId),
   leadIdIdx: index('idx_lead_sources_lead_id').on(table.leadId),
@@ -135,7 +135,7 @@ export const cityAreas = sqliteTable('city_areas', {
   state: text('state').notNull(),
   city: text('city').notNull(),
   areas: text('areas').notNull(),
-  lastUpdated: integer('last_updated', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  lastUpdated: integer('last_updated', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   unq: unique('city_areas_country_state_city_unique').on(table.country, table.state, table.city),
 }));
@@ -149,7 +149,7 @@ export const keywordHistory = sqliteTable('keyword_history', {
   keywords: text('keywords').notNull(),
   totalKeywords: integer('total_keywords'),
   keywordsTruncated: integer('keywords_truncated', { mode: 'boolean' }).default(false),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   userIdIdx: index('idx_keyword_history_user_id').on(table.userId),
 }));
@@ -157,7 +157,7 @@ export const keywordHistory = sqliteTable('keyword_history', {
 export const taskLeads = sqliteTable('task_leads', {
   taskId: integer('task_id').references(() => tasks.id),
   leadId: integer('lead_id').references(() => leads.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   pk: unique('task_leads_task_id_lead_id_pk').on(table.taskId, table.leadId),
   taskIdIdx: index('idx_task_leads_task_id').on(table.taskId),
@@ -177,13 +177,13 @@ export const savedLists = sqliteTable('saved_lists', {
   userId: integer('user_id').references(() => users.id),
   name: text('name').notNull(),
   description: text('description'),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 });
 
 export const savedListItems = sqliteTable('saved_list_items', {
   listId: integer('list_id').references(() => savedLists.id),
   leadId: integer('lead_id').references(() => leads.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   pk: unique('saved_list_items_list_id_lead_id_unique').on(table.listId, table.leadId),
   listIdIdx: index('idx_saved_list_items_list_id').on(table.listId),
@@ -195,7 +195,7 @@ export const exportTemplates = sqliteTable('export_templates', {
   userId: integer('user_id').references(() => users.id),
   name: text('name').notNull(),
   columns: text('columns').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 });
 
 export const proxies = sqliteTable('proxies', {
@@ -207,7 +207,7 @@ export const proxies = sqliteTable('proxies', {
   password: text('password'),
   protocol: text('protocol').default('http'),
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 });
 
 export const auditLogs = sqliteTable('audit_logs', {
@@ -216,7 +216,7 @@ export const auditLogs = sqliteTable('audit_logs', {
   action: text('action').notNull(),
   status: text('status'),
   metadata: text('metadata'),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   userIdIdx: index('idx_audit_logs_user_id').on(table.userId),
   createdAtIdx: index('idx_audit_logs_user_created').on(table.userId, table.createdAt),
@@ -227,7 +227,7 @@ export const pincodeCoords = sqliteTable('pincode_coords', {
   pincode: text('pincode').notNull(),
   latitude: real('latitude').notNull(),
   longitude: real('longitude').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   pk: unique('pincode_coords_country_pincode_pk').on(table.country, table.pincode),
 }));
@@ -246,8 +246,8 @@ export const blogPosts = sqliteTable('blog_posts', {
   metaDescription: text('meta_description'),
   isPublished: integer('is_published', { mode: 'boolean' }).default(false),
   publishedAt: integer('published_at', { mode: 'timestamp' }),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 });
 
 export const rateLimits = sqliteTable('rate_limits', {
@@ -271,8 +271,8 @@ export const plans = sqliteTable('plans', {
   badge: text('badge'),
   sortOrder: integer('sort_order').default(0),
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 });
 
 export const transactions = sqliteTable('transactions', {
@@ -283,8 +283,8 @@ export const transactions = sqliteTable('transactions', {
   status: text('status').default('pending'),
   gatewayOrderId: text('gateway_order_id'),
   utr: text('utr'),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   userIdIdx: index('idx_transactions_user_id').on(table.userId),
   statusIdx: index('idx_transactions_status').on(table.status),
@@ -294,7 +294,7 @@ export const transactions = sqliteTable('transactions', {
 export const siteConfig = sqliteTable('site_config', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 });
 
 export const seoHubRegistry = sqliteTable('seo_hub_registry', {
@@ -306,7 +306,7 @@ export const seoHubRegistry = sqliteTable('seo_hub_registry', {
   withPhone: integer('with_phone').default(0),
   withWebsite: integer('with_website').default(0),
   avgRating: real('avg_rating').default(0),
-  lastUpdated: integer('last_updated', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  lastUpdated: integer('last_updated', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (t) => ({
   unqNicheCity: unique('unq_seo_niche_city').on(t.niche, t.city)
 }));
@@ -319,7 +319,7 @@ export const notifications = sqliteTable('notifications', {
   message: text('message').notNull(),
   isRead: integer('is_read', { mode: 'boolean' }).default(false),
   metadata: text('metadata', { mode: 'json' }), // optional JSON for links, task IDs, etc.
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   userIdIdx: index('idx_notifications_user_id').on(table.userId),
   isReadIdx: index('idx_notifications_is_read').on(table.userId, table.isRead),
@@ -331,7 +331,7 @@ export const pushSubscriptions = sqliteTable('push_subscriptions', {
   endpoint: text('endpoint').notNull(),
   p256dh: text('p256dh').notNull(),
   auth: text('auth').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   userIdIdx: index('idx_push_subscriptions_user_id').on(table.userId),
   endpointIdx: unique('push_subscriptions_endpoint_unique').on(table.endpoint),
@@ -351,8 +351,8 @@ export const integrations = sqliteTable('integrations', {
   oauthProvider: text('oauth_provider'),             // 'google', 'hubspot', 'salesforce', 'slack' or null
   configSchema: text('config_schema', { mode: 'json' }),  // JSON Schema for user config fields
   sortOrder: integer('sort_order').default(0),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   slugIdx: index('idx_integrations_slug').on(table.slug),
   categoryIdx: index('idx_integrations_category').on(table.category),
@@ -371,8 +371,8 @@ export const userIntegrations = sqliteTable('user_integrations', {
   lastSyncedAt: integer('last_synced_at', { mode: 'timestamp' }),
   totalSynced: integer('total_synced').default(0),
   lastError: text('last_error'),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   userIdIdx: index('idx_user_integrations_user_id').on(table.userId),
   integrationIdIdx: index('idx_user_integrations_integration_id').on(table.integrationId),
@@ -389,7 +389,7 @@ export const integrationLogs = sqliteTable('integration_logs', {
   leadsCount: integer('leads_count').default(0),
   errorMessage: text('error_message'),
   metadata: text('metadata', { mode: 'json' }),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   userIdIdx: index('idx_integration_logs_user_id').on(table.userId),
   integrationIdIdx: index('idx_integration_logs_integration_id').on(table.integrationId),
@@ -406,7 +406,7 @@ export const userApiKeys = sqliteTable('user_api_keys', {
   lastUsedAt: integer('last_used_at', { mode: 'timestamp' }),
   expiresAt: integer('expires_at', { mode: 'timestamp' }),
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   userIdIdx: index('idx_user_api_keys_user_id').on(table.userId),
   keyHashIdx: unique('user_api_keys_key_hash_unique').on(table.keyHash),

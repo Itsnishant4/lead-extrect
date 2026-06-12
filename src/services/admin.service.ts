@@ -43,12 +43,14 @@ export class AdminService {
   }
 
   static async getChartData() {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
     const leadsGrowth = await db.select({
       date: sql<string>`date(datetime(created_at / 1000, 'unixepoch'))`,
       count: sql<number>`count(*)`
     })
     .from(searches)
-    .where(sql`created_at > datetime('now', '-7 days')`)
+    .where(gt(searches.createdAt, sevenDaysAgo))
     .groupBy(sql`date(datetime(created_at / 1000, 'unixepoch'))`)
     .orderBy(sql`date(datetime(created_at / 1000, 'unixepoch')) ASC`);
 
@@ -57,7 +59,7 @@ export class AdminService {
       count: sql<number>`count(*)`
     })
     .from(auditLogs)
-    .where(sql`created_at > datetime('now', '-7 days')`)
+    .where(gt(auditLogs.createdAt, sevenDaysAgo))
     .groupBy(sql`date(datetime(created_at / 1000, 'unixepoch'))`)
     .orderBy(sql`date(datetime(created_at / 1000, 'unixepoch')) ASC`);
 
@@ -143,9 +145,8 @@ export class AdminService {
       totalKeywords: Number(row.total_keywords),
       currentKeywordIndex: Number(row.current_keyword_index),
       totalLeads: Number(row.total_leads),
-      // SQLite unixepoch() returns seconds, JS needs ms. Handle both just in case.
-      createdAt: row.created_at ? new Date(Number(row.created_at) < 10000000000 ? Number(row.created_at) * 1000 : Number(row.created_at)) : null,
-      updatedAt: row.updated_at ? new Date(Number(row.updated_at) < 10000000000 ? Number(row.updated_at) * 1000 : Number(row.updated_at)) : null,
+      createdAt: row.created_at ? new Date(Number(row.created_at)) : null,
+      updatedAt: row.updated_at ? new Date(Number(row.updated_at)) : null,
       userId: Number(row.u_id),
       userName: String(row.u_name),
       userEmail: String(row.u_email),

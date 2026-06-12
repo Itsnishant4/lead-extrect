@@ -1,7 +1,7 @@
 import { db } from '@/lib/db/index';
 import { integrations, userIntegrations, integrationLogs, plans, tasks, leads, taskLeads, settings } from '@/lib/db/schema';
 import { eq, and, sql, desc, count } from 'drizzle-orm';
-import { decrypt } from '@/lib/integrations/encryption';
+import { decrypt, encrypt } from '@/lib/integrations/encryption';
 import { dispatchSync } from '@/lib/integrations/dispatcher';
 import { SettingsService } from './settings.service';
 import {
@@ -707,12 +707,21 @@ export class IntegrationService {
 
     // Update integration sync stats
     if (syncResult.success) {
+      const updates: any = {
+        lastSyncedAt: sql`(unixepoch())`,
+        totalSynced: sql`${userIntegrations.totalSynced} + ${syncResult.syncedCount}`,
+        lastError: null
+      };
+
+      if ((syncResult as any).refreshedToken) {
+        updates.accessToken = encrypt((syncResult as any).refreshedToken.accessToken);
+        if ((syncResult as any).refreshedToken.expiresAt) {
+          updates.tokenExpiry = (syncResult as any).refreshedToken.expiresAt;
+        }
+      }
+
       await db.update(userIntegrations)
-        .set({
-          lastSyncedAt: sql`(unixepoch())`,
-          totalSynced: sql`${userIntegrations.totalSynced} + ${syncResult.syncedCount}`,
-          lastError: null
-        })
+        .set(updates)
         .where(eq(userIntegrations.id, userIntegrationId));
     } else {
       await db.update(userIntegrations)

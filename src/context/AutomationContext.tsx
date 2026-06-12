@@ -90,8 +90,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     staleTime: 15_000, // Consider data fresh for 15s — prevents refetch on tab switch/remount
     refetchInterval: (query) => {
       const data = query.state.data as Task[];
-      // OPTIMIZED: 30s when active tasks, 2 minutes when idle (was 15s/30s)
-      return (data && data.some(t => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 30000 : 120000;
+      return (data && data.some(t => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 1000 : 120000;
     },
   });
 

@@ -5,7 +5,7 @@ import { hashPassword, verifyPassword, signToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { randomBytes } from 'crypto';
 import { AuditService } from './audit.service';
-import { memoryCheckRateLimit as checkRateLimit } from '@/lib/security/memory-ratelimit';
+import { checkRateLimit } from '@/lib/security/ratelimit';
 import { UserRepository } from '@/repositories/user.repository';
 import { maskError, AppError } from '@/lib/utils/error.utils';
 import { getGeoLocation, getClientIp } from '@/lib/geo';
@@ -201,7 +201,7 @@ export class AuthService {
 
       await UserRepository.update(user.id, {
         otpCode: otp,
-        otpExpiry: sql`datetime('now', '+10 minutes')`,
+        otpExpiry: new Date(Date.now() + 10 * 60 * 1000),
         otpAttempts: 0,
       });
 
@@ -236,7 +236,7 @@ export class AuthService {
         throw new Error('No OTP requested. Please request a new one.');
       }
 
-      const isExpired = new Date(user.otpExpiry) < new Date();
+      const isExpired = user.otpExpiry < new Date();
       if (isExpired) {
         await db.update(users).set({ otpCode: null, otpExpiry: null, otpAttempts: 0 }).where(eq(users.id, user.id));
         throw new Error('OTP has expired. Please request a new one.');
