@@ -1,6 +1,6 @@
 export function WhiteLabelBanner() {
   return (
-    <div className="w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700">
+    <div className="fixed bottom-0 left-0 right-0 z-50 w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700">
       <div className="mx-auto flex max-w-7xl items-center justify-center gap-3 px-4 py-2.5 sm:gap-4 sm:py-3">
         <span className="text-center text-xs font-medium text-white sm:text-sm">
           This app is available for white label — connect with us

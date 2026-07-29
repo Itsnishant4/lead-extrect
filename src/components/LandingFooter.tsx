@@ -7,6 +7,7 @@ import { motion } from 'motion/react'
 import { ArrowRight } from "lucide-react";
 import { HoverBorderGradient } from "./ui/hover-border-gradient";
 import { Facebook } from "lucide-react";
+import { WhiteLabelBanner } from "./WhiteLabelBanner";
 
 function LinkedInIcon() {
   return (
@@ -41,7 +42,8 @@ export function LandingFooter() {
   ];
 
   return (
-    <div className="">
+    <>
+    <div className="pb-12">
       {/* Black CTA Section */}
       <section className="px-4 py-8 md:px-6 md:py-12">
         <div className="py-16 sm:py-28">
@@ -164,5 +166,7 @@ export function LandingFooter() {
         </div>
       </footer>
     </div>
+      <WhiteLabelBanner />
+    </>
   );
 }
