@@ -22,6 +22,7 @@ import QueryProvider from "@/components/QueryProvider";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import JsonLd from "@/components/JsonLd";
 import { NotificationProvider } from "@/components/NotificationProvider";
+import { WhiteLabelBanner } from "@/components/WhiteLabelBanner";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -171,6 +172,7 @@ export default function RootLayout({
                 <main className="flex-1 w-full min-h-screen h-screen">
                   {children}
                 </main>
+                <WhiteLabelBanner />
                 <Toaster position="top-right" />
               </SidebarProvider>
             </NotificationProvider>
