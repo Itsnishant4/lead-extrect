@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { motion } from 'motion/react'
-import { ArrowRight } from "phosphor-react";
+import { ArrowRight } from "lucide-react";
 import { HoverBorderGradient } from "./ui/hover-border-gradient";
 import { Facebook } from "lucide-react";
 
