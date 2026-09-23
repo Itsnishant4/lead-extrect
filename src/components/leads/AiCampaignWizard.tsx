@@ -318,6 +318,13 @@ export default function AiCampaignWizard() {
         setThinkingLabel(doneLabel);
         const doneText = `Done — "${taskName}" is starting with ${keywords.length} keywords. Taking you to campaigns…`;
         if (trimNote) pushBot([trimNote]);
+        pushBot([doneText]);
+        phase = 'creating campaign';
+        await startNewTask(taskName, keywords);
+        // Force fresh task list before navigating so new campaign shows instantly.
+        phase = 'refreshing campaign list';
+        await refreshTasksNow();
+        // Single terminal history save — one entry per run, never a pair.
         setHistory(
           saveHistoryEntry({
             id: newEntryId(),
@@ -327,16 +334,9 @@ export default function AiCampaignWizard() {
             status: 'started',
             messages: [
               ...messagesRef.current.map((m) => ({ from: m.from, text: m.text })),
-              { from: 'bot', text: doneText },
             ],
           })
         );
-        pushBot([doneText]);
-        phase = 'creating campaign';
-        await startNewTask(taskName, keywords);
-        // Force fresh task list before navigating so new campaign shows instantly.
-        phase = 'refreshing campaign list';
-        await refreshTasksNow();
         toast.success(`Campaign "${taskName}" started`);
         await wait(900);
         router.replace('/tasks');
