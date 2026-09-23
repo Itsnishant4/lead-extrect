@@ -23,12 +23,23 @@ import {
   ArrowDown,
   ArrowUp,
   Brain,
+  History,
   Loader2,
   Mic,
   Plus,
   RotateCw,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  ChatHistoryEntry,
+  HistoryMessage,
+  clearHistory,
+  loadHistory,
+  newEntryId,
+  saveHistoryEntry,
+} from '@/lib/wizard/history';
 
 /** Thinking display before every assistant reply. */
 export const THINKING_MS = 2000;
@@ -73,9 +84,23 @@ export default function AiCampaignWizard() {
   const [building, setBuilding] = useState(false);
   const [buildStatus, setBuildStatus] = useState('');
   const [atEnd, setAtEnd] = useState(true);
+  const [history, setHistory] = useState<ChatHistoryEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [viewing, setViewing] = useState<ChatHistoryEntry | null>(null);
   const builtRef = useRef(false);
   const busyRef = useRef(false);
   const viewportRef = useRef<HTMLDivElement>(null);
+  // Live session snapshot so history preview can return without losing progress.
+  const liveRef = useRef<{ machine: MachineState; messages: Msg[] } | null>(null);
+  const messagesRef = useRef<Msg[]>([]);
+
+  useEffect(() => {
+    setHistory(loadHistory());
+  }, []);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const scrollToEnd = useCallback((smooth = true) => {
     const el = viewportRef.current;
@@ -134,7 +159,39 @@ export default function AiCampaignWizard() {
 
   const speech = useSpeechInput(submit);
 
+  const openHistory = useCallback((entry: ChatHistoryEntry) => {
+    if (building || busyRef.current) return;
+    liveRef.current = {
+      machine,
+      messages: messagesRef.current.map((m) => ({ ...m })),
+    };
+    setViewing(entry);
+    setShowHistory(false);
+    setTimeout(() => scrollToEnd(false), 50);
+  }, [building, machine, scrollToEnd]);
+
+  const closeHistory = useCallback(() => {
+    const live = liveRef.current;
+    if (live) {
+      setMachine(live.machine);
+      setMessages(live.messages.map((m) => ({ ...m })));
+      liveRef.current = null;
+    }
+    setViewing(null);
+    setTimeout(() => scrollToEnd(false), 50);
+  }, [scrollToEnd]);
+
+  const wipeHistory = useCallback(() => {
+    clearHistory();
+    setHistory([]);
+    setShowHistory(false);
+  }, []);
+
   const restart = useCallback(() => {
+    if (viewing) {
+      liveRef.current = null;
+      setViewing(null);
+    }
     if (building) return;
     builtRef.current = false;
     busyRef.current = false;
@@ -215,7 +272,21 @@ export default function AiCampaignWizard() {
         const doneLabel = `Starting campaign with ${keywords.length} keywords…`;
         setBuildStatus(doneLabel);
         setThinkingLabel(doneLabel);
-        pushBot([`Done — "${taskName}" is starting with ${keywords.length} keywords. Taking you to campaigns…`]);
+        const doneText = `Done — "${taskName}" is starting with ${keywords.length} keywords. Taking you to campaigns…`;
+        setHistory(
+          saveHistoryEntry({
+            id: newEntryId(),
+            startedAt: Date.now(),
+            taskName,
+            keywords: keywords.length,
+            status: 'started',
+            messages: [
+              ...messagesRef.current.map((m) => ({ from: m.from, text: m.text })),
+              { from: 'bot', text: doneText },
+            ],
+          })
+        );
+        pushBot([doneText]);
         await startNewTask(taskName, keywords);
         // Force fresh task list before navigating so new campaign shows instantly.
         await refreshTasksNow();
@@ -228,9 +299,21 @@ export default function AiCampaignWizard() {
         setThinking(false);
         setThinkingLabel('');
         setBuildStatus('');
-        pushBot([
-          `Something failed: ${(e as Error).message}. Tap Restart and try again.`,
-        ]);
+        const failText = `Something failed: ${(e as Error).message}. Tap Restart and try again.`;
+        setHistory(
+          saveHistoryEntry({
+            id: newEntryId(),
+            startedAt: Date.now(),
+            taskName,
+            keywords: 0,
+            status: 'failed',
+            messages: [
+              ...messagesRef.current.map((m) => ({ from: m.from, text: m.text })),
+              { from: 'bot', text: failText },
+            ],
+          })
+        );
+        pushBot([failText]);
       }
     })();
   }, [machine, router, startNewTask, pushBot, refreshTasksNow]);
@@ -238,27 +321,106 @@ export default function AiCampaignWizard() {
   const q = getQuestion(machine);
   const chips = machine.suggestions.length > 0 ? machine.suggestions : q.chips;
   const busy = building || busyRef.current || thinking;
-  const showChips = machine.step !== 'done' && !building && !thinking && chips.length > 0;
+  const showChips = !viewing && machine.step !== 'done' && !building && !thinking && chips.length > 0;
+
+  const fmtDate = (ts: number) =>
+    new Date(ts).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      <div className="rounded-[28px] border border-neutral-200 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)] overflow-hidden">
+      <div className="rounded-3xl border border-neutral-200/80 bg-white shadow-sm overflow-hidden">
         {/* Header */}
-        <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-neutral-100">
-          <div>
-            <h2 className="text-[19px] font-semibold text-neutral-900">New Chat</h2>
-            <p className="text-[14px] text-neutral-500 mt-0.5">How can I help you today?</p>
+        <div className="flex items-center justify-between px-5 pt-4 pb-3.5 border-b border-neutral-100">
+          <div className="min-w-0">
+            <h2 className="text-[17px] font-semibold text-neutral-900 truncate">
+              {viewing ? viewing.taskName : 'New Chat'}
+            </h2>
+            <p className="text-[13px] text-neutral-400 mt-px">
+              {viewing
+                ? `${fmtDate(viewing.startedAt)} · ${viewing.keywords} keywords`
+                : 'How can I help you today?'}
+            </p>
           </div>
-          <button
-            onClick={restart}
-            disabled={building}
-            title="Restart conversation"
-            className="w-10 h-10 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 transition-colors shrink-0"
-          >
-            <RotateCw size={17} />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => {
+                if (viewing) closeHistory();
+                else setShowHistory((v) => !v);
+              }}
+              disabled={building}
+              title={viewing ? 'Back to current chat' : 'Chat history'}
+              className={cn(
+                'w-9 h-9 rounded-full border flex items-center justify-center transition-colors disabled:opacity-40',
+                showHistory || viewing
+                  ? 'border-neutral-900 bg-neutral-900 text-white'
+                  : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'
+              )}
+            >
+              {viewing ? <X size={16} /> : <History size={16} />}
+            </button>
+            <button
+              onClick={restart}
+              disabled={building}
+              title="Restart conversation"
+              className="w-9 h-9 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-600 hover:bg-neutral-50 disabled:opacity-40 transition-colors"
+            >
+              <RotateCw size={16} />
+            </button>
+          </div>
         </div>
 
+        {showHistory && !viewing ? (
+          /* Local history panel */
+          <div className="max-h-[52vh] min-h-[300px] overflow-y-auto px-3 py-3">
+            {history.length === 0 ? (
+              <p className="text-center text-sm text-neutral-400 py-14">
+                No past chats yet — finished campaigns appear here.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {history.map((h) => (
+                  <li key={h.id}>
+                    <button
+                      onClick={() => openHistory(h)}
+                      className="w-full text-left px-3.5 py-3 rounded-2xl hover:bg-neutral-50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[14px] font-medium text-neutral-900 truncate">
+                          {h.taskName}
+                        </span>
+                        <span
+                          className={cn(
+                            'text-[11px] font-semibold shrink-0',
+                            h.status === 'started' ? 'text-emerald-600' : 'text-rose-500'
+                          )}
+                        >
+                          {h.status === 'started' ? `${h.keywords} keywords` : 'failed'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-neutral-400 mt-0.5">{fmtDate(h.startedAt)}</div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {history.length > 0 && (
+              <div className="flex justify-center pt-2 pb-1">
+                <button
+                  onClick={wipeHistory}
+                  className="flex items-center gap-1.5 text-xs font-medium text-neutral-400 hover:text-rose-600 transition-colors"
+                >
+                  <Trash2 size={13} /> Clear history
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+        <>
         {/* Transcript viewport */}
         <div className="relative">
           <div
@@ -268,46 +430,51 @@ export default function AiCampaignWizard() {
             aria-label="Campaign builder conversation"
             aria-live="polite"
             tabIndex={0}
-            className="h-[52vh] min-h-[340px] overflow-y-auto px-6 py-5 outline-none"
+            className="h-[50vh] min-h-[320px] overflow-y-auto px-5 py-4 outline-none"
           >
-            <div className="space-y-5">
-              {messages.map((m) =>
-                m.from === 'user' ? (
-                  <div key={m.id} className="flex justify-center sm:justify-end">
-                    <div className="max-w-[90%] sm:max-w-[80%] px-5 py-4 rounded-2xl bg-neutral-100 text-neutral-900 text-[15px] leading-relaxed">
+            <div className="space-y-4">
+              {(viewing ? viewing.messages : messages).map((m, i) => {
+                const key = viewing ? `v-${i}` : (m as Msg).id;
+                return m.from === 'user' ? (
+                  <div key={key} className="flex justify-center sm:justify-end">
+                    <div className="max-w-[90%] sm:max-w-[80%] px-4 py-3 rounded-2xl bg-neutral-100 text-neutral-900 text-[14.5px] leading-relaxed">
                       {m.text}
                     </div>
                   </div>
                 ) : (
-                  <div key={m.id} className="text-neutral-900 text-[15px] leading-relaxed">
-                    <TextGenerateEffect words={m.text} duration={0.4} />
+                  <div key={key} className="text-neutral-900 text-[14.5px] leading-relaxed">
+                    {viewing ? (
+                      m.text
+                    ) : (
+                      <TextGenerateEffect words={m.text} duration={0.4} />
+                    )}
                   </div>
-                )
-              )}
+                );
+              })}
 
-              {thinking && (
-                <div className="border-l-2 border-neutral-200 pl-4 py-0.5" aria-label="Thinking">
+              {thinking && !viewing && (
+                <div className="border-l-2 border-neutral-200 pl-3.5 py-0.5" aria-label="Thinking">
                   <div className="flex items-center gap-2 text-neutral-500">
-                    <Brain size={15} />
-                    <span className="text-[13px] font-medium">
+                    <Brain size={14} />
+                    <span className="text-[12.5px] font-medium">
                       {thinkingLabel || buildStatus || 'Thinking'}
                     </span>
                   </div>
-                  <div className="mt-2.5 space-y-2">
-                    <div className="wizard-shimmer-line h-3.5 rounded-md w-[92%]" />
-                    <div className="wizard-shimmer-line h-3.5 rounded-md w-[78%]" />
-                    <div className="wizard-shimmer-line h-3.5 rounded-md w-[60%]" />
+                  <div className="mt-2 space-y-1.5">
+                    <div className="wizard-shimmer-line h-3 rounded-md w-[92%]" />
+                    <div className="wizard-shimmer-line h-3 rounded-md w-[76%]" />
+                    <div className="wizard-shimmer-line h-3 rounded-md w-[58%]" />
                   </div>
                 </div>
               )}
 
               {showChips && (
-                <div className="flex flex-wrap gap-2 pt-1">
+                <div className="flex flex-wrap gap-1.5 pt-1">
                   {chips.map((c) => (
                     <button
                       key={c}
                       onClick={() => submit(c)}
-                      className="px-4 py-2 rounded-full text-[13px] font-medium bg-white border border-neutral-200 text-neutral-700 shadow-sm hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
+                      className="px-3.5 py-1.5 rounded-full text-[12.5px] font-medium bg-white border border-neutral-200 text-neutral-700 shadow-sm hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
                     >
                       {c}
                     </button>
@@ -329,19 +496,27 @@ export default function AiCampaignWizard() {
         </div>
 
         {/* Composer */}
-        <div className="px-4 pb-4 pt-1">
+        <div className="px-3.5 pb-3.5 pt-1">
+          {viewing ? (
+            <button
+              onClick={closeHistory}
+              className="w-full py-3 rounded-2xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 transition-colors"
+            >
+              Return to current chat
+            </button>
+          ) : (
           <form
             onSubmit={(e) => {
               e.preventDefault();
               submit(input);
             }}
-            className="flex items-center gap-2 rounded-2xl bg-neutral-100 px-3 py-2.5"
+            className="flex items-center gap-2 rounded-2xl bg-neutral-100 pl-2 pr-2 py-2"
           >
             <button
               type="button"
               onClick={restart}
               title="New conversation"
-              className="w-9 h-9 rounded-full border border-neutral-200 bg-white flex items-center justify-center text-neutral-500 hover:text-neutral-700 shrink-0"
+              className="w-9 h-9 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-neutral-500 hover:text-neutral-700 shrink-0"
             >
               <Plus size={17} />
             </button>
@@ -351,7 +526,7 @@ export default function AiCampaignWizard() {
               disabled={busy || machine.step === 'done'}
               placeholder={speech.listening ? 'Listening… speak now' : 'Ask anything'}
               aria-label="Ask anything"
-              className="flex-1 min-w-0 bg-transparent text-[15px] text-neutral-900 placeholder:text-neutral-400 outline-none"
+              className="flex-1 min-w-0 bg-transparent text-[14.5px] text-neutral-900 placeholder:text-neutral-400 outline-none"
             />
             {speech.supported && (
               <button
@@ -382,10 +557,13 @@ export default function AiCampaignWizard() {
               )}
             </button>
           </form>
-          {speech.error && (
+          )}
+          {speech.error && !viewing && (
             <p className="text-[11px] text-amber-600 mt-2 px-2">{speech.error}</p>
           )}
         </div>
+        </>
+        )}
       </div>
       <p className="text-center text-xs text-slate-400 mt-3">
         LeadSpotter AI can make mistakes. Check campaign scope before launch.
