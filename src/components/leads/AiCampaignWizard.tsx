@@ -14,23 +14,23 @@ import {
   getQuestion,
   handleAnswer,
   initialMachine,
-  stepBack,
 } from '@/lib/wizard/machine';
 import { listStates } from '@/lib/wizard/geo';
 import { useSpeechInput } from '@/lib/wizard/speech';
+import { TextGenerateEffect } from '@/components/ui/text-generate-effect';
 import { toast } from 'sonner';
 import {
-  ArrowUp,
   ArrowDown,
+  ArrowUp,
   Brain,
   Loader2,
   Mic,
   Plus,
-  AudioLines,
+  RotateCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-/** Minimum "thinking" display before every assistant reply. Toggleable via Think pill. */
+/** Thinking display before every assistant reply. */
 export const THINKING_MS = 2000;
 
 interface Msg {
@@ -68,7 +68,6 @@ export default function AiCampaignWizard() {
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const [thinkingLabel, setThinkingLabel] = useState('');
-  const [thinkMode, setThinkMode] = useState(true);
   const [building, setBuilding] = useState(false);
   const [buildStatus, setBuildStatus] = useState('');
   const [atEnd, setAtEnd] = useState(true);
@@ -105,9 +104,9 @@ export default function AiCampaignWizard() {
       setInput('');
       setThinking(true);
       setThinkingLabel('');
-      // One user message -> 2s thinking -> exactly one AI reply.
+      // One user message -> thinking shimmer -> exactly one AI reply.
       void (async () => {
-        if (thinkMode) await wait(THINKING_MS);
+        await wait(THINKING_MS);
         setMachine((prev) => {
           const next = handleAnswer(prev, text);
           const moved = next.step !== prev.step;
@@ -128,7 +127,7 @@ export default function AiCampaignWizard() {
         });
       })();
     },
-    [building, pushBot, thinkMode]
+    [building, pushBot]
   );
 
   const speech = useSpeechInput(submit);
@@ -230,175 +229,167 @@ export default function AiCampaignWizard() {
         setThinkingLabel('');
         setBuildStatus('');
         pushBot([
-          `Something failed: ${(e as Error).message}. Fix answers with Back, or tap Restart.`,
+          `Something failed: ${(e as Error).message}. Tap Restart and try again.`,
         ]);
       }
     })();
   }, [machine, router, startNewTask, pushBot, refreshTasksNow]);
 
-  const goBack = useCallback(() => {
-    if (building || busyRef.current) return;
-    setMachine((prev) => {
-      const next = stepBack(prev);
-      pushBot([getQuestion(next).text]);
-      return next;
-    });
-  }, [building, pushBot]);
-
   const q = getQuestion(machine);
   const chips = machine.suggestions.length > 0 ? machine.suggestions : q.chips;
   const busy = building || busyRef.current || thinking;
-  const started = messages.some((m) => m.from === 'user');
   const showChips = machine.step !== 'done' && !building && !thinking && chips.length > 0;
 
   return (
-    <div className="w-full max-w-3xl mx-auto flex flex-col min-h-[70vh]">
-      {/* Transcript — plain text only, no bubbles, no avatars */}
-      <div className="relative flex-1">
-        <div
-          ref={viewportRef}
-          onScroll={onScroll}
-          role="log"
-          aria-label="Campaign builder conversation"
-          aria-live="polite"
-          tabIndex={0}
-          className="overflow-y-auto px-4 md:px-8 py-8 space-y-6 max-h-[62vh] min-h-[40vh] outline-none"
-        >
-          {!started && (
-            <h1 className="text-center text-2xl md:text-[28px] font-medium text-slate-900 pt-10 pb-2">
-              What&apos;s on your mind today?
-            </h1>
-          )}
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={m.from === 'user' ? 'flex justify-end' : 'flex justify-start'}
-            >
-              <p
-                className={
-                  m.from === 'user'
-                    ? 'max-w-[80%] text-right text-[15px] leading-relaxed text-slate-900'
-                    : 'max-w-[90%] text-left text-[15px] leading-relaxed text-slate-900 whitespace-pre-wrap'
-                }
-              >
-                {m.text}
-              </p>
-            </div>
-          ))}
+    <div className="w-full max-w-2xl mx-auto">
+      <div className="rounded-[28px] border border-neutral-200 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)] overflow-hidden">
+        {/* Header */}
+        <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-neutral-100">
+          <div>
+            <h2 className="text-[19px] font-semibold text-neutral-900">New Chat</h2>
+            <p className="text-[14px] text-neutral-500 mt-0.5">How can I help you today?</p>
+          </div>
+          <button
+            onClick={restart}
+            disabled={building}
+            title="Restart conversation"
+            className="w-10 h-10 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 transition-colors shrink-0"
+          >
+            <RotateCw size={17} />
+          </button>
+        </div>
 
-          {thinking && (
-            <div className="flex items-center gap-1.5 py-1" aria-label="Thinking">
-              <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.3s]" />
-              <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.15s]" />
-              <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" />
-              {(thinkingLabel || buildStatus) && (
-                <span className="text-xs text-slate-400 ml-2">{thinkingLabel || buildStatus}</span>
+        {/* Transcript viewport */}
+        <div className="relative">
+          <div
+            ref={viewportRef}
+            onScroll={onScroll}
+            role="log"
+            aria-label="Campaign builder conversation"
+            aria-live="polite"
+            tabIndex={0}
+            className="h-[52vh] min-h-[340px] overflow-y-auto px-6 py-5 outline-none"
+          >
+            <div className="space-y-5">
+              {messages.map((m) =>
+                m.from === 'user' ? (
+                  <div key={m.id} className="flex justify-center sm:justify-end">
+                    <div className="max-w-[90%] sm:max-w-[80%] px-5 py-4 rounded-2xl bg-neutral-100 text-neutral-900 text-[15px] leading-relaxed">
+                      {m.text}
+                    </div>
+                  </div>
+                ) : (
+                  <div key={m.id} className="text-neutral-900 text-[15px] leading-relaxed">
+                    <TextGenerateEffect words={m.text} duration={0.4} />
+                  </div>
+                )
+              )}
+
+              {thinking && (
+                <div className="border-l-2 border-neutral-200 pl-4 py-0.5" aria-label="Thinking">
+                  <div className="flex items-center gap-2 text-neutral-500">
+                    <Brain size={15} />
+                    <span className="text-[13px] font-medium">
+                      {thinkingLabel || buildStatus || 'Thinking'}
+                    </span>
+                  </div>
+                  <div className="mt-2.5 space-y-2">
+                    <div className="wizard-shimmer-line h-3.5 rounded-md w-[92%]" />
+                    <div className="wizard-shimmer-line h-3.5 rounded-md w-[78%]" />
+                    <div className="wizard-shimmer-line h-3.5 rounded-md w-[60%]" />
+                  </div>
+                </div>
+              )}
+
+              {showChips && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {chips.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => submit(c)}
+                      className="px-4 py-2 rounded-full text-[13px] font-medium bg-white border border-neutral-200 text-neutral-700 shadow-sm hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
-          )}
+          </div>
 
-          {showChips && (
-            <div className="flex flex-wrap gap-2 pt-1">
-              {chips.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => submit(c)}
-                  className="px-4 py-2 rounded-full text-[13px] font-medium bg-white border border-slate-200 text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-colors"
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
+          {!atEnd && (
+            <button
+              onClick={() => scrollToEnd(true)}
+              title="Jump to latest"
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full border border-neutral-200 bg-white shadow-md flex items-center justify-center text-neutral-600 hover:bg-neutral-50"
+            >
+              <ArrowDown size={16} />
+            </button>
           )}
         </div>
 
-        {!atEnd && (
-          <button
-            onClick={() => scrollToEnd(true)}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-white shadow-md text-xs font-medium text-slate-600"
+        {/* Composer */}
+        <div className="px-4 pb-4 pt-1">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              submit(input);
+            }}
+            className="flex items-center gap-2 rounded-2xl bg-neutral-100 px-3 py-2.5"
           >
-            <ArrowDown size={13} /> Jump to latest
-          </button>
-        )}
-      </div>
-
-      {/* Composer dock */}
-      <div className="px-4 md:px-8 pb-2 pt-3">
-        <p className="text-center text-xs text-slate-400 mb-3">
-          LeadSpotter AI can make mistakes. Check campaign scope before launch.
-        </p>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit(input);
-          }}
-          className="flex items-center gap-1 rounded-full bg-white border border-slate-200 shadow-[0_2px_12px_rgba(0,0,0,0.06)] pl-2 pr-2 py-2"
-        >
-          <button
-            type="button"
-            onClick={restart}
-            title="New conversation"
-            className="p-2.5 rounded-full text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
-          >
-            <Plus size={19} />
-          </button>
-          <input
-            value={speech.interim || input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={busy || machine.step === 'done'}
-            placeholder={speech.listening ? 'Listening… speak now' : 'Ask anything'}
-            aria-label="Ask anything"
-            className="flex-1 min-w-0 bg-transparent text-[15px] text-slate-900 placeholder:text-slate-400 outline-none"
-          />
-          <button
-            type="button"
-            onClick={() => setThinkMode((v) => !v)}
-            title={thinkMode ? 'Thinking on (2s)' : 'Thinking off'}
-            className={cn(
-              'hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-medium transition-colors shrink-0',
-              thinkMode ? 'text-slate-700 hover:bg-slate-100' : 'text-slate-300 hover:bg-slate-50'
-            )}
-          >
-            <Brain size={16} /> Think
-          </button>
-          {speech.supported && (
             <button
               type="button"
-              onClick={speech.toggle}
-              disabled={busy || machine.step === 'done'}
-              title={speech.listening ? 'Stop listening' : 'Voice input'}
-              className={cn(
-                'p-2.5 rounded-full transition-colors shrink-0',
-                speech.listening
-                  ? 'text-rose-600 bg-rose-50 animate-pulse'
-                  : 'text-slate-700 hover:bg-slate-100'
-              )}
+              onClick={restart}
+              title="New conversation"
+              className="w-9 h-9 rounded-full border border-neutral-200 bg-white flex items-center justify-center text-neutral-500 hover:text-neutral-700 shrink-0"
             >
-              <Mic size={19} />
+              <Plus size={17} />
             </button>
-          )}
-          <button
-            type={input.trim() ? 'submit' : 'button'}
-            onClick={input.trim() ? undefined : speech.toggle}
-            disabled={busy || machine.step === 'done' || (!input.trim() && !speech.supported)}
-            title={input.trim() ? 'Send' : 'Voice input'}
-            className="w-10 h-10 rounded-full bg-[#0b5cff] text-white flex items-center justify-center hover:bg-[#004ee0] disabled:opacity-40 transition-colors shrink-0"
-          >
-            {thinking && !building ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : input.trim() ? (
-              <ArrowUp size={18} />
-            ) : (
-              <AudioLines size={18} />
+            <input
+              value={speech.interim || input}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={busy || machine.step === 'done'}
+              placeholder={speech.listening ? 'Listening… speak now' : 'Ask anything'}
+              aria-label="Ask anything"
+              className="flex-1 min-w-0 bg-transparent text-[15px] text-neutral-900 placeholder:text-neutral-400 outline-none"
+            />
+            {speech.supported && (
+              <button
+                type="button"
+                onClick={speech.toggle}
+                disabled={busy || machine.step === 'done'}
+                title={speech.listening ? 'Stop listening' : 'Voice input'}
+                className={cn(
+                  'p-2 rounded-full transition-colors shrink-0',
+                  speech.listening
+                    ? 'text-rose-600 bg-rose-50 animate-pulse'
+                    : 'text-neutral-400 hover:text-neutral-600'
+                )}
+              >
+                <Mic size={18} />
+              </button>
             )}
-          </button>
-        </form>
-        {speech.error ? (
-          <p className="text-[11px] text-amber-600 mt-2 text-center">{speech.error}</p>
-        ) : (
-          <div className="h-2" />
-        )}
+            <button
+              type="submit"
+              disabled={busy || machine.step === 'done' || !input.trim()}
+              title="Send"
+              className="w-10 h-10 rounded-full bg-[#1a56ff] text-white flex items-center justify-center hover:bg-[#1446d6] disabled:opacity-40 transition-colors shrink-0"
+            >
+              {thinking && !building ? (
+                <Loader2 size={17} className="animate-spin" />
+              ) : (
+                <ArrowUp size={17} />
+              )}
+            </button>
+          </form>
+          {speech.error && (
+            <p className="text-[11px] text-amber-600 mt-2 px-2">{speech.error}</p>
+          )}
+        </div>
       </div>
+      <p className="text-center text-xs text-slate-400 mt-3">
+        LeadSpotter AI can make mistakes. Check campaign scope before launch.
+      </p>
     </div>
   );
 }
