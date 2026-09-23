@@ -96,6 +96,38 @@ describe('wizard FSM walkthrough (requested example)', () => {
     expect(next.hint).toBeTruthy();
   });
 
+  it('whole-state phrasing at city step jumps to mode (no dead end)', () => {
+    let s = initialMachine();
+    s = handleAnswer(s, 'Dentist');
+    s = handleAnswer(s, 'India');
+    s = handleAnswer(s, 'specific city');
+    s = handleAnswer(s, 'Gujarat');
+    expect(s.step).toBe('city');
+    s = handleAnswer(s, 'Full state Gujarat');
+    expect(s.step).toBe('mode');
+    expect(s.slots.selectAllCities).toBe(true);
+  });
+
+  it('change state chip returns to state step', () => {
+    let s = initialMachine();
+    s = handleAnswer(s, 'Dentist');
+    s = handleAnswer(s, 'India');
+    s = handleAnswer(s, 'specific city');
+    s = handleAnswer(s, 'Gujarat');
+    s = handleAnswer(s, 'Change state');
+    expect(s.step).toBe('state');
+  });
+
+  it('city question always offers fallback chips', () => {
+    let s = initialMachine();
+    s = handleAnswer(s, 'Dentist');
+    s = handleAnswer(s, 'India');
+    s = handleAnswer(s, 'specific city');
+    s = handleAnswer(s, 'Gujarat');
+    const qq = getQuestion(s);
+    expect(qq.chips.length).toBeGreaterThan(0);
+  });
+
   it('question text advances per step', () => {
     const s = handleAnswer(initialMachine(), 'Gym');
     expect(getQuestion(s).text).toMatch(/Where should Gym/i);

@@ -140,7 +140,7 @@ export function getQuestion(s: MachineState): Question {
             : [];
       return {
         text: `Which city in ${slots.state}?`,
-        chips,
+        chips: chips.length > 0 ? chips : [`Complete ${slots.state}`, 'Change state'],
         placeholder: 'City…',
       };
     }
@@ -287,6 +287,34 @@ export function handleAnswer(prev: MachineState, rawInput: string): MachineState
     case 'city': {
       if (!input) {
         return { ...prev, hint: 'Type a city name.' };
+      }
+      // Escape hatches — never trap user on this step.
+      if (/^\s*change\s+state\s*$/i.test(input)) {
+        return { step: 'state', slots: { ...slots, state: '', stateIso: '' }, suggestions: [], hint: null };
+      }
+      if (
+        detectScope(input) === 'whole' ||
+        /full\s+state|all\s+cities|entire|complete/i.test(input)
+      ) {
+        return {
+          step: 'mode',
+          slots: { ...slots, city: '', selectAllCities: true },
+          suggestions: [],
+          hint: null,
+        };
+      }
+      // User typed a different state name — switch state, stay on city hunt.
+      const otherState =
+        slots.countryIso && normalize(input).length >= 3
+          ? findState(slots.countryIso, input)
+          : null;
+      if (otherState && normalize(otherState.name) !== normalize(slots.state)) {
+        return {
+          step: 'city',
+          slots: { ...slots, state: otherState.name, stateIso: otherState.isoCode },
+          suggestions: [],
+          hint: null,
+        };
       }
       const hit = findCity(slots.countryIso, slots.stateIso, input);
       if (!hit) {
