@@ -78,9 +78,13 @@ export default function AdminTasksPage() {
       if (!res.success) throw new Error((res as any).error)
       return (res as any).data || []
     },
+    staleTime: 2_000,
+    gcTime: 60_000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
     refetchInterval: (query) => {
       const data = query.state.data as any[];
-      return (data && data.some((t: any) => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 1000 : 5000;
+      return (data && data.some((t: any) => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 2_000 : 15_000;
     },
   })
 

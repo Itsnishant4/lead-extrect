@@ -159,4 +159,36 @@ export class TaskService {
       .where(eq(taskLeads.taskId, taskId));
     return result?.count || 0;
   }
+
+  /**
+   * Lightweight progress poll — 7 columns only (no userAgent, no keywords,
+   * no export blobs). Polled at 2s while tasks active. Full `getTasks`
+   * (17 cols) polled at 30s or on change. `sinceMs` enables delta:
+   * returns `{ unchanged: true }` when nothing moved, saving payload.
+   */
+  static async getTasksProgress(userId: number, sinceMs?: number) {
+    const rows = await db
+      .select({
+        id: tasks.id,
+        status: tasks.status,
+        statusReason: tasks.statusReason,
+        totalKeywords: tasks.totalKeywords,
+        currentKeywordIndex: tasks.currentKeywordIndex,
+        totalLeads: tasks.totalLeads,
+        updatedAt: tasks.updatedAt,
+      })
+      .from(tasks)
+      .where(eq(tasks.userId, userId))
+      .orderBy(desc(tasks.createdAt));
+
+    const serverTime = Date.now();
+    if (!sinceMs) return { rows, serverTime, unchanged: false };
+
+    const changed = rows.filter((r: any) => {
+      const t = r.updatedAt ? new Date(r.updatedAt).getTime() : 0;
+      return t > sinceMs;
+    });
+    if (changed.length === 0) return { rows: [], serverTime, unchanged: true };
+    return { rows: changed, serverTime, unchanged: false };
+  }
 }

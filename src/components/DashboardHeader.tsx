@@ -79,12 +79,15 @@ export function DashboardHeader({ activePage, navStyle = 'default' }: DashboardH
   const isActuallyLoading = isLoadingUser || (isFetchingUser && !user);
 
   // ── Notification queries ──
-  // OPTIMIZED: Poll every 5 minutes instead of 60s (notifications are not time-critical)
+  // Realtime: unread 60s idle poll + instant invalidate on push (see NotificationProvider).
   const { data: unreadData } = useQuery({
     queryKey: ['notification-unread-count'],
     queryFn: () => getUnreadNotificationCountAction(),
-    refetchInterval: 300_000, // poll every 5 minutes (was 60s)
-    staleTime: 120_000, // Consider fresh for 2 minutes
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    gcTime: 120_000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
     enabled: !!user,
   });
   const unreadCount = (unreadData?.success && 'count' in unreadData) ? (unreadData.count as number) : 0;
@@ -93,8 +96,9 @@ export function DashboardHeader({ activePage, navStyle = 'default' }: DashboardH
     queryKey: ['notifications'],
     queryFn: () => getNotificationsAction(),
     enabled: !!user && showNotifications,
-    refetchInterval: showNotifications ? 120_000 : false, // 2 minutes when panel open (was 30s)
-    staleTime: 60_000,
+    refetchInterval: showNotifications ? 15_000 : false,
+    refetchIntervalInBackground: false,
+    staleTime: 10_000,
   });
   const notifications = (notifsData?.success && 'data' in notifsData && notifsData.data) ? notifsData.data : [];
 

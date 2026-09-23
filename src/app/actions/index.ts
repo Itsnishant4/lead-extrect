@@ -36,6 +36,7 @@ export {
   appendTaskKeywordsAction,
   updateTaskStatusAction,
   getTasksAction,
+  getTasksProgressAction,
   getTaskAction,
   deleteTaskAction,
   getTaskLeadsAction,

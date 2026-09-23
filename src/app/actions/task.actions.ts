@@ -8,6 +8,12 @@ import { PlanService } from '@/services/plan.service';
 import { AuditService } from '@/services/audit.service';
 import { createTaskSchema } from '@/lib/validations';
 import { getClientInfo, handleActionError } from './helpers';
+import { withCache, clearCacheByPrefix } from '@/lib/cache';
+
+function clearTaskCaches(userId: number) {
+  clearCacheByPrefix(`tasks:${userId}`);
+  clearCacheByPrefix('tasks-progress:');
+}
 
 export async function createTaskAction(name: string, keywords: string[]) {
   try {
@@ -19,6 +25,7 @@ export async function createTaskAction(name: string, keywords: string[]) {
       userAgent: userAgent || null,
       acceptLanguage: acceptLanguage || null
     });
+    clearTaskCaches(session.id);
     return { success: true, taskId };
   } catch (error: any) {
     return handleActionError(error);
@@ -34,6 +41,7 @@ export async function createTaskShellAction(name: string, totalKeywords: number)
       userAgent: userAgent || null,
       acceptLanguage: acceptLanguage || null
     });
+    clearTaskCaches(session.id);
     return { success: true, taskId };
   } catch (error: any) {
     return handleActionError(error);
@@ -45,6 +53,7 @@ export async function appendTaskKeywordsAction(taskId: number, keywords: string[
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
     await TaskService.appendKeywords(session.id, taskId, keywords);
+    clearTaskCaches(session.id);
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);
@@ -56,6 +65,7 @@ export async function updateTaskStatusAction(taskId: number, status: string, cur
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
     await TaskService.updateStatus(session.id, taskId, status, currentIndex, statusReason);
+    clearTaskCaches(session.id);
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);
@@ -66,23 +76,25 @@ export async function getTasksAction() {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
-    const data = await TaskService.getTasks(session.id);
-    
-    // AUTO-RECOVERY LOGIC:
-    // OPTIMIZED: Increased stall threshold from 3min to 10min, limit to 1 recovery per poll.
-    // This prevents the read-only poll from becoming a write-heavy operation.
-    const tenMinutesAgoSeconds = Math.floor(Date.now() / 1000) - (10 * 60);
-    const stalledTasks = data.filter((t: any) => 
-      t.status === 'running' && 
-      (!t.lastHeartbeat || Math.floor(new Date(t.lastHeartbeat).getTime() / 1000) < tenMinutesAgoSeconds)
-    );
+    // Pure read — stall recovery moved to Render worker (5m heartbeat reclaim).
+    // Previous version performed a write on every poll, amplifying Turso load.
+    // 3s per-user cache absorbs multi-tab fan-out; mutations clear it explicitly.
+    const data = await withCache(`tasks:${session.id}`, () => TaskService.getTasks(session.id), 3_000);
+    return { success: true, data };
+  } catch (error: any) {
+    return handleActionError(error);
+  }
+}
 
-    // Only recover 1 task per poll to avoid write amplification
-    if (stalledTasks.length > 0) {
-      console.log(`[ACTIONS] Found ${stalledTasks.length} stalled tasks for user ${session.id}. Recovering first one...`);
-      void TaskService.runTask(stalledTasks[0].id, session.id, 'Auto-recovered — worker stalled');
-    }
-
+/**
+ * Lightweight 2s progress poll — 7 columns, optional delta via sinceMs.
+ * Client merges `rows` into ['tasks'] cache; skips render on `unchanged`.
+ */
+export async function getTasksProgressAction(sinceMs?: number) {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'Unauthorized' };
+  try {
+    const data = await TaskService.getTasksProgress(session.id, sinceMs);
     return { success: true, data };
   } catch (error: any) {
     return handleActionError(error);
@@ -105,6 +117,7 @@ export async function deleteTaskAction(taskId: number) {
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
     await TaskService.deleteTask(session.id, taskId);
+    clearTaskCaches(session.id);
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);
@@ -127,7 +140,6 @@ export async function saveServerLogAction(taskId: number | null, level: 'INFO' |
   return await AuditService.saveServerLog(taskId, level, message, session?.id || null);
 }
 
-
 export async function triggerTaskAutomationAction(taskId: number) {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };
@@ -146,8 +158,8 @@ export async function triggerTaskAutomationAction(taskId: number) {
     const isCurrentTaskActive = task.status === 'pending' || task.status === 'running';
     const otherActive = isCurrentTaskActive ? Math.max(activeCount - 1, 0) : activeCount;
     if (otherActive >= maxConcurrent) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: `Your current plan (${planType}) allows only ${maxConcurrent} concurrent task${maxConcurrent === 1 ? '' : 's'}. Please wait for a running task to finish or upgrade.`,
         limitType: 'concurrent'
       };
@@ -155,6 +167,7 @@ export async function triggerTaskAutomationAction(taskId: number) {
 
     // The worker picks up tasks that are marked as 'pending'
     await TaskService.updateStatus(session.id, taskId, 'pending', undefined, 'Queued — waiting for worker');
+    clearTaskCaches(session.id);
 
     return { success: true };
   } catch (error: any) {
@@ -169,6 +182,7 @@ export async function updateTaskLeadCountAction(taskId: number, count: number) {
   try {
     await TaskService.updateStatus(session.id, taskId, 'running');
     await TaskService.updateLeadCount(session.id, taskId, count);
+    clearTaskCaches(session.id);
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);

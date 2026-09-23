@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useAutomation } from '@/context/AutomationContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { subscribePushAction } from '@/app/actions';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
@@ -24,6 +25,7 @@ function urlBase64ToUint8Array(base64String: string) {
  */
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user, settings } = useAutomation();
+  const queryClient = useQueryClient();
 
   // Register service worker on mount
   useEffect(() => {
@@ -35,6 +37,29 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         console.error('[SW] Registration failed:', err);
       });
   }, []);
+
+  // Foreground fast-path: SW broadcasts TASKS_CHANGED on every push
+  // (task completed/failed, credits, broadcast). Invalidate realtime keys
+  // instantly — polling covers the denied-permission fallback.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type !== 'TASKS_CHANGED') return;
+      for (const key of [
+        'tasks',
+        'admin-tasks',
+        'admin-tasks-detailed',
+        'admin-stats',
+        'admin-insights',
+        'notifications',
+        'notification-unread-count',
+      ]) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage);
+  }, [queryClient]);
 
   // Subscribe to push notifications — only when explicitly enabled in settings
   useEffect(() => {

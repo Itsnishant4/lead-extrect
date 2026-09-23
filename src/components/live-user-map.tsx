@@ -16,7 +16,11 @@ export function LiveUserMap() {
       if (!res.success) throw new Error((res as any).error);
       return (res as any).data;
     },
-    refetchInterval: 120000, // OPTIMIZED: 2 minutes (was 30s)
+    staleTime: 15_000,
+    gcTime: 120_000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
+    refetchInterval: 30_000,
   });
 
   const activeUsers = userLocations?.activeUsers || [];

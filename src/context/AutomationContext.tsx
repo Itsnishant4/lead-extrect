@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   getTasksAction,
+  getTasksProgressAction,
   createTaskAction,
   createTaskShellAction,
   appendTaskKeywordsAction,
@@ -80,17 +81,61 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     staleTime: 30 * 1000,
   });
 
+  const serverTimeRef = useRef<number | null>(null);
+  const pollCountRef = useRef(0);
+
   const { data: tasks = [], isLoading: isLoadingTasks, refetch: loadTasks } = useQuery({
     queryKey: ['tasks'],
     queryFn: async () => {
-      const res = await getTasksAction();
-      if (!res.success) return [];
-      return ((res as any).data || []) as unknown as Task[];
+      const prev = queryClient.getQueryData(['tasks']) as Task[] | undefined;
+      pollCountRef.current += 1;
+
+      // Full fetch on first load + every 15th tick (catches deletes/new names).
+      // Delta ticks use lightweight 7-col progress endpoint, merged in place.
+      const needFull = !prev || !serverTimeRef.current || pollCountRef.current % 15 === 0;
+      if (needFull) {
+        const res = await getTasksAction();
+        if (!res.success) return prev ?? [];
+        const rows = ((res as any).data || []) as unknown as Task[];
+        serverTimeRef.current = Date.now();
+        return rows;
+      }
+
+      try {
+        const res = await getTasksProgressAction(serverTimeRef.current ?? undefined);
+        if (!res.success || !(res as any).data) return prev;
+        const { rows, serverTime, unchanged } = (res as any).data as {
+          rows: any[]; serverTime: number; unchanged: boolean;
+        };
+        serverTimeRef.current = serverTime;
+        if (unchanged || rows.length === 0) return prev;
+        const byId = new Map(prev.map((t: any) => [t.id, t]));
+        let missing = false;
+        for (const r of rows) {
+          const cur = byId.get(r.id) as any;
+          if (!cur) { missing = true; break; }
+          byId.set(r.id, { ...cur, ...r });
+        }
+        // New task id seen in delta but full row unknown → full refresh next tick.
+        if (missing) {
+          pollCountRef.current = 14;
+          return prev;
+        }
+        return Array.from(byId.values()) as Task[];
+      } catch {
+        return prev;
+      }
     },
-    staleTime: 15_000, // Consider data fresh for 15s — prevents refetch on tab switch/remount
+    // Realtime polling: 2s while any task active (meets 1-2s target),
+    // 30s idle. Single observer — TasksPage consumes this context instead
+    // of mounting a duplicate ['tasks'] query (was 2x calls per tick).
+    staleTime: 2_000,
+    gcTime: 60_000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
     refetchInterval: (query) => {
       const data = query.state.data as Task[];
-      return (data && data.some(t => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 1000 : 120000;
+      return (data && data.some(t => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 2_000 : 30_000;
     },
   });
 

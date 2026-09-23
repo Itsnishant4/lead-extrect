@@ -43,7 +43,11 @@ export default function SubscribersPage() {
       if (!res.success) throw new Error((res as any).error);
       return (res as any).data || [];
     },
-    refetchInterval: 120000,
+    staleTime: 15_000,
+    gcTime: 120_000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
+    refetchInterval: 30_000,
   });
 
   const filteredSubscribers = subscribers.filter((sub: any) =>

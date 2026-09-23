@@ -4,15 +4,15 @@ import { getSession } from '@/lib/auth';
 import { AdminService } from '@/services/admin.service';
 import { TaskService } from '@/services/task.service';
 import { handleActionError } from './helpers';
-import { withCache } from '@/lib/cache';
+import { withCache, clearCacheByPrefix } from '@/lib/cache';
 
 export async function getAdminDashboardStatsAction() {
   const session = await getSession();
   if (!session) return { success: false, error: 'Unauthorized' };
   try {
     await AdminService.checkAdmin(session.id);
-    // Cache for 25 seconds (slightly less than polling interval of 30s)
-    const data = await withCache('admin-dashboard-stats', () => AdminService.getDashboardStats(), 25000);
+    // 15s cache — matches 30s dashboard poll, absorbs multi-admin fan-out.
+    const data = await withCache('admin-dashboard-stats', () => AdminService.getDashboardStats(), 15_000);
     return { success: true, data };
   } catch (error: any) {
     return handleActionError(error);
@@ -85,6 +85,8 @@ export async function updateTaskStatusAdminAction(taskId: number, status: string
   try {
     await AdminService.checkAdmin(session.id);
     await AdminService.updateTaskStatus(taskId, status);
+    clearCacheByPrefix('admin-dashboard-stats');
+    clearCacheByPrefix('admin-tasks');
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);
@@ -97,6 +99,8 @@ export async function bulkUpdateTasksAdminAction(mode: string) {
   try {
     await AdminService.checkAdmin(session.id);
     await AdminService.bulkUpdateTasks(mode);
+    clearCacheByPrefix('admin-dashboard-stats');
+    clearCacheByPrefix('admin-tasks');
     return { success: true };
   } catch (error: any) {
     return handleActionError(error);

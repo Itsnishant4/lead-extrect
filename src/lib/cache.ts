@@ -58,6 +58,19 @@ export function clearAllCache(): void {
 }
 
 /**
+ * Clear all cache entries with a given prefix.
+ * Needed because realtime progress keys are per-user
+ * (e.g. `tasks-progress:42`) while mutations run without key handle.
+ */
+export function clearCacheByPrefix(prefix: string): void {
+  for (const key of cache.keys()) {
+    if (key === prefix || key.startsWith(`${prefix}:`) || key.startsWith(prefix)) {
+      cache.delete(key);
+    }
+  }
+}
+
+/**
  * Wrapper function that caches the result of an async function.
  */
 export async function withCache<T>(

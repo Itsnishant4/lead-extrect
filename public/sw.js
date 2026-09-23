@@ -29,8 +29,28 @@ self.addEventListener('push', (event) => {
     },
   };
 
+  // Foreground fast-path: wake open tabs so TanStack caches invalidate
+  // instantly instead of waiting for next 2s/15s poll tick. Polling
+  // remains fallback when push denied or SW uncontrolled.
+  const broadcast = self.clients
+    .matchAll({ type: 'window', includeUncontrolled: true })
+    .then((clientList) => {
+      for (const client of clientList) {
+        client.postMessage({
+          type: 'TASKS_CHANGED',
+          tag: data.tag || 'leadspotter-notification',
+          title: data.title || 'LeadSpotter',
+          url: data.url || '/',
+        });
+      }
+    })
+    .catch(() => {});
+
   event.waitUntil(
-    self.registration.showNotification(data.title || 'LeadSpotter', options)
+    Promise.all([
+      self.registration.showNotification(data.title || 'LeadSpotter', options),
+      broadcast,
+    ])
   );
 });
 

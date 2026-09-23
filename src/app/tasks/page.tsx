@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { DashboardHeader } from '@/components/DashboardHeader';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTasksAction, deleteTaskAction, updateTaskStatusAction, triggerTaskAutomationAction, getTaskLeadsAction, getMyPlanFeaturesAction } from '@/app/actions';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAutomation } from '@/context/AutomationContext';
+import { deleteTaskAction, updateTaskStatusAction, triggerTaskAutomationAction, getMyPlanFeaturesAction } from '@/app/actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,19 +38,10 @@ export default function TasksPage() {
     return Object.entries(loadingActions).some(([key, val]) => key.startsWith(`${taskId}-`) && val);
   };
 
-  const { data: tasks = [], isLoading } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: async () => {
-      const res = await getTasksAction();
-      if (res.success && 'data' in res) return (res.data as any[]) || [];
-      return [];
-    },
-    staleTime: 15_000, // Share data with AutomationContext — prevents duplicate queries
-    refetchInterval: (query) => {
-      const data = query.state.data as any[];
-      return (data && data.some((t: any) => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 1000 : 120000;
-    },
-  });
+  const { tasks = [], isLoadingTasks: isLoading } = useAutomation();
+  // NOTE: no local ['tasks'] useQuery here — AutomationContext owns the single
+  // polling observer (2s active / 30s idle). Local duplicate caused 2x server
+  // actions per tick per tab.
 
   // Fetch user's plan features for export permissions
   const { data: planData } = useQuery({
