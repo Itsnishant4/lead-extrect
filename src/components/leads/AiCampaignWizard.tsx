@@ -22,18 +22,20 @@ import { toast } from 'sonner';
 import {
   ArrowUp,
   ArrowDown,
+  Brain,
+  Check,
+  Copy,
   Loader2,
   Mic,
-  MicOff,
+  Plus,
   RotateCcw,
-  Undo2,
-  Sparkles,
-  Bot,
-  User,
+  ThumbsDown,
+  ThumbsUp,
+  AudioLines,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-/** Minimum "thinking" display before every assistant reply (ChatGPT feel). */
+/** Minimum "thinking" display before every assistant reply. Toggleable via Think pill. */
 export const THINKING_MS = 2000;
 
 interface Msg {
@@ -47,19 +49,29 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let msgId = 0;
 const nextId = () => ++msgId;
 
+function firstName(full: unknown): string {
+  if (typeof full !== 'string' || !full.trim()) return 'there';
+  return full.trim().split(/\s+/)[0] ?? 'there';
+}
+
 export default function AiCampaignWizard() {
-  const { startNewTask } = useAutomation();
+  const { startNewTask, user } = useAutomation();
   const router = useRouter();
   const [machine, setMachine] = useState<MachineState>(() => initialMachine());
-  const [messages, setMessages] = useState<Msg[]>([
+  const [messages, setMessages] = useState<Msg[]>(() => [
+    { id: nextId(), from: 'bot', text: `Hi ${firstName((user as { name?: unknown } | null)?.name)} 👋` },
+    { id: nextId(), from: 'bot', text: 'What leads are you working on today?' },
     { id: nextId(), from: 'bot', text: getQuestion(initialMachine()).text },
   ]);
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const [thinkingLabel, setThinkingLabel] = useState('');
+  const [thinkMode, setThinkMode] = useState(true);
   const [building, setBuilding] = useState(false);
   const [buildStatus, setBuildStatus] = useState('');
   const [atEnd, setAtEnd] = useState(true);
+  const [liked, setLiked] = useState<Record<number, 1 | -1>>({});
+  const [copied, setCopied] = useState<number | null>(null);
   const builtRef = useRef(false);
   const busyRef = useRef(false);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -80,12 +92,9 @@ export default function AiCampaignWizard() {
     if (atEnd) scrollToEnd(true);
   }, [messages, thinking, atEnd, scrollToEnd]);
 
-  const pushBot = useCallback(
-    (texts: string[]) => {
-      setMessages((m) => [...m, ...texts.map((text) => ({ id: nextId(), from: 'bot' as const, text }))]);
-    },
-    []
-  );
+  const pushBot = useCallback((texts: string[]) => {
+    setMessages((m) => [...m, ...texts.map((text) => ({ id: nextId(), from: 'bot' as const, text }))]);
+  }, []);
 
   const submit = useCallback(
     (raw: string) => {
@@ -96,9 +105,9 @@ export default function AiCampaignWizard() {
       setInput('');
       setThinking(true);
       setThinkingLabel('');
-      // ChatGPT-style beat: always think >= 2s before answering.
+      // ChatGPT-style beat: think before answering.
       void (async () => {
-        await wait(THINKING_MS);
+        if (thinkMode) await wait(THINKING_MS);
         setMachine((prev) => {
           const next = handleAnswer(prev, text);
           const moved = next.step !== prev.step;
@@ -106,7 +115,6 @@ export default function AiCampaignWizard() {
           if (next.hint && !moved) replies.push(next.hint);
           if (moved && next.step !== 'done') replies.push(getQuestion(next).text);
           if (replies.length > 0) {
-            // Small extra beat so answer lands after loader clears.
             setTimeout(() => pushBot(replies), 150);
             setTimeout(() => {
               setThinking(false);
@@ -120,7 +128,7 @@ export default function AiCampaignWizard() {
         });
       })();
     },
-    [building, pushBot]
+    [building, pushBot, thinkMode]
   );
 
   const speech = useSpeechInput(submit);
@@ -141,9 +149,13 @@ export default function AiCampaignWizard() {
     setThinking(false);
     const fresh = initialMachine();
     setMachine(fresh);
-    setMessages([{ id: nextId(), from: 'bot', text: getQuestion(fresh).text }]);
+    setMessages([
+      { id: nextId(), from: 'bot', text: `Hi ${firstName((user as { name?: unknown } | null)?.name)} 👋` },
+      { id: nextId(), from: 'bot', text: 'What leads are you working on today?' },
+      { id: nextId(), from: 'bot', text: getQuestion(fresh).text },
+    ]);
     setInput('');
-  }, [building]);
+  }, [building, user]);
 
   // Instant create on done (no confirm screen) with live status line.
   useEffect(() => {
@@ -231,41 +243,26 @@ export default function AiCampaignWizard() {
     })();
   }, [machine, router, startNewTask, pushBot]);
 
+  const copyMsg = useCallback((id: number, text: string) => {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(id);
+    setTimeout(() => setCopied((c) => (c === id ? null : c)), 1500);
+  }, []);
+
+  const react = useCallback((id: number, v: 1 | -1) => {
+    setLiked((p) => ({ ...p, [id]: p[id] === v ? undefined as unknown as 1 : v }));
+  }, []);
+
   const q = getQuestion(machine);
   const chips = machine.suggestions.length > 0 ? machine.suggestions : q.chips;
   const busy = building || busyRef.current || thinking;
+  const started = messages.some((m) => m.from === 'user');
+  const showChips = machine.step !== 'done' && !building && !thinking && chips.length > 0;
 
   return (
-    <div className="w-full max-w-2xl flex flex-col overflow-hidden rounded-2xl md:rounded-[2rem] border border-slate-200/70 bg-white shadow-xl">
-      {/* Header — model window bar */}
-      <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-100 bg-gradient-to-r from-indigo-50/80 via-white to-violet-50/60">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
-            <Sparkles size={16} className="text-white" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-900 text-sm">LeadSpotter AI</span>
-              <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                online
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400">Campaign builder · answers instantly</p>
-          </div>
-        </div>
-        <button
-          onClick={restart}
-          disabled={building}
-          title="Restart conversation"
-          className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 transition-colors"
-        >
-          <RotateCcw size={16} />
-        </button>
-      </div>
-
-      {/* Transcript viewport */}
-      <div className="relative">
+    <div className="w-full max-w-3xl mx-auto flex flex-col min-h-[70vh]">
+      {/* Transcript — bare canvas like ChatGPT */}
+      <div className="relative flex-1">
         <div
           ref={viewportRef}
           onScroll={onScroll}
@@ -273,47 +270,81 @@ export default function AiCampaignWizard() {
           aria-label="Campaign builder conversation"
           aria-live="polite"
           tabIndex={0}
-          className="h-[380px] overflow-y-auto px-4 md:px-5 py-5 space-y-4 bg-[#fafbff] outline-none"
+          className="overflow-y-auto px-4 md:px-8 py-8 space-y-7 max-h-[62vh] min-h-[40vh] outline-none"
         >
+          {!started && (
+            <h1 className="text-center text-2xl md:text-[28px] font-medium text-slate-900 pt-10 pb-2">
+              What&apos;s on your mind today?
+            </h1>
+          )}
           {messages.map((m) =>
             m.from === 'user' ? (
-              <div key={m.id} className="flex justify-end gap-2.5">
-                <div className="max-w-[85%] px-4 py-2.5 rounded-2xl rounded-br-md bg-indigo-600 text-white text-sm leading-relaxed shadow-sm animate-in fade-in slide-in-from-bottom-1 duration-200">
+              <div key={m.id} className="flex justify-end">
+                <div className="max-w-[80%] px-5 py-2.5 rounded-full bg-slate-200/70 text-slate-900 text-[15px] leading-relaxed">
                   {m.text}
-                </div>
-                <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center shrink-0 mt-0.5">
-                  <User size={13} className="text-slate-500" />
                 </div>
               </div>
             ) : (
-              <div key={m.id} className="flex justify-start gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot size={13} className="text-indigo-600" />
-                </div>
-                <div className="max-w-[85%] px-4 py-2.5 rounded-2xl rounded-bl-md bg-white border border-slate-200/80 text-slate-700 text-sm leading-relaxed shadow-sm animate-in fade-in slide-in-from-bottom-1 duration-200">
+              <div key={m.id} className="group">
+                <div className="text-[15px] leading-relaxed text-slate-900 whitespace-pre-wrap">
                   {m.text}
+                </div>
+                <div className="flex items-center gap-1 mt-2 text-slate-400 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => copyMsg(m.id, m.text)}
+                    title="Copy"
+                    className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-600"
+                  >
+                    {copied === m.id ? <Check size={15} /> : <Copy size={15} />}
+                  </button>
+                  <button
+                    onClick={() => react(m.id, 1)}
+                    title="Good response"
+                    className={cn('p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-600', liked[m.id] === 1 && 'text-indigo-600 opacity-100')}
+                  >
+                    <ThumbsUp size={15} />
+                  </button>
+                  <button
+                    onClick={() => react(m.id, -1)}
+                    title="Bad response"
+                    className={cn('p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-600', liked[m.id] === -1 && 'text-indigo-600 opacity-100')}
+                  >
+                    <ThumbsDown size={15} />
+                  </button>
+                  <button
+                    onClick={goBack}
+                    title="Go back a step"
+                    className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-600"
+                  >
+                    <RotateCcw size={15} />
+                  </button>
                 </div>
               </div>
             )
           )}
 
           {thinking && (
-            <div className="flex justify-start gap-2.5">
-              <div className="w-7 h-7 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center shrink-0 mt-0.5">
-                {building ? (
-                  <Loader2 size={13} className="text-indigo-600 animate-spin" />
-                ) : (
-                  <Bot size={13} className="text-indigo-600" />
-                )}
-              </div>
-              <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-white border border-slate-200/80 shadow-sm flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.3s]" />
-                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.15s]" />
-                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" />
-                {(thinkingLabel || buildStatus) && (
-                  <span className="text-xs text-slate-400 ml-2">{thinkingLabel || buildStatus}</span>
-                )}
-              </div>
+            <div className="flex items-center gap-1.5 py-1" aria-label="Thinking">
+              <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.3s]" />
+              <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.15s]" />
+              <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" />
+              {(thinkingLabel || buildStatus) && (
+                <span className="text-xs text-slate-400 ml-2">{thinkingLabel || buildStatus}</span>
+              )}
+            </div>
+          )}
+
+          {showChips && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {chips.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => submit(c)}
+                  className="px-4 py-2 rounded-full text-[13px] font-medium bg-white border border-slate-200 text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-colors"
+                >
+                  {c}
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -321,95 +352,89 @@ export default function AiCampaignWizard() {
         {!atEnd && (
           <button
             onClick={() => scrollToEnd(true)}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-white/95 shadow-md text-xs font-semibold text-slate-600 hover:text-indigo-700 transition-colors"
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-white shadow-md text-xs font-medium text-slate-600"
           >
             <ArrowDown size={13} /> Jump to latest
           </button>
         )}
       </div>
 
-      {/* Suggestion chips */}
-      {machine.step !== 'done' && !building && !thinking && chips.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto px-4 md:px-5 py-3 border-t border-slate-100 bg-white">
-          {chips.map((c) => (
-            <button
-              key={c}
-              onClick={() => submit(c)}
-              className="shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition-colors"
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Composer */}
-      <div className="border-t border-slate-100 bg-white px-4 md:px-5 py-3.5">
+      {/* Composer dock */}
+      <div className="px-4 md:px-8 pb-2 pt-3">
+        <p className="text-center text-xs text-slate-400 mb-3">
+          LeadSpotter AI can make mistakes. Check campaign scope before launch.
+        </p>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             submit(input);
           }}
-          className="flex items-end gap-2"
+          className="flex items-center gap-1 rounded-full bg-white border border-slate-200 shadow-[0_2px_12px_rgba(0,0,0,0.06)] pl-2 pr-2 py-2"
         >
-          <div className="relative flex-1">
-            <input
-              value={speech.interim || input}
-              onChange={(e) => setInput(e.target.value)}
-              disabled={busy || machine.step === 'done'}
-              placeholder={
-                speech.listening
-                  ? 'Listening… speak now'
-                  : machine.step === 'done'
-                    ? 'Campaign started…'
-                    : q.placeholder
-              }
-              className="w-full pl-4 pr-11 py-3 bg-slate-100/80 border border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-all text-slate-800 placeholder:text-slate-400 text-sm outline-none"
-            />
-            {speech.supported && (
-              <button
-                type="button"
-                onClick={speech.toggle}
-                disabled={busy || machine.step === 'done'}
-                title={speech.listening ? 'Stop listening' : 'Voice input'}
-                className={cn(
-                  'absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-xl transition-colors',
-                  speech.listening
-                    ? 'bg-rose-100 text-rose-600 animate-pulse'
-                    : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'
-                )}
-              >
-                {speech.listening ? <MicOff size={17} /> : <Mic size={17} />}
-              </button>
-            )}
-          </div>
           <button
-            type="submit"
-            disabled={busy || machine.step === 'done' || !input.trim()}
-            title="Send"
-            className="p-3 rounded-2xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-30 transition-colors shrink-0"
+            type="button"
+            onClick={restart}
+            title="New conversation"
+            className="p-2.5 rounded-full text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
+          >
+            <Plus size={19} />
+          </button>
+          <input
+            value={speech.interim || input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={busy || machine.step === 'done'}
+            placeholder={speech.listening ? 'Listening… speak now' : 'Ask anything'}
+            aria-label="Ask anything"
+            className="flex-1 min-w-0 bg-transparent text-[15px] text-slate-900 placeholder:text-slate-400 outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => setThinkMode((v) => !v)}
+            title={thinkMode ? 'Thinking on (2s)' : 'Thinking off'}
+            className={cn(
+              'hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-medium transition-colors shrink-0',
+              thinkMode ? 'text-slate-700 hover:bg-slate-100' : 'text-slate-300 hover:bg-slate-50'
+            )}
+          >
+            <Brain size={16} /> Think
+          </button>
+          {speech.supported && (
+            <button
+              type="button"
+              onClick={speech.toggle}
+              disabled={busy || machine.step === 'done'}
+              title={speech.listening ? 'Stop listening' : 'Voice input'}
+              className={cn(
+                'p-2.5 rounded-full transition-colors shrink-0',
+                speech.listening
+                  ? 'text-rose-600 bg-rose-50 animate-pulse'
+                  : 'text-slate-700 hover:bg-slate-100'
+              )}
+            >
+              <Mic size={19} />
+            </button>
+          )}
+          <button
+            type={input.trim() ? 'submit' : 'button'}
+            onClick={input.trim() ? undefined : speech.toggle}
+            disabled={busy || machine.step === 'done' || (!input.trim() && !speech.supported)}
+            title={input.trim() ? 'Send' : 'Voice input'}
+            className="w-10 h-10 rounded-full bg-[#0b5cff] text-white flex items-center justify-center hover:bg-[#004ee0] disabled:opacity-40 transition-colors shrink-0"
           >
             {thinking && !building ? (
-              <Loader2 size={17} className="animate-spin" />
+              <Loader2 size={18} className="animate-spin" />
+            ) : input.trim() ? (
+              <ArrowUp size={18} />
             ) : (
-              <ArrowUp size={17} />
+              <AudioLines size={18} />
             )}
           </button>
         </form>
-        <div className="flex items-center justify-between mt-2.5">
-          <button
-            onClick={goBack}
-            disabled={busy}
-            className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-indigo-600 disabled:opacity-40"
-          >
-            <Undo2 size={13} /> Back
-          </button>
-          {speech.error ? (
-            <p className="text-[11px] text-amber-600">{speech.error}</p>
-          ) : (
-            <p className="text-[11px] text-slate-300">AI answers after a short think · audio stays in browser</p>
-          )}
-        </div>
+        {speech.error ? (
+          <p className="text-[11px] text-amber-600 mt-2 text-center">{speech.error}</p>
+        ) : (
+          <div className="h-2" />
+        )}
       </div>
     </div>
   );
