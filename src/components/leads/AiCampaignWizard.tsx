@@ -23,14 +23,9 @@ import {
   ArrowUp,
   ArrowDown,
   Brain,
-  Check,
-  Copy,
   Loader2,
   Mic,
   Plus,
-  RotateCcw,
-  ThumbsDown,
-  ThumbsUp,
   AudioLines,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -54,12 +49,19 @@ function firstName(full: unknown): string {
   return full.trim().split(/\s+/)[0] ?? 'there';
 }
 
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export default function AiCampaignWizard() {
-  const { startNewTask, user } = useAutomation();
+  const { startNewTask, user, refreshTasksNow } = useAutomation();
   const router = useRouter();
   const [machine, setMachine] = useState<MachineState>(() => initialMachine());
   const [messages, setMessages] = useState<Msg[]>(() => [
-    { id: nextId(), from: 'bot', text: `Hi ${firstName((user as { name?: unknown } | null)?.name)} 👋` },
+    { id: nextId(), from: 'bot', text: `${greeting()} ${firstName((user as { name?: unknown } | null)?.name)} 👋` },
     { id: nextId(), from: 'bot', text: 'What leads are you working on today?' },
     { id: nextId(), from: 'bot', text: getQuestion(initialMachine()).text },
   ]);
@@ -70,8 +72,6 @@ export default function AiCampaignWizard() {
   const [building, setBuilding] = useState(false);
   const [buildStatus, setBuildStatus] = useState('');
   const [atEnd, setAtEnd] = useState(true);
-  const [liked, setLiked] = useState<Record<number, 1 | -1>>({});
-  const [copied, setCopied] = useState<number | null>(null);
   const builtRef = useRef(false);
   const busyRef = useRef(false);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -105,7 +105,7 @@ export default function AiCampaignWizard() {
       setInput('');
       setThinking(true);
       setThinkingLabel('');
-      // ChatGPT-style beat: think before answering.
+      // One user message -> 2s thinking -> exactly one AI reply.
       void (async () => {
         if (thinkMode) await wait(THINKING_MS);
         setMachine((prev) => {
@@ -133,15 +133,6 @@ export default function AiCampaignWizard() {
 
   const speech = useSpeechInput(submit);
 
-  const goBack = useCallback(() => {
-    if (building || busyRef.current) return;
-    setMachine((prev) => {
-      const next = stepBack(prev);
-      pushBot([getQuestion(next).text]);
-      return next;
-    });
-  }, [building, pushBot]);
-
   const restart = useCallback(() => {
     if (building) return;
     builtRef.current = false;
@@ -150,7 +141,7 @@ export default function AiCampaignWizard() {
     const fresh = initialMachine();
     setMachine(fresh);
     setMessages([
-      { id: nextId(), from: 'bot', text: `Hi ${firstName((user as { name?: unknown } | null)?.name)} 👋` },
+      { id: nextId(), from: 'bot', text: `${greeting()} ${firstName((user as { name?: unknown } | null)?.name)} 👋` },
       { id: nextId(), from: 'bot', text: 'What leads are you working on today?' },
       { id: nextId(), from: 'bot', text: getQuestion(fresh).text },
     ]);
@@ -225,8 +216,10 @@ export default function AiCampaignWizard() {
         const doneLabel = `Starting campaign with ${keywords.length} keywords…`;
         setBuildStatus(doneLabel);
         setThinkingLabel(doneLabel);
-        pushBot([`Done — "${taskName}" is starting with ${keywords.length} keywords. Taking you to tasks…`]);
+        pushBot([`Done — "${taskName}" is starting with ${keywords.length} keywords. Taking you to campaigns…`]);
         await startNewTask(taskName, keywords);
+        // Force fresh task list before navigating so new campaign shows instantly.
+        await refreshTasksNow();
         toast.success(`Campaign "${taskName}" started`);
         await wait(900);
         router.replace('/tasks');
@@ -241,17 +234,16 @@ export default function AiCampaignWizard() {
         ]);
       }
     })();
-  }, [machine, router, startNewTask, pushBot]);
+  }, [machine, router, startNewTask, pushBot, refreshTasksNow]);
 
-  const copyMsg = useCallback((id: number, text: string) => {
-    navigator.clipboard.writeText(text).catch(() => {});
-    setCopied(id);
-    setTimeout(() => setCopied((c) => (c === id ? null : c)), 1500);
-  }, []);
-
-  const react = useCallback((id: number, v: 1 | -1) => {
-    setLiked((p) => ({ ...p, [id]: p[id] === v ? undefined as unknown as 1 : v }));
-  }, []);
+  const goBack = useCallback(() => {
+    if (building || busyRef.current) return;
+    setMachine((prev) => {
+      const next = stepBack(prev);
+      pushBot([getQuestion(next).text]);
+      return next;
+    });
+  }, [building, pushBot]);
 
   const q = getQuestion(machine);
   const chips = machine.suggestions.length > 0 ? machine.suggestions : q.chips;
@@ -261,7 +253,7 @@ export default function AiCampaignWizard() {
 
   return (
     <div className="w-full max-w-3xl mx-auto flex flex-col min-h-[70vh]">
-      {/* Transcript — bare canvas like ChatGPT */}
+      {/* Transcript — plain text only, no bubbles, no avatars */}
       <div className="relative flex-1">
         <div
           ref={viewportRef}
@@ -270,58 +262,29 @@ export default function AiCampaignWizard() {
           aria-label="Campaign builder conversation"
           aria-live="polite"
           tabIndex={0}
-          className="overflow-y-auto px-4 md:px-8 py-8 space-y-7 max-h-[62vh] min-h-[40vh] outline-none"
+          className="overflow-y-auto px-4 md:px-8 py-8 space-y-6 max-h-[62vh] min-h-[40vh] outline-none"
         >
           {!started && (
             <h1 className="text-center text-2xl md:text-[28px] font-medium text-slate-900 pt-10 pb-2">
               What&apos;s on your mind today?
             </h1>
           )}
-          {messages.map((m) =>
-            m.from === 'user' ? (
-              <div key={m.id} className="flex justify-end">
-                <div className="max-w-[80%] px-5 py-2.5 rounded-full bg-slate-200/70 text-slate-900 text-[15px] leading-relaxed">
-                  {m.text}
-                </div>
-              </div>
-            ) : (
-              <div key={m.id} className="group">
-                <div className="text-[15px] leading-relaxed text-slate-900 whitespace-pre-wrap">
-                  {m.text}
-                </div>
-                <div className="flex items-center gap-1 mt-2 text-slate-400 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => copyMsg(m.id, m.text)}
-                    title="Copy"
-                    className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-600"
-                  >
-                    {copied === m.id ? <Check size={15} /> : <Copy size={15} />}
-                  </button>
-                  <button
-                    onClick={() => react(m.id, 1)}
-                    title="Good response"
-                    className={cn('p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-600', liked[m.id] === 1 && 'text-indigo-600 opacity-100')}
-                  >
-                    <ThumbsUp size={15} />
-                  </button>
-                  <button
-                    onClick={() => react(m.id, -1)}
-                    title="Bad response"
-                    className={cn('p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-600', liked[m.id] === -1 && 'text-indigo-600 opacity-100')}
-                  >
-                    <ThumbsDown size={15} />
-                  </button>
-                  <button
-                    onClick={goBack}
-                    title="Go back a step"
-                    className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-600"
-                  >
-                    <RotateCcw size={15} />
-                  </button>
-                </div>
-              </div>
-            )
-          )}
+          {messages.map((m) => (
+            <div
+              key={m.id}
+              className={m.from === 'user' ? 'flex justify-end' : 'flex justify-start'}
+            >
+              <p
+                className={
+                  m.from === 'user'
+                    ? 'max-w-[80%] text-right text-[15px] leading-relaxed text-slate-900'
+                    : 'max-w-[90%] text-left text-[15px] leading-relaxed text-slate-900 whitespace-pre-wrap'
+                }
+              >
+                {m.text}
+              </p>
+            </div>
+          ))}
 
           {thinking && (
             <div className="flex items-center gap-1.5 py-1" aria-label="Thinking">

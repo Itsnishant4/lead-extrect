@@ -51,6 +51,7 @@ interface AutomationContextType {
   settings: Record<string, any>;
   updateSetting: (key: string, value: any) => Promise<void>;
   startAllPendingTasks: () => Promise<void>;
+  refreshTasksNow: () => Promise<void>;
 }
 
 const AutomationContext = createContext<AutomationContextType | undefined>(undefined);
@@ -90,9 +91,9 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       const prev = queryClient.getQueryData(['tasks']) as Task[] | undefined;
       pollCountRef.current += 1;
 
-      // Full fetch on first load + every 15th tick (catches deletes/new names).
+      // Full fetch on first load + every 6th tick (catches deletes/new names).
       // Delta ticks use lightweight 7-col progress endpoint, merged in place.
-      const needFull = !prev || !serverTimeRef.current || pollCountRef.current % 15 === 0;
+      const needFull = !prev || !serverTimeRef.current || pollCountRef.current % 6 === 0;
       if (needFull) {
         const res = await getTasksAction();
         if (!res.success) return prev ?? [];
@@ -118,7 +119,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
         }
         // New task id seen in delta but full row unknown → full refresh next tick.
         if (missing) {
-          pollCountRef.current = 14;
+          pollCountRef.current = 5;
           return prev;
         }
         return Array.from(byId.values()) as Task[];
@@ -163,6 +164,18 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     await loadTasks();
   };
 
+  /**
+   * Forced full refetch — call after every create/pause/resume/delete.
+   * Delta merge cannot see new ids or deletes, so reset its refs and
+   * refetch immediately instead of waiting for interval tick.
+   */
+  const refreshTasksNow = async () => {
+    serverTimeRef.current = null;
+    pollCountRef.current = 0;
+    await await refreshTasksNow();
+    await loadTasks();
+  };
+
   const handleSearch = async (e?: React.FormEvent, searchOverride?: string) => {
     e?.preventDefault();
     const finalQuery = searchOverride;
@@ -175,7 +188,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       const triggerRes = await triggerTaskAutomationAction(Number(res.taskId));
       if (triggerRes.success) {
         toast.success(`Search started for "${finalQuery}"`);
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        await refreshTasksNow();
       } else {
         toast.error((triggerRes as any).error || "Failed to start search");
       }
@@ -231,7 +244,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
 
       void uploadKeywordsInBackground();
       toast.success(`Automation task "${name}" started`);
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await refreshTasksNow();
       return;
     }
 
@@ -241,11 +254,11 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       if (!triggerRes.success) {
         // Task was created but trigger failed (concurrent limit)
         toast.error((triggerRes as any).error || "Failed to start task");
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        await refreshTasksNow();
         return;
       }
       toast.success(`Automation task "${name}" started`);
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await refreshTasksNow();
     } else {
       toast.error((res as any).error || "Failed to create task");
     }
@@ -256,7 +269,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     flushTelegramExport(taskId, task?.name || `Task-${taskId}`);
     await updateTaskStatusAction(taskId, 'paused', undefined, 'Paused by user');
     toast.info("Task paused");
-    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    await refreshTasksNow();
   };
 
   const handleResumeTask = async (taskId: number) => {
@@ -280,13 +293,13 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       return;
     }
     toast.success("Task resumed");
-    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    await refreshTasksNow();
   };
 
   const handleDeleteTask = async (taskId: number) => {
     const res = await deleteTaskAction(taskId);
     if (res.success) {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await refreshTasksNow();
     }
     return res as any;
   };
@@ -303,7 +316,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     const res = await startAllPendingTasksAction();
     if (res.success && (res as any).count && (res as any).count > 0) {
       toast.success(`Auto-started ${(res as any).count} pending tasks`);
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await refreshTasksNow();
     }
   };
 
@@ -326,7 +339,8 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       clearKeywordSession,
       settings,
       updateSetting,
-      startAllPendingTasks
+      startAllPendingTasks,
+      refreshTasksNow
     }}>
       {children}
     </AutomationContext.Provider>

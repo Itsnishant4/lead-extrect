@@ -38,7 +38,7 @@ export default function TasksPage() {
     return Object.entries(loadingActions).some(([key, val]) => key.startsWith(`${taskId}-`) && val);
   };
 
-  const { tasks = [], isLoadingTasks: isLoading } = useAutomation();
+  const { tasks = [], isLoadingTasks: isLoading, refreshTasksNow } = useAutomation();
   // NOTE: no local ['tasks'] useQuery here — AutomationContext owns the single
   // polling observer (2s active / 30s idle). Local duplicate caused 2x server
   // actions per tick per tab.
@@ -86,6 +86,7 @@ export default function TasksPage() {
         toast.error((res as any).error || 'Failed to start task');
       }
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await refreshTasksNow();
     } finally {
       setLoading(taskId, 'start', false);
     }
@@ -97,6 +98,7 @@ export default function TasksPage() {
       await updateTaskStatusAction(taskId, 'paused', undefined, 'Paused by user');
       toast.info('Task paused');
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await refreshTasksNow();
     } finally {
       setLoading(taskId, 'pause', false);
     }
@@ -112,6 +114,7 @@ export default function TasksPage() {
         toast.error((res as any).error || 'Failed to resume task');
       }
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await refreshTasksNow();
     } finally {
       setLoading(taskId, 'resume', false);
     }
@@ -127,6 +130,7 @@ export default function TasksPage() {
         toast.error((res as any).error || 'Failed to delete task');
       }
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await refreshTasksNow();
     } finally {
       setLoading(taskId, 'delete', false);
     }
