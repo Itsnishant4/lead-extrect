@@ -213,15 +213,23 @@ export default function AiCampaignWizard() {
     setInput('');
   }, [building, user]);
 
+  // Latest async deps for the one-shot build effect (keeps deps stable).
+  const buildDepsRef = useRef({ router, startNewTask, pushBot, refreshTasksNow });
+  buildDepsRef.current = { router, startNewTask, pushBot, refreshTasksNow };
+
   // Instant create on done (no confirm screen) with live status line.
+  // Runs EXACTLY once per arrival at done: stable [machine] dep + builtRef
+  // guard that is never reset on failure (no auto-retry, no duplicates).
   useEffect(() => {
     if (machine.step !== 'done' || builtRef.current) return;
     builtRef.current = true;
+    const { router, startNewTask, pushBot, refreshTasksNow } = buildDepsRef.current;
     void (async () => {
       setBuilding(true);
       setThinking(true);
       const slots = machine.slots;
       const taskName = buildTaskName(slots);
+      let phase = 'generating keywords';
       try {
         let keywords: string[] = [];
         if (slots.wholeCountry) {
@@ -266,6 +274,7 @@ export default function AiCampaignWizard() {
 
         // Plan-budget fit — trim list to what the plan allows instead of
         // failing mid-extraction. Stride sampling keeps geographic spread.
+        phase = 'checking plan budget';
         const budgetRes = await getUserAction().catch(() => null);
         const budgetUser = (budgetRes && (budgetRes as { data?: unknown }).data) || user;
         const remaining = remainingLeads(budgetUser as BudgetUser);
@@ -296,6 +305,7 @@ export default function AiCampaignWizard() {
             : slots.city
               ? `${slots.city}, ${slots.state}`
               : slots.state;
+        phase = 'saving history';
         await saveKeywordHistoryAction({
           name: taskName,
           niche: slots.niche,
@@ -322,14 +332,17 @@ export default function AiCampaignWizard() {
           })
         );
         pushBot([doneText]);
+        phase = 'creating campaign';
         await startNewTask(taskName, keywords);
         // Force fresh task list before navigating so new campaign shows instantly.
+        phase = 'refreshing campaign list';
         await refreshTasksNow();
         toast.success(`Campaign "${taskName}" started`);
         await wait(900);
         router.replace('/tasks');
       } catch (e) {
-        builtRef.current = false;
+        // No auto-retry: builtRef stays true so this runs once. Restart
+        // button starts a brand-new conversation instead of duplicating.
         setBuilding(false);
         setThinking(false);
         setThinkingLabel('');
@@ -337,7 +350,7 @@ export default function AiCampaignWizard() {
         const rawMsg = (e as Error).message;
         const failText = rawMsg.startsWith('Your ')
           ? `${rawMsg} Tap Restart to try again after upgrading.`
-          : `Something failed: ${rawMsg}. Tap Restart and try again.`;
+          : `Something failed while ${phase}: ${rawMsg}. Tap Restart and try again.`;
         setHistory(
           saveHistoryEntry({
             id: newEntryId(),
@@ -354,7 +367,7 @@ export default function AiCampaignWizard() {
         pushBot([failText]);
       }
     })();
-  }, [machine, router, startNewTask, pushBot, refreshTasksNow]);
+  }, [machine]);
 
   const q = getQuestion(machine);
   const chips = machine.suggestions.length > 0 ? machine.suggestions : q.chips;
