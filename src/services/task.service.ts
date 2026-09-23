@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/index';
 import { tasks, taskLeads } from '@/lib/db/schema';
-import { eq, and, or, desc, count } from 'drizzle-orm';
+import { eq, and, or, desc, count, sql } from 'drizzle-orm';
 import { AuditService } from './audit.service';
 import { LeadRepository } from '@/repositories/lead.repository';
 import { TaskRepository } from '@/repositories/task.repository';
@@ -51,12 +51,15 @@ export class TaskService {
   }
 
   static async appendKeywords(userId: number, taskId: number, keywords: string[]) {
-    const currentTask = await db.select({ keywords: tasks.keywords }).from(tasks).where(eq(tasks.id, taskId)).limit(1);
-    const currentKeywords = (currentTask[0]?.keywords as string[]) || [];
-    const newKeywords = [...currentKeywords, ...keywords];
-
+    if (!keywords || keywords.length === 0) return;
+    // SQL-side append — never loads the full keyword blob into memory.
+    // Read-modify-write of multi-thousand keyword lists caused oversized
+    // payloads and crashes on large campaigns.
     await db.update(tasks)
-      .set({ keywords: newKeywords, updatedAt: new Date() })
+      .set({
+        keywords: sql`json((SELECT json_group_array(v) FROM (SELECT value AS v FROM json_each(coalesce((SELECT ${tasks.keywords} FROM ${tasks} AS t WHERE t.id = ${taskId}), '[]')) UNION ALL SELECT value AS v FROM json_each(${JSON.stringify(keywords)}))))` as unknown as string[],
+        updatedAt: new Date(),
+      })
       .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)));
   }
 

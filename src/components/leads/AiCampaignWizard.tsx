@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useAutomation } from '@/context/AutomationContext';
 import {
   generateKeywordsAction,
+  getUserAction,
   saveKeywordHistoryAction,
 } from '@/app/actions';
+import { MAX_KEYWORDS_PER_TASK, remainingLeads, strideSample } from '@/lib/wizard/budget';
+import type { BudgetUser } from '@/lib/wizard/budget';
 import {
   MachineState,
   buildTaskName,
@@ -65,6 +68,12 @@ function greeting(): string {
   if (h < 12) return 'Good morning';
   if (h < 17) return 'Good afternoon';
   return 'Good evening';
+}
+
+function locationShort(slots: { wholeCountry: boolean; country: string; state: string; city: string }): string {
+  if (slots.wholeCountry) return slots.country;
+  if (slots.city) return slots.city;
+  return slots.state || slots.country;
 }
 
 function openingMessage(name: unknown): string {
@@ -255,6 +264,31 @@ export default function AiCampaignWizard() {
 
         if (keywords.length === 0) throw new Error('No keywords generated');
 
+        // Plan-budget fit — trim list to what the plan allows instead of
+        // failing mid-extraction. Stride sampling keeps geographic spread.
+        const budgetRes = await getUserAction().catch(() => null);
+        const budgetUser = (budgetRes && (budgetRes as { data?: unknown }).data) || user;
+        const remaining = remainingLeads(budgetUser as BudgetUser);
+        const planLabel = String(
+          (budgetUser as BudgetUser)?.planType ?? (budgetUser as BudgetUser)?.plan_type ?? 'Free'
+        );
+        let trimNote: string | null = null;
+        if (remaining <= 0) {
+          throw new Error(
+            `Your ${planLabel} plan is out of leads. Upgrade to launch "${taskName}".`
+          );
+        }
+        if (keywords.length > remaining) {
+          keywords = strideSample(keywords, remaining);
+          trimNote =
+            `Heads up — your ${planLabel} plan covers ${remaining} leads, ` +
+            `so I trimmed this campaign to ${keywords.length} keywords spread across ${locationShort(slots)}. ` +
+            `Upgrade anytime for the full list.`;
+        }
+        if (keywords.length > MAX_KEYWORDS_PER_TASK) {
+          keywords = strideSample(keywords, MAX_KEYWORDS_PER_TASK);
+        }
+
         const location = slots.wholeCountry
           ? `Complete ${slots.country}`
           : slots.selectAllCities
@@ -273,6 +307,7 @@ export default function AiCampaignWizard() {
         setBuildStatus(doneLabel);
         setThinkingLabel(doneLabel);
         const doneText = `Done — "${taskName}" is starting with ${keywords.length} keywords. Taking you to campaigns…`;
+        if (trimNote) pushBot([trimNote]);
         setHistory(
           saveHistoryEntry({
             id: newEntryId(),
@@ -299,7 +334,10 @@ export default function AiCampaignWizard() {
         setThinking(false);
         setThinkingLabel('');
         setBuildStatus('');
-        const failText = `Something failed: ${(e as Error).message}. Tap Restart and try again.`;
+        const rawMsg = (e as Error).message;
+        const failText = rawMsg.startsWith('Your ')
+          ? `${rawMsg} Tap Restart to try again after upgrading.`
+          : `Something failed: ${rawMsg}. Tap Restart and try again.`;
         setHistory(
           saveHistoryEntry({
             id: newEntryId(),
