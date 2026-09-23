@@ -56,14 +56,16 @@ function greeting(): string {
   return 'Good evening';
 }
 
+function openingMessage(name: unknown): string {
+  return `${greeting()} ${firstName(name)} 👋,\nWhat leads do you want? (e.g. Real Estate, Dentist, Plumber)`;
+}
+
 export default function AiCampaignWizard() {
   const { startNewTask, user, refreshTasksNow } = useAutomation();
   const router = useRouter();
   const [machine, setMachine] = useState<MachineState>(() => initialMachine());
   const [messages, setMessages] = useState<Msg[]>(() => [
-    { id: nextId(), from: 'bot', text: `${greeting()} ${firstName((user as { name?: unknown } | null)?.name)} 👋` },
-    { id: nextId(), from: 'bot', text: 'What leads are you working on today?' },
-    { id: nextId(), from: 'bot', text: getQuestion(initialMachine()).text },
+    { id: nextId(), from: 'bot', text: openingMessage((user as { name?: unknown } | null)?.name) },
   ]);
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
@@ -140,9 +142,7 @@ export default function AiCampaignWizard() {
     const fresh = initialMachine();
     setMachine(fresh);
     setMessages([
-      { id: nextId(), from: 'bot', text: `${greeting()} ${firstName((user as { name?: unknown } | null)?.name)} 👋` },
-      { id: nextId(), from: 'bot', text: 'What leads are you working on today?' },
-      { id: nextId(), from: 'bot', text: getQuestion(fresh).text },
+      { id: nextId(), from: 'bot', text: openingMessage((user as { name?: unknown } | null)?.name) },
     ]);
     setInput('');
   }, [building, user]);
