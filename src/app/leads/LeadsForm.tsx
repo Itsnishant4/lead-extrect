@@ -13,8 +13,9 @@ import {
 } from '@/app/actions';
 import { toast } from 'sonner';
 import {
-  Loader2, Rocket, Briefcase, Copy, Check, X, ArrowRight, ShieldCheck, Zap, Clock, Bell, BellOff,
+  Loader2, Rocket, Briefcase, Copy, Check, X, ArrowRight, ShieldCheck, Zap, Clock, Bell, BellOff, Sparkles, SlidersHorizontal,
 } from 'lucide-react';
+import AiCampaignWizard from '@/components/leads/AiCampaignWizard';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
 
@@ -62,6 +63,7 @@ export default function LeadsForm() {
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [showPushPopup, setShowPushPopup] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
+  const [assistMode, setAssistMode] = useState<'ai' | 'manual'>('ai');
 
   useEffect(() => {
     if (loadedSession) {
@@ -245,6 +247,23 @@ export default function LeadsForm() {
       )}
       <DashboardHeader activePage="leads" />
       <main className="flex-1 w-full justify-center items-center h-screen max-w-5xl mx-auto p-4 md:p-8 lg:p-16 pt-24 lg:pt-28 flex flex-col items-center">
+        <div className="flex items-center gap-1 mb-6 bg-white/70 border border-slate-200/60 rounded-full p-1.5 shadow-sm">
+          <button
+            onClick={() => setAssistMode('ai')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all ${assistMode === 'ai' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            <Sparkles size={14} /> AI assist
+          </button>
+          <button
+            onClick={() => setAssistMode('manual')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all ${assistMode === 'manual' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            <SlidersHorizontal size={14} /> Manual
+          </button>
+        </div>
+        {assistMode === 'ai' ? (
+          <AiCampaignWizard />
+        ) : (
         <div className="w-full max-w-2xl glass-card rounded-2xl md:rounded-[2.5rem] p-6 md:p-12 relative overflow-hidden">
           <div className="mb-8 md:mb-12 text-center">
             <h1 className="serif-font text-2xl md:text-4xl text-slate-900 mb-4">Launch Configuration</h1>
@@ -367,6 +386,7 @@ export default function LeadsForm() {
             )}
           </div>
         </div>
+        )}
       </main>
     </div>
   );
