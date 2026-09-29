@@ -230,16 +230,28 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       const uploadKeywordsInBackground = async () => {
         for (let i = 0; i < keywords.length; i += chunkSize) {
           const chunk = keywords.slice(i, i + chunkSize);
-          const appendRes = await appendTaskKeywordsAction(taskId, chunk);
-          if (!appendRes.success) {
-            toast.error((appendRes as any).error || "Keyword upload failed");
-            return;
+          let ok = false;
+          for (let attempt = 1; attempt <= 3 && !ok; attempt++) {
+            const appendRes = await appendTaskKeywordsAction(taskId, chunk);
+            if (appendRes.success) {
+              ok = true;
+            } else if (attempt === 3) {
+              // Never leave 'uploading' limbo: fail visibly so the user
+              // (and worker recovery) can act on it.
+              await updateTaskStatusAction(taskId, 'failed', undefined, `Keyword upload failed: ${(appendRes as any).error || 'unknown error'}`);
+              toast.error((appendRes as any).error || 'Keyword upload failed');
+              await refreshTasksNow();
+              return;
+            } else {
+              await new Promise((r) => setTimeout(r, 1500 * attempt));
+            }
           }
         }
         const triggerRes = await triggerTaskAutomationAction(taskId);
         if (!triggerRes.success) {
           toast.error((triggerRes as any).error || "Failed to start task");
         }
+        await refreshTasksNow();
       };
 
       void uploadKeywordsInBackground();

@@ -229,12 +229,28 @@ export default function AiCampaignWizard() {
       setThinking(true);
       const slots = machine.slots;
       const taskName = buildTaskName(slots);
-      let phase = 'generating keywords';
+      let phase = 'checking plan budget';
       try {
+        // Budget FIRST: never generate 19k keywords for a 500-lead plan.
+        // Whole-country fan-out stops once the budget is covered.
+        const budgetRes = await getUserAction().catch(() => null);
+        const budgetUser = (budgetRes && (budgetRes as { data?: unknown }).data) || user;
+        const remaining = remainingLeads(budgetUser as BudgetUser);
+        const planLabel = String(
+          (budgetUser as BudgetUser)?.planType ?? (budgetUser as BudgetUser)?.plan_type ?? 'Free'
+        );
+        if (remaining <= 0) {
+          throw new Error(
+            `Your ${planLabel} plan is out of leads. Upgrade to launch "${taskName}".`
+          );
+        }
+        const need = Math.min(remaining, MAX_KEYWORDS_PER_TASK);
+        phase = 'generating keywords';
         let keywords: string[] = [];
+        let stoppedEarly = false;
         if (slots.wholeCountry) {
           const states = listStates(slots.countryIso).map((s) => s.name);
-          for (let i = 0; i < states.length; i++) {
+          for (let i = 0; i < states.length && keywords.length < need; i++) {
             const label = `Building keyword list… ${i + 1}/${states.length} states`;
             setBuildStatus(label);
             setThinkingLabel(label);
@@ -250,6 +266,7 @@ export default function AiCampaignWizard() {
               keywords.push(...(res.data as string[]));
             }
           }
+          stoppedEarly = keywords.length >= need;
         } else {
           const est = estimateKeywords(slots);
           const label = est ? `Generating ~${est} keywords…` : 'Generating keywords…';
@@ -272,22 +289,10 @@ export default function AiCampaignWizard() {
 
         if (keywords.length === 0) throw new Error('No keywords generated');
 
-        // Plan-budget fit — trim list to what the plan allows instead of
-        // failing mid-extraction. Stride sampling keeps geographic spread.
-        phase = 'checking plan budget';
-        const budgetRes = await getUserAction().catch(() => null);
-        const budgetUser = (budgetRes && (budgetRes as { data?: unknown }).data) || user;
-        const remaining = remainingLeads(budgetUser as BudgetUser);
-        const planLabel = String(
-          (budgetUser as BudgetUser)?.planType ?? (budgetUser as BudgetUser)?.plan_type ?? 'Free'
-        );
+        // Trim to budget with stride sampling (keeps geographic spread).
+        // Whole-country runs usually already stopped at `need`.
         let trimNote: string | null = null;
-        if (remaining <= 0) {
-          throw new Error(
-            `Your ${planLabel} plan is out of leads. Upgrade to launch "${taskName}".`
-          );
-        }
-        if (keywords.length > remaining) {
+        if (keywords.length > remaining || stoppedEarly) {
           keywords = strideSample(keywords, remaining);
           trimNote =
             `Heads up — your ${planLabel} plan covers ${remaining} leads, ` +
