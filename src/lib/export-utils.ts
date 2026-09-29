@@ -91,24 +91,64 @@ const CSV_HEADERS_WITH_SCORE = [...CSV_HEADERS, 'Lead Score'];
 const CSV_HEADERS_WITH_EMAIL_VERIFIED = [...CSV_HEADERS, 'Email Verified'];
 const CSV_HEADERS_WITH_BOTH = [...CSV_HEADERS, 'Lead Score', 'Email Verified'];
 
-function escapeCsv(val: any): string {
+function escapeCsv(val: any, numeric = false): string {
   if (val === null || val === undefined) return '';
+  if (numeric) {
+    const n = Number(val);
+    return Number.isFinite(n) ? String(n) : '';
+  }
   const str = String(val);
   if (/^[=+\-@]/.test(str)) return "'" + str;
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes(';')) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
 }
 
+const E164_RE = /^\+[1-9]\d{6,14}$/;
+
+/** Split multi-value field, keep only E164-shaped numbers, join with '; '. */
+export function sanitizePhoneList(val: any, max = 3): string {
+  if (val === null || val === undefined) return '';
+  const parts = String(val)
+    .split(/[,;]+/)
+    .map((s) => s.trim().replace(/^'+/, ''))
+    .filter((s) => E164_RE.test(s));
+  return [...new Set(parts)].slice(0, max).join('; ');
+}
+
+const EMAIL_RE = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+/** First plausible email across email + websiteEmail (sanitized). */
+export function firstEmail(lead: any): string | null {
+  const all = [sanitizeEmailList(lead.email, 1), sanitizeEmailList(lead.websiteEmail, 1)].filter(Boolean);
+  return all.length > 0 ? all[0] : null;
+}
+
+/** Split multi-value field, keep only plausible emails, join with '; '. */
+export function sanitizeEmailList(val: any, max = 3): string {
+  if (val === null || val === undefined) return '';
+  const parts = String(val)
+    .split(/[,;]+/)
+    .map((s) => s.trim())
+    .filter((s) => EMAIL_RE.test(s));
+  return [...new Set(parts)].slice(0, max).join('; ');
+}
+
 function leadToCsvRow(lead: any, withScore: boolean, withEmailVerified: boolean): string {
   const base = [
-    lead.name, lead.category, lead.rating, lead.reviewsCount,
-    lead.phone, lead.websitePhone, lead.email, lead.websiteEmail,
-    lead.website, lead.address, lead.city, lead.latitude, lead.longitude, lead.placeId,
-    lead.facebook, lead.instagram, lead.linkedin, lead.twitter, lead.youtube, lead.pinterest, lead.tiktok,
-    lead.mondayHours, lead.tuesdayHours, lead.wednesdayHours, lead.thursdayHours, lead.fridayHours, lead.saturdayHours, lead.sundayHours,
-  ].map(escapeCsv);
+    escapeCsv(lead.name), escapeCsv(lead.category),
+    escapeCsv(lead.rating, true), escapeCsv(lead.reviewsCount, true),
+    escapeCsv(lead.phone), escapeCsv(sanitizePhoneList(lead.websitePhone)),
+    escapeCsv(sanitizeEmailList(lead.email)), escapeCsv(sanitizeEmailList(lead.websiteEmail)),
+    escapeCsv(lead.website), escapeCsv(lead.address), escapeCsv(lead.city),
+    escapeCsv(lead.latitude, true), escapeCsv(lead.longitude, true), escapeCsv(lead.placeId),
+    escapeCsv(lead.facebook), escapeCsv(lead.instagram), escapeCsv(lead.linkedin),
+    escapeCsv(lead.twitter), escapeCsv(lead.youtube), escapeCsv(lead.pinterest), escapeCsv(lead.tiktok),
+    escapeCsv(lead.mondayHours), escapeCsv(lead.tuesdayHours), escapeCsv(lead.wednesdayHours),
+    escapeCsv(lead.thursdayHours), escapeCsv(lead.fridayHours), escapeCsv(lead.saturdayHours),
+    escapeCsv(lead.sundayHours),
+  ];
 
   if (withScore) base.push(String(computeLeadScore(lead)));
   if (withEmailVerified) {
@@ -146,7 +186,7 @@ export function generateJson(leads: any[], withScore: boolean, withEmailVerified
     if (withScore) obj.leadScore = computeLeadScore(lead);
     if (withEmailVerified) {
       const hasEmail = !!(lead.email || lead.websiteEmail);
-      obj.emailVerified = hasEmail ? verifyEmail(lead.email || lead.websiteEmail) : null;
+      obj.emailVerified = hasEmail ? verifyEmail(firstEmail(lead)) : null;
     }
     return obj;
   });
@@ -170,7 +210,7 @@ export function generateExcel(leads: any[], withScore: boolean, withEmailVerifie
     if (withScore) row['Lead Score'] = computeLeadScore(lead);
     if (withEmailVerified) {
       const hasEmail = !!(lead.email || lead.websiteEmail);
-      row['Email Verified'] = hasEmail ? (verifyEmail(lead.email || lead.websiteEmail) ? 'Yes' : 'No') : 'No Email';
+      row['Email Verified'] = hasEmail ? (verifyEmail(firstEmail(lead)) ? 'Yes' : 'No') : 'No Email';
     }
     return row;
   });
@@ -207,7 +247,7 @@ export function generatePdf(leads: any[], withScore: boolean, withEmailVerified:
     if (withScore) row.push(String(computeLeadScore(lead)));
     if (withEmailVerified) {
       const hasEmail = !!(lead.email || lead.websiteEmail);
-      row.push(hasEmail ? (verifyEmail(lead.email || lead.websiteEmail) ? 'Yes' : 'No') : 'No Email');
+      row.push(hasEmail ? (verifyEmail(firstEmail(lead)) ? 'Yes' : 'No') : 'No Email');
     }
     return row;
   });
