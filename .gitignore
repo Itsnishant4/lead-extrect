@@ -48,4 +48,4 @@ design-reference/
 
 # test artifacts
 test-output/
-*.test-results.json
+*.test-results.jsonrepro.db

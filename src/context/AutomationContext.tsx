@@ -172,7 +172,6 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
   const refreshTasksNow = async () => {
     serverTimeRef.current = null;
     pollCountRef.current = 0;
-    await await refreshTasksNow();
     await loadTasks();
   };
 

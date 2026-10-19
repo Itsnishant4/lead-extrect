@@ -155,7 +155,11 @@ export async function triggerTaskAutomationAction(taskId: number) {
     const maxConcurrent = plan?.maxConcurrentTasks || 1;
 
     const activeCount = await TaskService.countActiveTasks(session.id);
-    const isCurrentTaskActive = task.status === 'pending' || task.status === 'running';
+    // 'uploading' is also the current task itself (large keyword upload in
+    // progress), so it must count as "self" — otherwise the concurrent-limit
+    // check blocks a task from starting because of its own upload status.
+    const isCurrentTaskActive =
+      task.status === 'pending' || task.status === 'running' || task.status === 'uploading';
     const otherActive = isCurrentTaskActive ? Math.max(activeCount - 1, 0) : activeCount;
     if (otherActive >= maxConcurrent) {
       return {
