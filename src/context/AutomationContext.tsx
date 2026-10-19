@@ -225,33 +225,60 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       }
 
       const taskId = Number((createRes as any).taskId);
-      const chunkSize = 2000;
+      // Smaller chunks: tiny payloads survive flaky Turso round-trips and
+      // Vercel server-action limits far better than one mega-append.
+      const chunkSize = 500;
+
+      const failUpload = async (reason: string) => {
+        // Never leave 'uploading' limbo: fail visibly so the user
+        // (and worker recovery) can act on it.
+        try {
+          await updateTaskStatusAction(taskId, 'failed', undefined, reason);
+        } finally {
+          toast.error(reason);
+          await refreshTasksNow();
+        }
+      };
 
       const uploadKeywordsInBackground = async () => {
-        for (let i = 0; i < keywords.length; i += chunkSize) {
-          const chunk = keywords.slice(i, i + chunkSize);
-          let ok = false;
-          for (let attempt = 1; attempt <= 3 && !ok; attempt++) {
-            const appendRes = await appendTaskKeywordsAction(taskId, chunk);
-            if (appendRes.success) {
-              ok = true;
-            } else if (attempt === 3) {
-              // Never leave 'uploading' limbo: fail visibly so the user
-              // (and worker recovery) can act on it.
-              await updateTaskStatusAction(taskId, 'failed', undefined, `Keyword upload failed: ${(appendRes as any).error || 'unknown error'}`);
-              toast.error((appendRes as any).error || 'Keyword upload failed');
-              await refreshTasksNow();
-              return;
-            } else {
-              await new Promise((r) => setTimeout(r, 1500 * attempt));
+        try {
+          for (let i = 0; i < keywords.length; i += chunkSize) {
+            const chunk = keywords.slice(i, i + chunkSize);
+            let ok = false;
+            for (let attempt = 1; attempt <= 3 && !ok; attempt++) {
+              let appendRes: { success: boolean; error?: string };
+              try {
+                appendRes = await appendTaskKeywordsAction(taskId, chunk);
+              } catch (err) {
+                // Server actions throw on network/serverless hiccups —
+                // an uncaught throw here killed the loop and left the
+                // task in 'uploading' forever.
+                appendRes = { success: false, error: (err as Error)?.message || 'network error' };
+              }
+              if (appendRes.success) {
+                ok = true;
+              } else if (attempt === 3) {
+                await failUpload(`Keyword upload failed: ${appendRes.error || 'unknown error'}`);
+                return;
+              } else {
+                await new Promise((r) => setTimeout(r, 1500 * attempt));
+              }
             }
           }
+          const triggerRes = await triggerTaskAutomationAction(taskId);
+          if (!triggerRes.success) {
+            // Upload finished but the trigger failed (e.g. concurrent
+            // limit, quota). Without this fallback the task sat in
+            // 'uploading' forever with full keywords.
+            await failUpload(`Task could not start: ${(triggerRes as any).error || 'unknown error'}`);
+            return;
+          }
+          toast.success('Keywords uploaded — task is running');
+        } catch (err) {
+          await failUpload(`Keyword upload failed: ${(err as Error)?.message || 'unknown error'}`);
+        } finally {
+          await refreshTasksNow();
         }
-        const triggerRes = await triggerTaskAutomationAction(taskId);
-        if (!triggerRes.success) {
-          toast.error((triggerRes as any).error || "Failed to start task");
-        }
-        await refreshTasksNow();
       };
 
       void uploadKeywordsInBackground();
