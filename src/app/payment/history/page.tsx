@@ -111,9 +111,9 @@ export default function PaymentHistoryPage() {
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-indigo-100 dark:selection:bg-indigo-900 bg-gradient-to-br from-indigo-50 via-indigo-100 to-violet-50 dark:from-background dark:via-background dark:to-background text-foreground">
-      <DashboardHeader activePage="search" />
+      <DashboardHeader activePage="leads" />
 
-      <main className="flex-1 w-full max-w-4xl mx-auto px-4 md:px-8 pt-28 pb-16">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 md:px-8 pt-28 pb-16">
         {loading ? (
           <div className="py-32 flex flex-col items-center gap-4">
             <Loader2 size={48} className="text-indigo-300 animate-spin" />

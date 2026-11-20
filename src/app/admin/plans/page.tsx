@@ -5,7 +5,8 @@ import {
   getAllPlansAdminAction,
   createPlanAction,
   updatePlanAction,
-  deletePlanAction
+  deletePlanAction,
+  permanentDeletePlanAction
 } from "@/app/actions"
 import {
   Table,
@@ -29,7 +30,7 @@ import {
   Gift,
   Phone
 } from "phosphor-react"
-import { LoaderCircle, X, Check } from "lucide-react"
+import { LoaderCircle, X, Check, Filter } from "lucide-react"
 import { toast } from "sonner"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
@@ -132,8 +133,8 @@ export default function AdminPlansPage() {
       period: "free",
       leadsCredits: 500,
       maxConcurrentTasks: 1,
-      features: ["Up to 500 leads", "Localized search by area", "Basic email extraction", "Standard support"],
-      unavailableFeatures: ["Priority support", "Bulk export history", "Advanced social enrichment", "API access"],
+      features: ["CSV Export", "Filter: Email Required", "Filter: Phone Required", "Up to 500 leads", "Localized search by area", "Basic email extraction", "Standard support"],
+      unavailableFeatures: ["JSON Export", "Excel Export", "PDF Export", "Lead Scoring", "Email Verification", "Filter: Website Required", "Filter: Socials Required", "Filter: Rating Required", "Filter: Address Required", "Filter: Verified Email Required", "Priority support", "Bulk export history", "Advanced social enrichment", "API access"],
       badge: "",
     });
     setIsDialogOpen(true);
@@ -149,7 +150,7 @@ export default function AdminPlansPage() {
       period: "custom",
       leadsCredits: 999999,
       maxConcurrentTasks: 5,
-      features: ["Unlimited leads extraction", "Full API access", "Dedicated account manager", "Custom integration support"],
+      features: ["CSV Export", "JSON Export", "Excel Export", "PDF Export", "Lead Scoring", "Email Verification", "Filter: Email Required", "Filter: Phone Required", "Filter: Website Required", "Filter: Socials Required", "Filter: Rating Required", "Filter: Address Required", "Filter: Verified Email Required", "Unlimited leads extraction", "Full API access", "Dedicated account manager", "Custom integration support"],
       unavailableFeatures: [],
       whatsappUrl: "https://wa.me/919773005701?text=Hi, I am interested in the Enterprise plan.",
       badge: "Enterprise",
@@ -236,7 +237,19 @@ export default function AdminPlansPage() {
         toast.success("Plan deactivated");
         queryClient.invalidateQueries({ queryKey: ['admin-plans'] });
       } else {
-        toast.error((res as any).error || "Failed to delete plan");
+        toast.error((res as any).error || "Failed to deactivate plan");
+      }
+    }
+  });
+
+  const permanentDeleteMutation = useMutation({
+    mutationFn: permanentDeletePlanAction,
+    onSuccess: (res) => {
+      if (res.success) {
+        toast.success("Plan permanently deleted");
+        queryClient.invalidateQueries({ queryKey: ['admin-plans'] });
+      } else {
+        toast.error((res as any).error || "Failed to delete plan permanently");
       }
     }
   });
@@ -429,17 +442,33 @@ export default function AdminPlansPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" onClick={() => handleEdit(plan)}>
+                          <div className="flex justify-end gap-2 text-primary">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" onClick={() => handleEdit(plan)} title="Edit Plan">
                               <PencilSimple size={16} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={`h-8 w-8 ${plan.isActive ? 'text-orange-500' : 'text-emerald-500'}`}
+                              onClick={() => {
+                                if (confirm(`${plan.isActive ? 'Deactivate' : 'Activate'} this plan?`)) {
+                                  updateMutation.mutate({ id: plan.id, data: { isActive: !plan.isActive } });
+                                }
+                              }}
+                              title={plan.isActive ? "Deactivate Plan" : "Activate Plan"}
+                            >
+                              {plan.isActive ? <XCircle size={16} /> : <CheckCircle size={16} />}
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-destructive"
                               onClick={() => {
-                                if (confirm("Deactivate this plan?")) deleteMutation.mutate(plan.id);
+                                if (confirm("PERMANENTLY DELETE this plan? This action cannot be undone and may fail if transactions exist.")) {
+                                  permanentDeleteMutation.mutate(plan.id);
+                                }
                               }}
+                              title="Permanent Delete"
                             >
                               <Trash size={16} />
                             </Button>
@@ -680,6 +709,123 @@ export default function AdminPlansPage() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Export Formats & Premium Features Toggles */}
+              <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <Label className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                  <CheckCircle size={14} className="text-indigo-500" />
+                  Export Formats & Features
+                </Label>
+                <p className="text-[10px] text-muted-foreground">Toggle which export formats and premium features this plan includes.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { feature: "CSV Export", label: "CSV Export", desc: "Export leads as CSV" },
+                    { feature: "JSON Export", label: "JSON Export", desc: "Export leads as JSON" },
+                    { feature: "Excel Export", label: "Excel Export", desc: "Export leads as Excel" },
+                    { feature: "PDF Export", label: "PDF Export", desc: "Export leads as PDF" },
+                    { feature: "Lead Scoring", label: "Lead Scoring", desc: "Quality score in export" },
+                    { feature: "Email Verification", label: "Email Verification", desc: "Verified email column" },
+                  ].map(({ feature, label, desc }) => {
+                    const isEnabled = formData.features.includes(feature);
+                    const toggleFeature = () => {
+                      if (isEnabled) {
+                        setFormData(prev => ({
+                          ...prev,
+                          features: prev.features.filter(f => f !== feature),
+                          unavailableFeatures: prev.unavailableFeatures.includes(feature)
+                            ? prev.unavailableFeatures
+                            : [...prev.unavailableFeatures, feature],
+                        }));
+                      } else {
+                        setFormData(prev => ({
+                          ...prev,
+                          features: [...prev.features, feature],
+                          unavailableFeatures: prev.unavailableFeatures.filter(f => f !== feature),
+                        }));
+                      }
+                    };
+                    return (
+                      <div
+                        key={feature}
+                        className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                          isEnabled
+                            ? 'border-indigo-300 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-800'
+                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                        }`}
+                      >
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={toggleFeature}
+                          className="data-[state=checked]:bg-indigo-600 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-foreground">{label}</p>
+                          <p className="text-[10px] text-muted-foreground">{desc}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Export Filter Permissions */}
+              <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <Label className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                  <Filter size={14} className="text-amber-500" />
+                  Export Filter Permissions
+                </Label>
+                <p className="text-[10px] text-muted-foreground">Toggle which export filters this plan can use. Filters shown with a Pro badge for restricted plans.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { feature: "Filter: Email Required", label: "Email Filter", desc: "Filter by email presence" },
+                    { feature: "Filter: Phone Required", label: "Phone Filter", desc: "Filter by phone presence" },
+                    { feature: "Filter: Website Required", label: "Website Filter", desc: "Filter by website presence" },
+                    { feature: "Filter: Socials Required", label: "Socials Filter", desc: "Filter by social links" },
+                    { feature: "Filter: Rating Required", label: "Rating Filter", desc: "Filter by Google rating" },
+                    { feature: "Filter: Address Required", label: "Address Filter", desc: "Filter by address presence" },
+                    { feature: "Filter: Verified Email Required", label: "Verified Email Filter", desc: "Filter by email verification" },
+                  ].map(({ feature, label, desc }) => {
+                    const isEnabled = formData.features.includes(feature);
+                    const toggleFeature = () => {
+                      if (isEnabled) {
+                        setFormData(prev => ({
+                          ...prev,
+                          features: prev.features.filter(f => f !== feature),
+                          unavailableFeatures: prev.unavailableFeatures.includes(feature)
+                            ? prev.unavailableFeatures
+                            : [...prev.unavailableFeatures, feature],
+                        }));
+                      } else {
+                        setFormData(prev => ({
+                          ...prev,
+                          features: [...prev.features, feature],
+                          unavailableFeatures: prev.unavailableFeatures.filter(f => f !== feature),
+                        }));
+                      }
+                    };
+                    return (
+                      <div
+                        key={feature}
+                        className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                          isEnabled
+                            ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800'
+                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                        }`}
+                      >
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={toggleFeature}
+                          className="data-[state=checked]:bg-amber-500 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-foreground">{label}</p>
+                          <p className="text-[10px] text-muted-foreground">{desc}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Active toggle */}

@@ -81,10 +81,10 @@ export default function CompanyPageClient() {
     <div className="bg-white text-slate-900 antialiased h-screen min-h-screen flex flex-col">
       <main className="flex-grow">
         <section className="w-full bg-gray-50 md:pt-44 pt-28 h-screen">
-          <div className="mx-auto grid max-h-[50rem] max-w-7xl grid-cols-1 items-start gap-10 overflow-hidden sm:grid-cols-2 md:max-h-[40rem] md:pt-10 lg:grid-cols-3">
+          <div className="mx-auto grid max-h-[50rem] max-w-5xl grid-cols-1 items-start gap-10 overflow-hidden sm:grid-cols-2 md:max-h-[40rem] md:pt-10 lg:grid-cols-3">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" as const }} className="px-6 py-10 md:px-10 md:py-10 lg:col-span-2">
               <h1 className="text-center text-2xl font-bold tracking-tight text-gray-900 sm:text-left sm:text-4xl lg:text-7xl">
-                Your go-to tool for{" "}
+                Your tool for{" "}
                 <FlipWords words={["lead generation", "smart prospecting", "market research", "sales growth"]} className="text-indigo-600" />{" "}
                 <br className="hidden sm:block" />built with passion
               </h1>
@@ -100,7 +100,7 @@ export default function CompanyPageClient() {
               <div className="relative m-auto w-full max-w-[340px] pt-10 md:pt-16">
                 <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl shadow-indigo-500/10">
                   <div className="mb-4 flex items-center gap-2"><div className="h-3 w-3 rounded-full bg-red-400" /><div className="h-3 w-3 rounded-full bg-yellow-400" /><div className="h-3 w-3 rounded-full bg-green-400" /><div className="ml-2 h-5 flex-1 rounded bg-gray-100" /></div>
-                  <div className="mb-4 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Restaurants in San Francisco...</div>
+                  <div className="mb-4 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>Restaurants in San Francisco...</div>
                   {[
                     { name: "Blue Bottle Coffee", rating: "4.8", type: "Cafe", color: "bg-blue-50 text-blue-700" },
                     { name: "Tartine Bakery", rating: "4.7", type: "Bakery", color: "bg-amber-50 text-amber-700" },
@@ -122,7 +122,7 @@ export default function CompanyPageClient() {
         </section>
 
         <AnimatedSection className="py-12 sm:py-20">
-          <div className="max-w-6xl mx-auto px-6">
+          <div className="max-w-5xl mx-auto px-6">
             <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true }} className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
               {stats.map((stat, i) => (
                 <motion.div key={stat.label} variants={fadeUp} className="text-center">
@@ -135,7 +135,7 @@ export default function CompanyPageClient() {
         </AnimatedSection>
 
         <AnimatedSection id="timeline" className="py-16 sm:py-28">
-          <div className="max-w-6xl mx-auto px-6">
+          <div className="max-w-5xl mx-auto px-6">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
               <p className="text-indigo-600 font-bold uppercase tracking-widest text-sm mb-4">Our Journey</p>
               <h2 className="font-sans text-2xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">From Side Project to Global Platform</h2>
@@ -159,7 +159,7 @@ export default function CompanyPageClient() {
         </AnimatedSection>
 
         <AnimatedSection className="py-16 sm:py-28">
-          <div className="max-w-6xl mx-auto px-6">
+          <div className="max-w-5xl mx-auto px-6">
             <div className="rounded-3xl md:rounded-[3.5rem] bg-gradient-to-br from-indigo-950 via-indigo-900 to-violet-950 px-4 sm:px-12 pt-12 md:pt-24 pb-24 md:pb-40 relative overflow-hidden">
               <div className="absolute inset-0 bg-dot-pattern-white opacity-[0.03]" />
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px]" />
@@ -185,13 +185,13 @@ export default function CompanyPageClient() {
         </AnimatedSection>
 
         <AnimatedSection className="py-16 sm:py-28">
-          <div className="max-w-6xl mx-auto px-6">
+          <div className="max-w-5xl mx-auto px-6">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
               <p className="text-indigo-600 font-bold uppercase tracking-widest text-sm mb-4">Get in Touch</p>
               <h2 className="font-sans text-2xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">We&apos;d Love to Hear from You</h2>
               <p className="text-gray-500 text-base sm:text-lg">Whether you have a question, feedback, or just want to say hello.</p>
             </motion.div>
-            <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true }} className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 max-w-4xl mx-auto">
+            <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true }} className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto">
               <motion.div variants={scaleIn} whileHover={{ y: -6, transition: { duration: 0.25 } }} className="p-6 sm:p-8 rounded-2xl border border-gray-200 bg-white shadow-lg shadow-indigo-500/5 hover:shadow-xl hover:border-indigo-200 transition-all text-center group">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 bg-gradient-to-br from-indigo-100 to-violet-100 group-hover:from-indigo-200 group-hover:to-violet-200 transition-all"><MapPin size={22} className="text-indigo-600" /></div>
                 <h3 className="font-bold text-gray-900 mb-1">Headquarters</h3><p className="text-gray-500 text-sm">Rajkot, Gujarat</p><p className="text-gray-400 text-sm">India</p>

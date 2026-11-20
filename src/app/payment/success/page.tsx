@@ -5,9 +5,16 @@ import { CheckCircle } from "lucide-react"
 
 export default function PaymentSuccessPage() {
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const allowedOrigin = searchParams.get('origin');
+
     if (window.parent !== window) {
+      if (!allowedOrigin) {
+        console.error('❌ Missing origin param');
+        return;
+      }
       // Notify parent window (iframe host) that payment succeeded
-      window.parent.postMessage({ type: "PAYMENT_SUCCESS" }, "*");
+      window.parent.postMessage({ type: "PTM_EVENT", status: "success" }, allowedOrigin);
       // Fallback: try to navigate the parent directly
       setTimeout(() => {
         try {

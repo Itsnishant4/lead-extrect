@@ -1,23 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldSeparator,
-} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { signupAction } from "@/app/actions"
 import { toast } from "sonner"
-import { Eye, EyeSlash, Rocket, ShieldCheck, Users } from "phosphor-react"
+import { Eye, EyeSlash } from "phosphor-react"
 import { LoaderCircle } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
+import { Logo } from "./Logo"
+import { QuoteCarousel } from "./quote-carousel"
 
 export function SignupForm({
   className,
@@ -25,11 +19,111 @@ export function SignupForm({
 }: React.ComponentProps<"div">) {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const googleButtonRef = useRef<HTMLDivElement>(null)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
+  
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isGoogleInitialized, setIsGoogleInitialized] = useState(false)
+
+   useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const initializeGoogle = () => {
+      // @ts-ignore
+      if (window.google?.accounts?.id) {
+        // @ts-ignore
+        window.google.accounts.id.initialize({
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+          callback: handleGoogleResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        })
+
+        // Render the button
+        // @ts-ignore
+        window.google.accounts.id.renderButton(
+          googleButtonRef.current,
+          {
+            theme: 'outline',
+            size: 'large',
+            shape: 'rectangular',
+            text: 'signin_with',
+            logo_alignment: 'left',
+            width: 400,
+          }
+        )
+
+        // Also display the One Tap dialog
+        // @ts-ignore
+        window.google.accounts.id.prompt()
+
+               setIsGoogleInitialized(true)
+      }
+    }
+    
+
+    if (!document.getElementById('google-identity-services')) {
+      const script = document.createElement('script')
+      script.id = 'google-identity-services'
+      script.src = 'https://accounts.google.com/gsi/client'
+      script.async = true
+      script.defer = true
+      script.onload = initializeGoogle
+      document.head.appendChild(script)
+    } else {
+      initializeGoogle()
+    }
+  }, [])
+
+  const handleGoogleClick = () => {
+    // @ts-ignore
+    if (window.google?.accounts?.id) {
+      // @ts-ignore
+      window.google.accounts.id.prompt()
+    }
+  }
+
+  // @ts-ignore
+  const handleGoogleResponse = async (response) => {
+    if (!response.credential) {
+      toast.error('Google signup failed')
+      return
+    }
+
+    setIsGoogleLoading(true)
+    try {
+      const payload = JSON.parse(atob(response.credential.split('.')[1]))
+      
+      const res = await fetch('/api/auth/google/callback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: response.credential }),
+      })
+
+      if (res.redirected) {
+        window.location.href = res.url
+        return
+      }
+
+      const data = await res.json()
+      if (data.success) {
+        toast.success("Welcome! Your account has been created with Google.")
+        queryClient.invalidateQueries()
+        router.push("/leads")
+        router.refresh()
+      } else {
+        toast.error(data.error || 'Google signup failed')
+      }
+    } catch (error) {
+      toast.error('Google signup failed')
+    } finally {
+      setIsGoogleLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,116 +153,140 @@ export function SignupForm({
   }
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden border-border/60">
-        <CardContent className="grid p-0 md:grid-cols-[1.05fr_0.95fr]">
-          <form className="p-6 md:p-8" onSubmit={handleSubmit}>
-            <FieldGroup>
-              <div className="flex flex-col items-center gap-2 text-center mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Rocket className="h-5 w-5" />
-                </div>
-                <h1 className="text-2xl font-semibold">Create your account</h1>
-                <p className="text-muted-foreground text-sm text-balance">
-                  Join us to start your localized lead extraction journey
-                </p>
+    <div className={cn("grid min-h-screen bg-white grid-cols-1 md:grid-cols-[1fr_1.6fr] relative", className)} {...props}>
+      <div className="bg-[#F8F8F8] z-1  shadow-2xl broder-r border flex h-screen justify-center items-center">
+      <div className="absolute top-8 left-8 z-50">
+        <div className="flex items-center gap-2">
+          <Logo className="w-8 h-8 text-[#6366f1]" />
+          <span className="text-xl font-bold tracking-tight text-slate-900">leadspotter</span>
+        </div>
+      </div>
+
+      {/* Left Column: Form */}
+      <div className="flex flex-col p-8 md:p-12 lg:p-16 justify-center">
+        <div className="flex flex-col justify-center max-w-sm mx-auto w-full my-12 md:my-16 lg:my-20">
+          <div className="mb-10">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">Get started</h1>
+            <p className="text-slate-500 font-medium">Create a new account</p>
+          </div>
+
+          {/* Google Sign-Up Button */}
+          <div className="mb-6">
+            {isGoogleLoading ? (
+              <div className="flex items-center justify-center py-3 border border-slate-200 rounded-lg">
+                <LoaderCircle className="animate-spin" size={20} />
               </div>
-              <Field>
-                <FieldLabel htmlFor="name">Full Name</FieldLabel>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="John Doe"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  disabled={isLoading}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="password">Password</FieldLabel>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    placeholder="********"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading}
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                  >
-                    {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
-                  </button>
+            ) : (
+              <div className="relative">
+                  <div ref={googleButtonRef} className="flex absolute justify-center opacity-0" >   </div>
+                    <button
+                  type="button"
+                  onClick={handleGoogleClick}
+                  className="flex items-center justify-center w-full border rounded-xl shadow-sm px-3 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 focus:outline-none transition-colors"
+                >
+                  <svg className="h-5 w-5 mr-2" width="34px" height="34px" viewBox="-3 0 262 262" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid" fill="#000000">
+                    <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
+                    <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g>
+                    <g id="SVGRepo_iconCarrier">
+                      <path d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622 38.755 30.023 2.685.268c24.659-22.774 38.875-56.282 38.875-96.027" fill="#4285F4"></path>
+                      <path d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055-34.523 0-63.824-22.773-74.269-54.25l-1.531.13-40.298 31.187-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1" fill="#34A853"></path>
+                      <path d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82 0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602l42.356-32.782" fill="#FBBC05"></path>
+                      <path d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251" fill="#EB4335"></path>
+                    </g>
+                  </svg>
+                  <span>Continue with Google</span>
+                </button>
                 </div>
-                <FieldDescription>
-                  Minimum 8 characters for security.
-                </FieldDescription>
-              </Field>
-              <Field>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Create Account"
-                  )}
-                </Button>
-              </Field>
-              <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card my-4">
-                Already member?
-              </FieldSeparator>
-              <div className="text-center text-sm">
-                Already have an account?{" "}
-                <a href="/login" className="underline underline-offset-4 font-semibold text-primary">
-                  Sign in
-                </a>
-              </div>
-            </FieldGroup>
-          </form>
-          <div className="hidden md:flex flex-col justify-between gap-6 border-l border-border/60 bg-muted/20 p-8">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Built for growth</p>
-              <h2 className="text-2xl font-semibold">Launch campaigns faster</h2>
-              <p className="text-sm text-muted-foreground">
-                Use keyword automation and smart exports to scale your outreach.
-              </p>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200"></div>
             </div>
-            <div className="space-y-4 text-sm">
-              <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/60 p-3">
-                <Users size={20} className="text-primary shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-xs sm:text-sm">Collaborative workflows</p>
-                  <p className="text-muted-foreground text-[11px] sm:text-xs">Track progress and exports in one place.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/60 p-3">
-                <ShieldCheck size={20} className="text-primary shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-xs sm:text-sm">Trusted security</p>
-                  <p className="text-muted-foreground text-[11px] sm:text-xs">Your lead data stays private and protected.</p>
-                </div>
-              </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-[#F8F8F8] px-2 text-slate-400">or</span>
             </div>
           </div>
-        </CardContent>
-      </Card>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label htmlFor="name" className="text-sm font-semibold text-slate-700">Full Name</label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="John Doe"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={isLoading}
+                />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-semibold text-slate-700">Email</label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="password" title="At least 8 characters" className="text-sm font-semibold text-slate-700">Password</label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  onClick={() => setShowPassword(!showPassword)}
+                  >
+                  {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full py-2  bg-[#6366f1] hover:bg-[#4f46e5] text-white font-bold rounded-lg transition-all shadow-sm shadow-[#6366f1]/20"
+              disabled={isLoading}
+              >
+              {isLoading ? <LoaderCircle className="animate-spin" size={20} /> : "Sign up"}
+            </Button>
+
+            <p className="text-sm text-center text-slate-500 font-medium pt-4">
+              Already have an account?{" "}
+              <a href="/login" className="text-slate-900 border-b border-slate-300 pb-0.5 font-bold hover:border-slate-900 transition-all">Sign in</a>
+            </p>
+          </form>
+        </div>
+
+        {/* Footer Links - Centered */}
+        <div className="">
+          <p className="text-[10px] leading-relaxed text-slate-400 max-w-sm mx-auto text-center">
+            By continuing, you agree to LeadSpotter's <a href="/terms" className="underline hover:text-slate-600">Terms of Service</a> and <a href="/privacy" className="underline hover:text-slate-600">Privacy Policy</a>, and to receive periodic emails with updates.
+          </p>
+        </div>
+      </div>
+              </div>
+
+      {/* Right Column: Social Proof */}
+      <div className="hidden z-0 md:flex flex-col bg-white border-l border-slate-100 p-12 lg:p-20 justify-center relative overflow-hidden">
+        <QuoteCarousel pagetype="signup" />
+      </div>
     </div>
   )
 }

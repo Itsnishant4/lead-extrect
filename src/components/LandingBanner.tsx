@@ -3,7 +3,13 @@ import { SiteConfigService } from '@/services/siteconfig.service';
 import { CountdownTimer } from './CountdownTimer';
 
 export async function LandingBanner() {
-  const banner = await SiteConfigService.getBanner();
+  let banner;
+  try {
+    banner = await SiteConfigService.getBanner();
+  } catch (error) {
+    console.error('[LandingBanner] Failed to get banner:', error);
+    return null;
+  }
 
   if (!banner || !banner.enabled || !banner.text) return null;
 

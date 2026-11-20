@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
             {
                 userAgent: "*",
                 allow: "/",
-                disallow: ["/admin/", "/login", "/signup", "/forgot-password", "/tasks", "/keywords", "/history", "/lists", "/profile", "/settings", "/subscription"],
+                disallow: ["/admin/", "/login", "/signup", "/forgot-password", "/tasks", "/keywords", "/history", "/lists", "/profile", "/settings", "/subscription", "/api/", "/webhook/"],
             },
         ],
         sitemap: "https://leadspotter.in/sitemap.xml",

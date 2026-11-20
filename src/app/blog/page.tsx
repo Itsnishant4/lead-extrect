@@ -3,12 +3,13 @@ import BlogPageClient from './client';
 import { getBlogPostsPublicAction } from '@/app/actions';
 import { LandingBanner } from "@/components/LandingBanner";
 import { LandingHeader } from "@/components/LandingHeader";
+import JsonLd from '@/components/JsonLd';
 
 export const metadata: Metadata = {
   title: 'Blog - Lead Generation Tips, Guides & Best Practices',
   description:
     'Learn how to generate B2B leads, extract business data from Google Maps, build cold outreach campaigns, and grow your sales pipeline. Tips and guides from the LeadSpotter team.',
-  alternates: { canonical: '/blog' },
+  alternates: { canonical: 'https://leadspotter.in/blog' },
   keywords: [
     'lead generation blog',
     'b2b lead generation tips',
@@ -23,6 +24,12 @@ export const metadata: Metadata = {
     description: 'Tips, guides, and best practices for B2B lead generation and sales prospecting.',
     url: 'https://leadspotter.in/blog',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Blog - Lead Generation Tips & Guides | LeadSpotter',
+    description: 'Tips, guides, and best practices for B2B lead generation and sales prospecting.',
+    images: ['https://leadspotter.in/opengraph-image'],
+  },
 };
 
 export default async function BlogPage() {
@@ -31,6 +38,15 @@ export default async function BlogPage() {
   
   return (
     <>
+      <JsonLd
+        type="BreadcrumbList"
+        data={{
+          items: [
+            { name: "Home", url: "https://leadspotter.in" },
+            { name: "Blog", url: "https://leadspotter.in/blog" },
+          ],
+        }}
+      />
       <LandingBanner />
       <LandingHeader />
       <BlogPageClient initialPosts={posts || []} />

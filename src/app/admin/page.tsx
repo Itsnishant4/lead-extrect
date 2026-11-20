@@ -84,7 +84,12 @@ export default function AdminDashboard() {
       const res = await getAdminDashboardStatsAction();
       if (!res.success) throw new Error((res as any).error);
       return (res as any).data;
-    }
+    },
+    staleTime: 15_000,
+    gcTime: 120_000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
+    refetchInterval: 30_000,
   });
 
   const { data: chartData, isLoading: isLoadingChart } = useQuery({
@@ -93,7 +98,12 @@ export default function AdminDashboard() {
       const res = await getAdminChartDataAction();
       if (!res.success) throw new Error((res as any).error);
       return (res as any).data;
-    }
+    },
+    staleTime: 30_000,
+    gcTime: 300_000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
+    refetchInterval: 60_000,
   });
 
   const { data: insights, isLoading: isLoadingInsights } = useQuery({
@@ -102,7 +112,12 @@ export default function AdminDashboard() {
       const res = await getAdminInsightsAction();
       if (!res.success) throw new Error((res as any).error);
       return (res as any).data;
-    }
+    },
+    staleTime: 15_000,
+    gcTime: 120_000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
+    refetchInterval: 30_000,
   });
 
   const isLoading = isLoadingStats || isLoadingChart || isLoadingInsights;
@@ -113,7 +128,11 @@ export default function AdminDashboard() {
       const res = await getAdminTasksAction();
       return res.success ? ((res as any).data || []) : [];
     },
-    refetchInterval: 10000,
+    staleTime: 10_000,
+    gcTime: 60_000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
+    refetchInterval: 15_000,
   });
 
   const taskStatusMutation = useMutation({

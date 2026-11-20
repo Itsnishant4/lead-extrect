@@ -3,13 +3,12 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   getTasksAction,
+  getTasksProgressAction,
   createTaskAction,
   createTaskShellAction,
   appendTaskKeywordsAction,
   updateTaskStatusAction,
-  updateTaskLeadCountAction,
   deleteTaskAction,
-  searchLeadsAction,
   uploadTaskExportChunkAction,
   getSettingsAction,
   getUserAction,
@@ -23,7 +22,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 interface Task {
   id: number;
   name: string;
-  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'uploading';
   statusReason: string | null;
   total_keywords: number;
   current_keyword_index: number;
@@ -52,6 +51,7 @@ interface AutomationContextType {
   settings: Record<string, any>;
   updateSetting: (key: string, value: any) => Promise<void>;
   startAllPendingTasks: () => Promise<void>;
+  refreshTasksNow: () => Promise<void>;
 }
 
 const AutomationContext = createContext<AutomationContextType | undefined>(undefined);
@@ -82,17 +82,61 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     staleTime: 30 * 1000,
   });
 
+  const serverTimeRef = useRef<number | null>(null);
+  const pollCountRef = useRef(0);
+
   const { data: tasks = [], isLoading: isLoadingTasks, refetch: loadTasks } = useQuery({
     queryKey: ['tasks'],
     queryFn: async () => {
-      const res = await getTasksAction();
-      if (!res.success) return [];
-      return ((res as any).data || []) as unknown as Task[];
+      const prev = queryClient.getQueryData(['tasks']) as Task[] | undefined;
+      pollCountRef.current += 1;
+
+      // Full fetch on first load + every 6th tick (catches deletes/new names).
+      // Delta ticks use lightweight 7-col progress endpoint, merged in place.
+      const needFull = !prev || !serverTimeRef.current || pollCountRef.current % 6 === 0;
+      if (needFull) {
+        const res = await getTasksAction();
+        if (!res.success) return prev ?? [];
+        const rows = ((res as any).data || []) as unknown as Task[];
+        serverTimeRef.current = Date.now();
+        return rows;
+      }
+
+      try {
+        const res = await getTasksProgressAction(serverTimeRef.current ?? undefined);
+        if (!res.success || !(res as any).data) return prev;
+        const { rows, serverTime, unchanged } = (res as any).data as {
+          rows: any[]; serverTime: number; unchanged: boolean;
+        };
+        serverTimeRef.current = serverTime;
+        if (unchanged || rows.length === 0) return prev;
+        const byId = new Map(prev.map((t: any) => [t.id, t]));
+        let missing = false;
+        for (const r of rows) {
+          const cur = byId.get(r.id) as any;
+          if (!cur) { missing = true; break; }
+          byId.set(r.id, { ...cur, ...r });
+        }
+        // New task id seen in delta but full row unknown → full refresh next tick.
+        if (missing) {
+          pollCountRef.current = 5;
+          return prev;
+        }
+        return Array.from(byId.values()) as Task[];
+      } catch {
+        return prev;
+      }
     },
+    // Realtime polling: 2s while any task active (meets 1-2s target),
+    // 30s idle. Single observer — TasksPage consumes this context instead
+    // of mounting a duplicate ['tasks'] query (was 2x calls per tick).
+    staleTime: 2_000,
+    gcTime: 60_000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
     refetchInterval: (query) => {
       const data = query.state.data as Task[];
-      // Polling every 4 seconds when tasks are running, 15 seconds otherwise
-      return (data && data.some(t => t.status === 'running' || t.status === 'pending')) ? 4000 : 15000;
+      return (data && data.some(t => t.status === 'running' || t.status === 'pending' || t.status === 'uploading')) ? 2_000 : 30_000;
     },
   });
 
@@ -115,18 +159,40 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     queryClient.invalidateQueries({ queryKey: ['settings'] });
   };
 
+
   const loadTasksAsync = async () => {
     await loadTasks();
   };
 
-  const handleSearch = async (e?: React.FormEvent, searchOverride?: string, taskId?: number) => {
+  /**
+   * Forced full refetch — call after every create/pause/resume/delete.
+   * Delta merge cannot see new ids or deletes, so reset its refs and
+   * refetch immediately instead of waiting for interval tick.
+   */
+  const refreshTasksNow = async () => {
+    serverTimeRef.current = null;
+    pollCountRef.current = 0;
+    await loadTasks();
+  };
+
+  const handleSearch = async (e?: React.FormEvent, searchOverride?: string) => {
     e?.preventDefault();
     const finalQuery = searchOverride;
     if (!finalQuery?.trim()) return;
 
-    const res = await searchLeadsAction(finalQuery, taskId);
-    if (res.success) {
-      refreshUser();
+    // Convert legacy search to a one-keyword task
+    const taskName = `Search: ${finalQuery.slice(0, 30)}${finalQuery.length > 30 ? '...' : ''}`;
+    const res = await createTaskAction(taskName, [finalQuery]);
+    if (res.success && 'taskId' in res) {
+      const triggerRes = await triggerTaskAutomationAction(Number(res.taskId));
+      if (triggerRes.success) {
+        toast.success(`Search started for "${finalQuery}"`);
+        await refreshTasksNow();
+      } else {
+        toast.error((triggerRes as any).error || "Failed to start search");
+      }
+    } else {
+      toast.error((res as any).error || "Failed to create search task");
     }
     return res;
   };
@@ -158,26 +224,65 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       }
 
       const taskId = Number((createRes as any).taskId);
-      const chunkSize = 2000;
+      // Smaller chunks: tiny payloads survive flaky Turso round-trips and
+      // Vercel server-action limits far better than one mega-append.
+      const chunkSize = 500;
+
+      const failUpload = async (reason: string) => {
+        // Never leave 'uploading' limbo: fail visibly so the user
+        // (and worker recovery) can act on it.
+        try {
+          await updateTaskStatusAction(taskId, 'failed', undefined, reason);
+        } finally {
+          toast.error(reason);
+          await refreshTasksNow();
+        }
+      };
 
       const uploadKeywordsInBackground = async () => {
-        for (let i = 0; i < keywords.length; i += chunkSize) {
-          const chunk = keywords.slice(i, i + chunkSize);
-          const appendRes = await appendTaskKeywordsAction(taskId, chunk);
-          if (!appendRes.success) {
-            toast.error((appendRes as any).error || "Keyword upload failed");
+        try {
+          for (let i = 0; i < keywords.length; i += chunkSize) {
+            const chunk = keywords.slice(i, i + chunkSize);
+            let ok = false;
+            for (let attempt = 1; attempt <= 3 && !ok; attempt++) {
+              let appendRes: { success: boolean; error?: string };
+              try {
+                appendRes = await appendTaskKeywordsAction(taskId, chunk);
+              } catch (err) {
+                // Server actions throw on network/serverless hiccups —
+                // an uncaught throw here killed the loop and left the
+                // task in 'uploading' forever.
+                appendRes = { success: false, error: (err as Error)?.message || 'network error' };
+              }
+              if (appendRes.success) {
+                ok = true;
+              } else if (attempt === 3) {
+                await failUpload(`Keyword upload failed: ${appendRes.error || 'unknown error'}`);
+                return;
+              } else {
+                await new Promise((r) => setTimeout(r, 1500 * attempt));
+              }
+            }
+          }
+          const triggerRes = await triggerTaskAutomationAction(taskId);
+          if (!triggerRes.success) {
+            // Upload finished but the trigger failed (e.g. concurrent
+            // limit, quota). Without this fallback the task sat in
+            // 'uploading' forever with full keywords.
+            await failUpload(`Task could not start: ${(triggerRes as any).error || 'unknown error'}`);
             return;
           }
-        }
-        const triggerRes = await triggerTaskAutomationAction(taskId);
-        if (!triggerRes.success) {
-          toast.error((triggerRes as any).error || "Failed to start task");
+          toast.success('Keywords uploaded — task is running');
+        } catch (err) {
+          await failUpload(`Keyword upload failed: ${(err as Error)?.message || 'unknown error'}`);
+        } finally {
+          await refreshTasksNow();
         }
       };
 
       void uploadKeywordsInBackground();
       toast.success(`Automation task "${name}" started`);
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await refreshTasksNow();
       return;
     }
 
@@ -187,11 +292,11 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       if (!triggerRes.success) {
         // Task was created but trigger failed (concurrent limit)
         toast.error((triggerRes as any).error || "Failed to start task");
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        await refreshTasksNow();
         return;
       }
       toast.success(`Automation task "${name}" started`);
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await refreshTasksNow();
     } else {
       toast.error((res as any).error || "Failed to create task");
     }
@@ -202,7 +307,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     flushTelegramExport(taskId, task?.name || `Task-${taskId}`);
     await updateTaskStatusAction(taskId, 'paused', undefined, 'Paused by user');
     toast.info("Task paused");
-    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    await refreshTasksNow();
   };
 
   const handleResumeTask = async (taskId: number) => {
@@ -226,13 +331,13 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       return;
     }
     toast.success("Task resumed");
-    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    await refreshTasksNow();
   };
 
   const handleDeleteTask = async (taskId: number) => {
     const res = await deleteTaskAction(taskId);
     if (res.success) {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await refreshTasksNow();
     }
     return res as any;
   };
@@ -249,7 +354,7 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     const res = await startAllPendingTasksAction();
     if (res.success && (res as any).count && (res as any).count > 0) {
       toast.success(`Auto-started ${(res as any).count} pending tasks`);
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await refreshTasksNow();
     }
   };
 
@@ -272,7 +377,8 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
       clearKeywordSession,
       settings,
       updateSetting,
-      startAllPendingTasks
+      startAllPendingTasks,
+      refreshTasksNow
     }}>
       {children}
     </AutomationContext.Provider>

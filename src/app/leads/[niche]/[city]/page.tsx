@@ -7,10 +7,10 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, MapPin, Store, CheckCircle, Download, Users, Globe, Phone, Mail } from 'lucide-react';
 import { db } from '@/lib/db';
-import { leads } from '@/lib/db/schema';
-import { sql, ilike, and } from 'drizzle-orm';
+import { leads, seoHubRegistry } from '@/lib/db/schema';
+import { sql, like, and, eq, or } from 'drizzle-orm';
 
-export const dynamic = 'force-dynamic'; // Prevent static generation timeout on massive DB queries
+export const revalidate = 86400; // ISR: revalidate every 24 hours
 
 type Params = Promise<{ niche: string; city: string }>;
 
@@ -18,11 +18,39 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const { niche, city } = await params;
   const capitalizedNiche = niche.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   const capitalizedCity = city.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const searchNiche = niche.replace(/-/g, ' ');
+  const searchCity = city.replace(/-/g, ' ');
+
+  // Check if data exists to prevent index bloat
+  let hasData = false;
+  try {
+    const count = await db.select({ total: sql<number>`SUM(${seoHubRegistry.totalLeads})` })
+      .from(seoHubRegistry)
+      .where(and(
+        like(seoHubRegistry.niche, `%${searchNiche}%`),
+        like(seoHubRegistry.city, `%${searchCity}%`)
+      ));
+    hasData = Number(count[0]?.total || 0) > 0;
+  } catch {}
 
   return {
     title: `Best ${capitalizedNiche} in ${capitalizedCity} | Verified B2B Leads | LeadSpotter`,
     description: `Get a list of verified ${capitalizedNiche} in ${capitalizedCity}. Extract names, phone numbers, and emails for your cold outreach campaigns.`,
     alternates: { canonical: `https://leadspotter.in/leads/${niche}/${city}` },
+    robots: hasData ? { index: true, follow: true } : { index: false, follow: true },
+    keywords: [`${capitalizedNiche} in ${capitalizedCity}`, `${capitalizedCity} ${capitalizedNiche}`, 'b2b leads', 'google maps leads', `${capitalizedNiche} directory`],
+    openGraph: {
+      title: `Best ${capitalizedNiche} in ${capitalizedCity} | LeadSpotter`,
+      description: `Get a list of verified ${capitalizedNiche} in ${capitalizedCity}. Extract names, phone numbers, and emails.`,
+      url: `https://leadspotter.in/leads/${niche}/${city}`,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `Best ${capitalizedNiche} in ${capitalizedCity} | LeadSpotter`,
+      description: `Get a list of verified ${capitalizedNiche} in ${capitalizedCity}.`,
+      images: ['https://leadspotter.in/opengraph-image'],
+    },
   };
 }
 
@@ -30,7 +58,7 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
   const { niche, city } = await params;
   const capitalizedNiche = niche.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   const capitalizedCity = city.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-  
+
   const searchNiche = niche.replace(/-/g, ' ');
   const searchCity = city.replace(/-/g, ' ');
 
@@ -43,43 +71,46 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
   let sampleLeads: any[] = [];
 
   try {
-    const statsRes = await db.execute(sql`
-      SELECT 
-        SUM(total_leads) as total,
-        SUM(with_website) as with_website,
-        SUM(with_phone) as with_phone,
-        SUM(with_email) as with_email,
-        AVG(avg_rating) as avg_rating
-      FROM seo_hub_registry 
-      WHERE niche ILIKE ${'%' + searchNiche + '%'} 
-        AND city ILIKE ${'%' + searchCity + '%'}
-    `);
+    // Use Drizzle's aggregate functions instead of raw SQL
+    const statsRes = await db.select({
+      total: sql<number>`SUM(${seoHubRegistry.totalLeads})`,
+      withWebsite: sql<number>`SUM(${seoHubRegistry.withWebsite})`,
+      withPhone: sql<number>`SUM(${seoHubRegistry.withPhone})`,
+      withEmail: sql<number>`SUM(${seoHubRegistry.withEmail})`,
+      avgRating: sql<number>`AVG(${seoHubRegistry.avgRating})`,
+    })
+      .from(seoHubRegistry)
+      .where(and(
+        like(seoHubRegistry.niche, `%${searchNiche}%`),
+        like(seoHubRegistry.city, `%${searchCity}%`)
+      ));
 
-    if (statsRes && statsRes[0] && Number(statsRes[0].total || 0) > 0) {
+    if (statsRes[0] && Number(statsRes[0].total || 0) > 0) {
       total = Number(statsRes[0].total || 0);
-      withWebsite = Number(statsRes[0].with_website || 0);
-      withPhone = Number(statsRes[0].with_phone || 0);
-      withEmail = Number(statsRes[0].with_email || 0);
-      avgRating = Number(statsRes[0].avg_rating || 0);
+      withWebsite = Number(statsRes[0].withWebsite || 0);
+      withPhone = Number(statsRes[0].withPhone || 0);
+      withEmail = Number(statsRes[0].withEmail || 0);
+      avgRating = Number(statsRes[0].avgRating || 0);
     } else {
       // Fallback to active leads if registry missed it
-      const fallbackRes = await db.execute(sql`
-        SELECT 
-          COUNT(*) as total,
-          SUM(CASE WHEN website IS NOT NULL AND website != '' THEN 1 ELSE 0 END) as with_website,
-          SUM(CASE WHEN phone IS NOT NULL AND phone != '' THEN 1 ELSE 0 END) as with_phone,
-          SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) as with_email,
-          AVG(rating) as avg_rating
-        FROM leads 
-        WHERE category ILIKE ${'%' + searchNiche + '%'} 
-          AND city ILIKE ${'%' + searchCity + '%'}
-      `);
-      if (fallbackRes && fallbackRes[0]) {
+      const fallbackRes = await db.select({
+        total: sql<number>`COUNT(*)`,
+        withWebsite: sql<number>`SUM(CASE WHEN ${leads.website} IS NOT NULL AND ${leads.website} != '' THEN 1 ELSE 0 END)`,
+        withPhone: sql<number>`SUM(CASE WHEN ${leads.phone} IS NOT NULL AND ${leads.phone} != '' THEN 1 ELSE 0 END)`,
+        withEmail: sql<number>`SUM(CASE WHEN ${leads.email} IS NOT NULL AND ${leads.email} != '' THEN 1 ELSE 0 END)`,
+        avgRating: sql<number>`AVG(${leads.rating})`,
+      })
+        .from(leads)
+        .where(and(
+          like(leads.category, `%${searchNiche}%`),
+          like(leads.city, `%${searchCity}%`)
+        ));
+      if (fallbackRes[0]) {
         total = Number(fallbackRes[0].total || 0);
-        withWebsite = Number(fallbackRes[0].with_website || 0);
-        withPhone = Number(fallbackRes[0].with_phone || 0);
-        withEmail = Number(fallbackRes[0].with_email || 0);
-        avgRating = Number(fallbackRes[0].avg_rating || 0);
+        withWebsite = Number(fallbackRes[0].withWebsite || 0);
+        withPhone = Number(fallbackRes[0].withPhone || 0);
+        withEmail = Number(fallbackRes[0].withEmail || 0);
+        avgRating = Number(fallbackRes[0].avgRating || 0);
       }
     }
 
@@ -90,36 +121,82 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
       reviewsCount: leads.reviewsCount,
       address: leads.address,
     })
-    .from(leads)
-    .where(and(
-      ilike(leads.category, `%${searchNiche}%`),
-      ilike(leads.city, `%${searchCity}%`)
-    ))
-    .limit(3);
+      .from(leads)
+      .where(and(
+        like(leads.category, `%${searchNiche}%`),
+        like(leads.city, `%${searchCity}%`)
+      ))
+      .limit(3);
 
   } catch (error) {
     console.error('Failed to fetch lead stats:', error);
   }
 
-  // Fallback to intelligent estimates if DB has no data yet (for indexing purposes)
+  // Fetch related niches in the same city and related cities for the same niche
+  let relatedNiches: string[] = [];
+  let relatedCities: string[] = [];
+  try {
+    const nichesRes = await db.select({ niche: seoHubRegistry.niche })
+      .from(seoHubRegistry)
+      .where(and(
+        like(seoHubRegistry.city, `%${searchCity}%`),
+        sql`${seoHubRegistry.niche} NOT LIKE ${`%${searchNiche}%`}`
+      ))
+      .groupBy(seoHubRegistry.niche)
+      .orderBy(sql`SUM(${seoHubRegistry.totalLeads}) DESC`)
+      .limit(5);
+    relatedNiches = nichesRes.map(n => String(n.niche));
+
+    const citiesRes = await db.select({ city: seoHubRegistry.city })
+      .from(seoHubRegistry)
+      .where(and(
+        like(seoHubRegistry.niche, `%${searchNiche}%`),
+        sql`${seoHubRegistry.city} NOT LIKE ${`%${searchCity}%`}`
+      ))
+      .groupBy(seoHubRegistry.city)
+      .orderBy(sql`SUM(${seoHubRegistry.totalLeads}) DESC`)
+      .limit(5);
+    relatedCities = citiesRes.map(c => String(c.city));
+  } catch {}
+
+  // If DB has no data, show a "coming soon" page instead of fake random numbers
   if (total === 0) {
-    total = Math.floor(Math.random() * (2500 - 500 + 1) + 500);
-    withWebsite = Math.floor(total * 0.65);
-    withPhone = Math.floor(total * 0.85);
-    withEmail = Math.floor(total * 0.45);
-    avgRating = 4.2;
-    sampleLeads = [
-      { name: `Premium ${capitalizedNiche} Group`, rating: 4.8, reviewsCount: 124, address: `Central ${capitalizedCity}` },
-      { name: `${capitalizedCity} ${capitalizedNiche} Services`, rating: 4.6, reviewsCount: 89, address: `North ${capitalizedCity}` },
-      { name: `Elite ${capitalizedNiche} Solutions`, rating: 4.9, reviewsCount: 210, address: `South ${capitalizedCity}` },
-    ];
+    return (
+      <div className="bg-white text-gray-900 antialiased">
+        <LandingHeader />
+        <main className="max-w-5xl mx-auto px-6 pt-28 pb-20">
+          <h1 className="text-3xl md:text-4xl font-bold mb-4">
+            {capitalizedNiche} in {capitalizedCity}
+          </h1>
+          <p className="text-lg text-gray-600 mb-8">
+            We&apos;re currently collecting data for {capitalizedNiche.toLowerCase()} in {capitalizedCity}.
+            Our database is updated regularly — check back soon or start your own extraction.
+          </p>
+          <Link href="/leads" className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors">
+            Start Extracting Leads
+          </Link>
+        </main>
+        <LandingFooter />
+      </div>
+    );
   }
 
   return (
     <div className="bg-white text-gray-900 antialiased">
-      <JsonLd 
-        type="FAQPage" 
-        data={{ 
+      <JsonLd
+        type="BreadcrumbList"
+        data={{
+          items: [
+            { name: "Home", url: "https://leadspotter.in" },
+            { name: "Leads", url: "https://leadspotter.in/leads" },
+            { name: capitalizedNiche, url: `https://leadspotter.in/leads/${niche}` },
+            { name: `${capitalizedNiche} in ${capitalizedCity}`, url: `https://leadspotter.in/leads/${niche}/${city}` },
+          ],
+        }}
+      />
+      <JsonLd
+        type="FAQPage"
+        data={{
           faqs: [
             {
               "@type": "Question",
@@ -146,13 +223,13 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
               }
             }
           ]
-        }} 
+        }}
       />
       <LandingBanner />
       <LandingHeader />
-      
+
       <main className="pt-32 pb-20">
-        <div className="max-w-4xl mx-auto px-6">
+        <div className="max-w-5xl mx-auto px-6">
           <div className="mb-12">
             <h1 className="text-3xl md:text-5xl font-bold mb-6">Verified {capitalizedNiche} in {capitalizedCity}</h1>
             <p className="text-xl text-gray-600 leading-relaxed mb-8">
@@ -191,7 +268,7 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
               <h2 className="text-2xl font-bold">Top Rated {capitalizedNiche} in {capitalizedCity}</h2>
               <span className="text-sm text-gray-500 hidden md:inline-block">Average Rating: {avgRating.toFixed(1)} ★</span>
             </div>
-            
+
             <div className="grid gap-4">
               {sampleLeads.map((lead, i) => (
                 <div key={i} className="flex flex-col md:flex-row md:items-center justify-between p-6 rounded-2xl border border-gray-100 bg-white hover:border-indigo-200 transition-colors shadow-sm relative overflow-hidden group">
@@ -232,6 +309,40 @@ export default async function ProgrammaticLeadsPage({ params }: { params: Params
           </div>
         </div>
       </main>
+
+      {/* ━━━━━━ RELATED NICHES + CITIES ━━━━━━ */}
+      {(relatedNiches.length > 0 || relatedCities.length > 0) && (
+        <section className="py-16 bg-gray-50/40 border-t border-gray-100">
+          <div className="max-w-5xl mx-auto px-6">
+            {relatedNiches.length > 0 && (
+              <div className="mb-10">
+                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">More Industries in {capitalizedCity}</h3>
+                <div className="flex flex-wrap gap-2">
+                  {relatedNiches.map((n) => (
+                    <Link key={n} href={`/leads/${n.toLowerCase().replace(/\s+/g, '-')}/${city}`}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all">
+                      {n}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+            {relatedCities.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">{capitalizedNiche} in Other Cities</h3>
+                <div className="flex flex-wrap gap-2">
+                  {relatedCities.map((c) => (
+                    <Link key={c} href={`/leads/${niche}/${c.toLowerCase().replace(/\s+/g, '-')}`}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all">
+                      {c}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <LandingFooter />
     </div>

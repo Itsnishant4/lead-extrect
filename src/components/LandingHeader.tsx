@@ -5,7 +5,11 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { FloatingNav } from "@/components/ui/floating-navbar";
 
-export function LandingHeader() {
+interface LandingHeaderProps {
+  hasBanner?: boolean;
+}
+
+export function LandingHeader({ hasBanner = false }: LandingHeaderProps) {
   const navItems = [
     { name: "Features", link: "/features" },
     { name: "Use Cases", link: "/use-cases" },
@@ -17,7 +21,7 @@ export function LandingHeader() {
   return (
     <>
       <FloatingNav
-      
+        hasBanner={hasBanner}
         navItems={navItems}
         logo={
           <Link href="/" className="flex items-center gap-2 group">

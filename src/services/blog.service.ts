@@ -24,8 +24,11 @@ export class BlogService {
       publishedAt: data.is_published ? (data.published_at ? new Date(data.published_at) : new Date()) : null,
     }).returning({ id: blogPosts.id });
 
+    // libSQL fallback
+    const insertedId = result?.[0]?.id ?? (await db.select({ id: blogPosts.id }).from(blogPosts).orderBy(desc(blogPosts.id)).limit(1))[0]?.id;
+
     await AuditService.logAction('blog_post_created', 'success', { slug: data.slug });
-    return result[0].id;
+    return insertedId;
   }
 
   static async updatePost(id: number, data: any) {
@@ -53,22 +56,52 @@ export class BlogService {
     await AuditService.logAction('blog_post_deleted', 'success', { id });
   }
 
+  static async bulkCreatePosts(posts: any[]) {
+    const insertedIds: number[] = [];
+    for (const data of posts) {
+      const result = await db.insert(blogPosts).values({
+        slug: data.slug,
+        title: data.title,
+        description: data.description,
+        content: data.content,
+        author: data.author || 'LeadSpotter Team',
+        category: data.category || 'General',
+        readTime: data.read_time,
+        imageUrl: data.image_url,
+        metaTitle: data.meta_title,
+        metaDescription: data.meta_description,
+        isPublished: data.is_published ?? true,
+        publishedAt: data.is_published ? (data.published_at ? new Date(data.published_at) : new Date()) : null,
+      }).returning({ id: blogPosts.id });
+
+      const insertedId = result?.[0]?.id ?? (await db.select({ id: blogPosts.id }).from(blogPosts).orderBy(desc(blogPosts.id)).limit(1))[0]?.id;
+      insertedIds.push(insertedId);
+    }
+    await AuditService.logAction('blog_posts_bulk_created', 'success', { count: posts.length, ids: insertedIds });
+    return insertedIds;
+  }
+
   static async getPostsPublic() {
-    return await db.select({
-      id: blogPosts.id,
-      slug: blogPosts.slug,
-      title: blogPosts.title,
-      description: blogPosts.description,
-      author: blogPosts.author,
-      category: blogPosts.category,
-      readTime: blogPosts.readTime,
-      imageUrl: blogPosts.imageUrl,
-      publishedAt: blogPosts.publishedAt,
-      createdAt: blogPosts.createdAt,
-    })
-    .from(blogPosts)
-    .where(eq(blogPosts.isPublished, true))
-    .orderBy(desc(blogPosts.publishedAt));
+    try {
+      return await db.select({
+        id: blogPosts.id,
+        slug: blogPosts.slug,
+        title: blogPosts.title,
+        description: blogPosts.description,
+        author: blogPosts.author,
+        category: blogPosts.category,
+        readTime: blogPosts.readTime,
+        imageUrl: blogPosts.imageUrl,
+        publishedAt: blogPosts.publishedAt,
+        createdAt: blogPosts.createdAt,
+      })
+      .from(blogPosts)
+      .where(eq(blogPosts.isPublished, true))
+      .orderBy(desc(blogPosts.publishedAt));
+    } catch (error) {
+      console.error('[BlogService] Failed to get posts:', error);
+      return [];
+    }
   }
 
   static async getPostBySlugPublic(slug: string) {

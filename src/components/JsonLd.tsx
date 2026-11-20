@@ -1,7 +1,7 @@
 import { Organization, WebSite, WithContext, SoftwareApplication, FAQPage, Product } from "schema-dts";
 
 interface JsonLdProps {
-    type?: 'Organization' | 'WebSite' | 'SoftwareApplication' | 'FAQPage' | 'Product';
+    type?: 'Organization' | 'WebSite' | 'SoftwareApplication' | 'FAQPage' | 'Product' | 'BreadcrumbList' | 'HowTo' | 'ItemList' | 'Review';
     data?: any;
 }
 
@@ -43,6 +43,14 @@ export default function JsonLd({ type, data }: JsonLdProps) {
         name: "LeadSpotter",
         url: "https://leadspotter.in",
         description: "Extract verified business leads from Google Maps. Bulk keyword generation, cloud processing, email enrichment, and CRM-ready CSV export.",
+        potentialAction: {
+            "@type": "SearchAction",
+            target: {
+                "@type": "EntryPoint",
+                urlTemplate: "https://leadspotter.in/leads?search={search_term_string}",
+            },
+            "query-input": "required name=search_term_string",
+        } as any,
     };
 
     const softwareJsonLd: WithContext<SoftwareApplication> = {
@@ -60,9 +68,9 @@ export default function JsonLd({ type, data }: JsonLdProps) {
         },
         aggregateRating: {
             "@type": "AggregateRating",
-            ratingValue: "4.9",
-            ratingCount: "50",
-            bestRating: "5",
+            ratingValue: 4.9,
+            ratingCount: 50,
+            bestRating: 5,
         },
         featureList: data?.featureList || "Bulk keyword generation, Google Maps data extraction, Email finder, Phone number extractor, Cloud processing, CSV export, Social media discovery, Lead scoring",
     };
@@ -73,50 +81,50 @@ export default function JsonLd({ type, data }: JsonLdProps) {
         mainEntity: data?.faqs || [
             {
                 "@type": "Question",
-                name: "What data can LeadSpotter extract from Google Maps?",
+                name: "What data can LeadSpotter extract?",
                 acceptedAnswer: {
                     "@type": "Answer",
-                    text: "LeadSpotter extracts business names, addresses, phone numbers, emails, websites, ratings, reviews, social media profiles, and operating hours from Google Maps business listings. We also enrich data by scraping business websites for additional contact information including direct emails and phone numbers.",
+                    text: "Business names, addresses, phone numbers, emails, websites, ratings, reviews, social media profiles, and operating hours from Google Maps and business websites.",
                 },
             },
             {
                 "@type": "Question",
-                name: "Is it legal to scrape data from Google Maps?",
+                name: "Is this legal to use?",
                 acceptedAnswer: {
                     "@type": "Answer",
-                    text: "Yes. LeadSpotter only collects publicly available data from Google Maps and business websites. This is information that businesses have voluntarily published online. We are fully GDPR and CCPA compliant. All extracted data is public business information, not private or protected data.",
+                    text: "Yes. LeadSpotter only collects publicly available data. We are fully GDPR and CCPA compliant.",
                 },
             },
             {
                 "@type": "Question",
-                name: "How does cloud processing work in LeadSpotter?",
+                name: "How does cloud processing work?",
                 acceptedAnswer: {
                     "@type": "Answer",
-                    text: "When you start an extraction task, it runs on our cloud servers 24/7. You can close your browser and come back later — your task continues processing in the background. You'll see real-time progress updates and can download your leads when the extraction is complete.",
+                    text: "Tasks run on our cloud servers 24/7. Close your browser, turn off your computer, and come back later to download results.",
                 },
             },
             {
                 "@type": "Question",
-                name: "Can I cancel or upgrade my LeadSpotter plan anytime?",
+                name: "How many leads can I extract per month?",
                 acceptedAnswer: {
                     "@type": "Answer",
-                    text: "Absolutely. All plans are month-to-month with no long-term contracts. You can upgrade, downgrade, or cancel at any time from your dashboard. The free plan gives you some free leads per month with no credit card required.",
+                    text: "Free plan: 500 leads/month. Paid plans: 5,000 to unlimited. All plans include full data enrichment.",
                 },
             },
             {
                 "@type": "Question",
-                name: "What is the difference between the Starter and Pro plan?",
+                name: "Can I export directly to my CRM?",
                 acceptedAnswer: {
                     "@type": "Answer",
-                    text: "The Starter plan gives you some free leads to test the platform. Paid plans unlock high-volume lead extraction, bulk keyword generation, social media enrichment, CSV/JSON data exports, and priority support.",
+                    text: "Yes — CSV with custom columns, compatible with HubSpot, Salesforce, Pipedrive. Direct Telegram delivery available.",
                 },
             },
             {
                 "@type": "Question",
-                name: "How many leads can I extract with LeadSpotter?",
+                name: "Do you offer a free trial?",
                 acceptedAnswer: {
                     "@type": "Answer",
-                    text: "Lead generation limits depend on your selected plan. The free Starter plan includes a limited number of leads, while higher tiers offer large monthly allocations or unlimited leads for enterprise teams.",
+                    text: "Our Free plan is always free — no credit card required. 500 leads/month and 1 concurrent task to test everything.",
                 },
             },
         ],
@@ -140,9 +148,34 @@ export default function JsonLd({ type, data }: JsonLdProps) {
         },
         aggregateRating: {
             "@type": "AggregateRating",
-            ratingValue: "4.9",
-            ratingCount: "50",
+            ratingValue: 4.9,
+            ratingCount: 50,
+            bestRating: 5,
         },
+    };
+
+    const breadcrumbJsonLd = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: (data?.items || []).map((item: any, i: number) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            name: item.name,
+            item: item.url,
+        })),
+    };
+
+    const howToJsonLd = {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        name: data?.name || "How to use LeadSpotter",
+        description: data?.description || "Step-by-step guide to extracting leads",
+        step: (data?.steps || []).map((step: any, i: number) => ({
+            "@type": "HowToStep",
+            position: i + 1,
+            name: step.name,
+            text: step.text,
+        })),
     };
 
     return (
@@ -189,6 +222,53 @@ export default function JsonLd({ type, data }: JsonLdProps) {
                         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
                     />
                 </>
+            )}
+            {(type === 'BreadcrumbList' && data?.items) && (
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+                />
+            )}
+            {(type === 'HowTo' && data?.steps) && (
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
+                />
+            )}
+            {(type === 'ItemList' && data?.itemListElement) && (
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "ItemList",
+                        name: data.name,
+                        description: data.description,
+                        itemListElement: data.itemListElement,
+                    }) }}
+                />
+            )}
+            {(type === 'Review') && (
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "Review",
+                        itemReviewed: data.itemReviewed || {
+                            "@type": "SoftwareApplication",
+                            name: "LeadSpotter",
+                        },
+                        reviewRating: data.reviewRating || {
+                            "@type": "Rating",
+                            ratingValue: "5",
+                            bestRating: "5",
+                        },
+                        author: data.author || {
+                            "@type": "Person",
+                            name: "User",
+                        },
+                        reviewBody: data.reviewBody,
+                    }) }}
+                />
             )}
         </>
     );

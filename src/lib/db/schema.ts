@@ -1,25 +1,32 @@
-import { pgTable, serial, text, integer, boolean, timestamp, real, unique, index, jsonb } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { sqliteTable, integer, text, real, unique, index } from 'drizzle-orm/sqlite-core';
+import { relations, sql } from 'drizzle-orm';
 
-export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
+export const users = sqliteTable('users', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   email: text('email').unique().notNull(),
   password: text('password').notNull(),
-  isAdmin: boolean('is_admin').default(false),
-  isSuspended: boolean('is_suspended').default(false),
+  isAdmin: integer('is_admin', { mode: 'boolean' }).default(false),
+  isSuspended: integer('is_suspended', { mode: 'boolean' }).default(false),
   planType: text('plan_type').default('free'),
   leadsExtracted: integer('leads_extracted').default(0),
   bonusCredits: integer('bonus_credits').default(0),
-  subscriptionExpiry: timestamp('subscription_expiry'),
+  subscriptionExpiry: integer('subscription_expiry', { mode: 'timestamp' }),
   otpCode: text('otp_code'),
-  otpExpiry: timestamp('otp_expiry', { withTimezone: true }),
+  otpExpiry: integer('otp_expiry', { mode: 'timestamp' }),
   otpAttempts: integer('otp_attempts').default(0),
-  createdAt: timestamp('created_at').defaultNow(),
-});
+  country: text('country'),
+  city: text('city'),
+  latitude: real('latitude'),
+  longitude: real('longitude'),
+  lastActive: integer('last_active', { mode: 'timestamp' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+}, (table) => ({
+  lastActiveIdx: index('idx_users_last_active').on(table.lastActive),
+}));
 
-export const tasks = pgTable('tasks', {
-  id: serial('id').primaryKey(),
+export const tasks = sqliteTable('tasks', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id').references(() => users.id),
   name: text('name').notNull(),
   status: text('status').default('pending'),
@@ -27,48 +34,50 @@ export const tasks = pgTable('tasks', {
   totalKeywords: integer('total_keywords').default(0),
   currentKeywordIndex: integer('current_keyword_index').default(0),
   totalLeads: integer('total_leads').default(0),
-  keywords: jsonb('keywords'),
+  keywords: text('keywords', { mode: 'json' }),
   userAgent: text('user_agent'),
   acceptLanguage: text('accept_language'),
-  lastLogsSentAt: timestamp('last_logs_sent_at').defaultNow(),
-  lastHeartbeat: timestamp('last_heartbeat').defaultNow(),
+  lastLogsSentAt: integer('last_logs_sent_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+  lastHeartbeat: integer('last_heartbeat', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
   exportFileIds: text('export_file_ids'),
   exportStatus: text('export_status'),
-  exportCreatedAt: timestamp('export_created_at'),
+  exportCreatedAt: integer('export_created_at', { mode: 'timestamp' }),
   exportedLeadsCount: integer('exported_leads_count').default(0),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
+  retryCount: integer('retry_count').default(0),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   userIdIdx: index('idx_tasks_user_id').on(table.userId),
   statusIdx: index('idx_tasks_status').on(table.status),
   createdAtIdx: index('idx_tasks_created_at').on(table.createdAt),
 }));
 
-export const serverLogs = pgTable('server_logs', {
-  id: serial('id').primaryKey(),
+export const serverLogs = sqliteTable('server_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id'),
   taskId: integer('task_id'),
   level: text('level').default('INFO'),
   message: text('message'),
-  createdAt: timestamp('created_at').defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   taskIdIdx: index('idx_server_logs_task_id').on(table.taskId),
   userIdIdx: index('idx_server_logs_user_id').on(table.userId),
 }));
 
-export const searches = pgTable('searches', {
-  id: serial('id').primaryKey(),
+export const searches = sqliteTable('searches', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id').references(() => users.id),
   query: text('query').notNull(),
   taskId: integer('task_id').references(() => tasks.id),
-  createdAt: timestamp('created_at').defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   userIdIdx: index('idx_searches_user_id').on(table.userId),
   queryIdx: index('idx_searches_query').on(table.query),
+  userCreatedIdx: index('idx_searches_user_created').on(table.userId, table.createdAt),
 }));
 
-export const leads = pgTable('leads', {
-  id: serial('id').primaryKey(),
+export const leads = sqliteTable('leads', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   address: text('address'),
   city: text('city'),
@@ -99,7 +108,8 @@ export const leads = pgTable('leads', {
   websiteEmail: text('website_email'),
   websitePhone: text('website_phone'),
   leadScore: integer('lead_score').default(0),
-  createdAt: timestamp('created_at').defaultNow(),
+  emailVerified: integer('email_verified', { mode: 'boolean' }).default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   placeIdIdx: index('idx_leads_place_id').on(table.placeId),
   cityIdx: index('idx_leads_city').on(table.city),
@@ -107,11 +117,11 @@ export const leads = pgTable('leads', {
   leadScoreIdx: index('idx_leads_lead_score').on(table.leadScore),
 }));
 
-export const leadSources = pgTable('lead_sources', {
+export const leadSources = sqliteTable('lead_sources', {
   leadId: integer('lead_id').references(() => leads.id),
   searchId: integer('search_id').references(() => searches.id),
   taskId: integer('task_id').references(() => tasks.id),
-  createdAt: timestamp('created_at').defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   pk: unique('lead_sources_lead_id_search_id_unique').on(table.leadId, table.searchId),
   leadIdIdx: index('idx_lead_sources_lead_id').on(table.leadId),
@@ -119,40 +129,42 @@ export const leadSources = pgTable('lead_sources', {
   taskIdIdx: index('idx_lead_sources_task_id').on(table.taskId),
 }));
 
-export const cityAreas = pgTable('city_areas', {
-  id: serial('id').primaryKey(),
+export const cityAreas = sqliteTable('city_areas', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   country: text('country').notNull(),
   state: text('state').notNull(),
   city: text('city').notNull(),
   areas: text('areas').notNull(),
-  lastUpdated: timestamp('last_updated').defaultNow(),
+  lastUpdated: integer('last_updated', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   unq: unique('city_areas_country_state_city_unique').on(table.country, table.state, table.city),
 }));
 
-export const keywordHistory = pgTable('keyword_history', {
-  id: serial('id').primaryKey(),
+export const keywordHistory = sqliteTable('keyword_history', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id').references(() => users.id),
   name: text('name').notNull(),
   niche: text('niche'),
   location: text('location'),
   keywords: text('keywords').notNull(),
   totalKeywords: integer('total_keywords'),
-  keywordsTruncated: boolean('keywords_truncated').default(false),
-  createdAt: timestamp('created_at').defaultNow(),
-});
+  keywordsTruncated: integer('keywords_truncated', { mode: 'boolean' }).default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+}, (table) => ({
+  userIdIdx: index('idx_keyword_history_user_id').on(table.userId),
+}));
 
-export const taskLeads = pgTable('task_leads', {
+export const taskLeads = sqliteTable('task_leads', {
   taskId: integer('task_id').references(() => tasks.id),
   leadId: integer('lead_id').references(() => leads.id),
-  createdAt: timestamp('created_at').defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   pk: unique('task_leads_task_id_lead_id_pk').on(table.taskId, table.leadId),
   taskIdIdx: index('idx_task_leads_task_id').on(table.taskId),
   leadIdIdx: index('idx_task_leads_lead_id').on(table.leadId),
 }));
 
-export const settings = pgTable('settings', {
+export const settings = sqliteTable('settings', {
   userId: integer('user_id').references(() => users.id),
   key: text('key').notNull(),
   value: text('value').notNull(),
@@ -160,65 +172,68 @@ export const settings = pgTable('settings', {
   pk: unique('settings_user_id_key_pk').on(table.userId, table.key),
 }));
 
-export const savedLists = pgTable('saved_lists', {
-  id: serial('id').primaryKey(),
+export const savedLists = sqliteTable('saved_lists', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id').references(() => users.id),
   name: text('name').notNull(),
   description: text('description'),
-  createdAt: timestamp('created_at').defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 });
 
-export const savedListItems = pgTable('saved_list_items', {
+export const savedListItems = sqliteTable('saved_list_items', {
   listId: integer('list_id').references(() => savedLists.id),
   leadId: integer('lead_id').references(() => leads.id),
-  createdAt: timestamp('created_at').defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   pk: unique('saved_list_items_list_id_lead_id_unique').on(table.listId, table.leadId),
   listIdIdx: index('idx_saved_list_items_list_id').on(table.listId),
   leadIdIdx: index('idx_saved_list_items_lead_id').on(table.leadId),
 }));
 
-export const exportTemplates = pgTable('export_templates', {
-  id: serial('id').primaryKey(),
+export const exportTemplates = sqliteTable('export_templates', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id').references(() => users.id),
   name: text('name').notNull(),
   columns: text('columns').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 });
 
-export const proxies = pgTable('proxies', {
-  id: serial('id').primaryKey(),
+export const proxies = sqliteTable('proxies', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id').references(() => users.id),
   host: text('host').notNull(),
   port: integer('port').notNull(),
   username: text('username'),
   password: text('password'),
   protocol: text('protocol').default('http'),
-  isActive: integer('is_active').default(1),
-  createdAt: timestamp('created_at').defaultNow(),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 });
 
-export const auditLogs = pgTable('audit_logs', {
-  id: serial('id').primaryKey(),
+export const auditLogs = sqliteTable('audit_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id').references(() => users.id),
   action: text('action').notNull(),
   status: text('status'),
   metadata: text('metadata'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+}, (table) => ({
+  userIdIdx: index('idx_audit_logs_user_id').on(table.userId),
+  createdAtIdx: index('idx_audit_logs_user_created').on(table.userId, table.createdAt),
+}));
 
-export const pincodeCoords = pgTable('pincode_coords', {
+export const pincodeCoords = sqliteTable('pincode_coords', {
   country: text('country').notNull(),
   pincode: text('pincode').notNull(),
   latitude: real('latitude').notNull(),
   longitude: real('longitude').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (table) => ({
   pk: unique('pincode_coords_country_pincode_pk').on(table.country, table.pincode),
 }));
 
-export const blogPosts = pgTable('blog_posts', {
-  id: serial('id').primaryKey(),
+export const blogPosts = sqliteTable('blog_posts', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   slug: text('slug').unique().notNull(),
   title: text('title').notNull(),
   description: text('description'),
@@ -229,20 +244,20 @@ export const blogPosts = pgTable('blog_posts', {
   imageUrl: text('image_url'),
   metaTitle: text('meta_title'),
   metaDescription: text('meta_description'),
-  isPublished: boolean('is_published').default(false),
-  publishedAt: timestamp('published_at'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
+  isPublished: integer('is_published', { mode: 'boolean' }).default(false),
+  publishedAt: integer('published_at', { mode: 'timestamp' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 });
 
-export const rateLimits = pgTable('rate_limits', {
+export const rateLimits = sqliteTable('rate_limits', {
   key: text('key').primaryKey(),
   count: integer('count').default(1),
-  resetAt: timestamp('reset_at').notNull(),
+  resetAt: integer('reset_at', { mode: 'timestamp' }).notNull(),
 });
 
-export const plans = pgTable('plans', {
-  id: serial('id').primaryKey(),
+export const plans = sqliteTable('plans', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   description: text('description'),
   price: integer('price').notNull(), // Amount in INR (0 for free)
@@ -250,36 +265,40 @@ export const plans = pgTable('plans', {
   period: text('period').notNull(), // 'month', 'one-time', 'free', 'custom'
   leadsCredits: integer('leads_credits').notNull(),
   maxConcurrentTasks: integer('max_concurrent_tasks').default(1),
-  features: jsonb('features').$type<string[]>(),
-  unavailableFeatures: jsonb('unavailable_features').$type<string[]>(),
+  features: text('features', { mode: 'json' }),
+  unavailableFeatures: text('unavailable_features', { mode: 'json' }),
   whatsappUrl: text('whatsapp_url'),
   badge: text('badge'),
   sortOrder: integer('sort_order').default(0),
-  isActive: boolean('is_active').default(true),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 });
 
-export const transactions = pgTable('transactions', {
-  id: serial('id').primaryKey(),
+export const transactions = sqliteTable('transactions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id').references(() => users.id),
   planId: integer('plan_id').references(() => plans.id),
   amount: text('amount').notNull(),
   status: text('status').default('pending'),
   gatewayOrderId: text('gateway_order_id'),
   utr: text('utr'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+}, (table) => ({
+  userIdIdx: index('idx_transactions_user_id').on(table.userId),
+  statusIdx: index('idx_transactions_status').on(table.status),
+  gatewayOrderIdIdx: index('idx_transactions_gateway_order_id').on(table.gatewayOrderId),
+}));
 
-export const siteConfig = pgTable('site_config', {
+export const siteConfig = sqliteTable('site_config', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
-  updatedAt: timestamp('updated_at').defaultNow(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 });
 
-export const seoHubRegistry = pgTable('seo_hub_registry', {
-  id: serial('id').primaryKey(),
+export const seoHubRegistry = sqliteTable('seo_hub_registry', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   niche: text('niche').notNull(),
   city: text('city').notNull(),
   totalLeads: integer('total_leads').default(0),
@@ -287,7 +306,108 @@ export const seoHubRegistry = pgTable('seo_hub_registry', {
   withPhone: integer('with_phone').default(0),
   withWebsite: integer('with_website').default(0),
   avgRating: real('avg_rating').default(0),
-  lastUpdated: timestamp('last_updated').defaultNow(),
+  lastUpdated: integer('last_updated', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
 }, (t) => ({
   unqNicheCity: unique('unq_seo_niche_city').on(t.niche, t.city)
+}));
+
+export const notifications = sqliteTable('notifications', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  type: text('type').notNull(), // 'task_completed' | 'task_failed' | 'credits_low' | 'payment_success' | 'subscription_expiring' | 'general'
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  isRead: integer('is_read', { mode: 'boolean' }).default(false),
+  metadata: text('metadata', { mode: 'json' }), // optional JSON for links, task IDs, etc.
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+}, (table) => ({
+  userIdIdx: index('idx_notifications_user_id').on(table.userId),
+  isReadIdx: index('idx_notifications_is_read').on(table.userId, table.isRead),
+}));
+
+export const pushSubscriptions = sqliteTable('push_subscriptions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  endpoint: text('endpoint').notNull(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+}, (table) => ({
+  userIdIdx: index('idx_push_subscriptions_user_id').on(table.userId),
+  endpointIdx: unique('push_subscriptions_endpoint_unique').on(table.endpoint),
+}));
+
+// ─── Integrations ───
+
+export const integrations = sqliteTable('integrations', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  slug: text('slug').unique().notNull(),           // 'google-sheets', 'hubspot', 'zapier'
+  name: text('name').notNull(),                     // 'Google Sheets'
+  featureFlag: text('feature_flag').notNull(),      // 'Integration: Google Sheets'
+  category: text('category').notNull(),             // 'crm', 'automation', 'export', 'notification'
+  description: text('description'),
+  iconUrl: text('icon_url'),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  oauthProvider: text('oauth_provider'),             // 'google', 'hubspot', 'salesforce', 'slack' or null
+  configSchema: text('config_schema', { mode: 'json' }),  // JSON Schema for user config fields
+  sortOrder: integer('sort_order').default(0),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+}, (table) => ({
+  slugIdx: index('idx_integrations_slug').on(table.slug),
+  categoryIdx: index('idx_integrations_category').on(table.category),
+}));
+
+export const userIntegrations = sqliteTable('user_integrations', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  integrationId: integer('integration_id').references(() => integrations.id).notNull(),
+  isEnabled: integer('is_enabled', { mode: 'boolean' }).default(true),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  tokenExpiry: integer('token_expiry', { mode: 'timestamp' }),
+  apiKey: text('api_key'),
+  config: text('config', { mode: 'json' }),         // { spreadsheetId, webhookUrl, channelId, ... }
+  lastSyncedAt: integer('last_synced_at', { mode: 'timestamp' }),
+  totalSynced: integer('total_synced').default(0),
+  lastError: text('last_error'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+}, (table) => ({
+  userIdIdx: index('idx_user_integrations_user_id').on(table.userId),
+  integrationIdIdx: index('idx_user_integrations_integration_id').on(table.integrationId),
+  unq: unique('user_integrations_user_integration_unique').on(table.userId, table.integrationId),
+}));
+
+export const integrationLogs = sqliteTable('integration_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  integrationId: integer('integration_id').references(() => integrations.id).notNull(),
+  taskId: integer('task_id').references(() => tasks.id),
+  action: text('action').notNull(),                 // 'sync', 'test', 'oauth_connect', 'oauth_refresh'
+  status: text('status').notNull(),                  // 'success', 'failed', 'partial'
+  leadsCount: integer('leads_count').default(0),
+  errorMessage: text('error_message'),
+  metadata: text('metadata', { mode: 'json' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+}, (table) => ({
+  userIdIdx: index('idx_integration_logs_user_id').on(table.userId),
+  integrationIdIdx: index('idx_integration_logs_integration_id').on(table.integrationId),
+  createdAtIdx: index('idx_integration_logs_created_at').on(table.createdAt),
+}));
+
+export const userApiKeys = sqliteTable('user_api_keys', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  name: text('name').notNull(),
+  keyHash: text('key_hash').notNull(),
+  keyPrefix: text('key_prefix').notNull(),           // First 8 chars for identification
+  permissions: text('permissions', { mode: 'json' }), // ['leads:read', 'tasks:read', 'export:read']
+  lastUsedAt: integer('last_used_at', { mode: 'timestamp' }),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()).default(sql`(unixepoch() * 1000)`),
+}, (table) => ({
+  userIdIdx: index('idx_user_api_keys_user_id').on(table.userId),
+  keyHashIdx: unique('user_api_keys_key_hash_unique').on(table.keyHash),
 }));

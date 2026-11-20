@@ -5,7 +5,8 @@ import {
   getAllBlogPostsAdminAction,
   createBlogPostAction,
   updateBlogPostAction,
-  deleteBlogPostAction
+  deleteBlogPostAction,
+  bulkImportBlogPostsAction
 } from "@/app/actions"
 import {
   Table,
@@ -82,6 +83,7 @@ export default function AdminBlogPage() {
   const [editingPost, setEditingPost] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isJsonDialogOpen, setIsJsonDialogOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [jsonInput, setJsonInput] = useState("");
 
   const dummyJson = {
@@ -97,6 +99,64 @@ export default function AdminBlogPage() {
     meta_description: "Learn how to scale your business with these lead gen tips.",
     is_published: true,
     published_at: new Date().toISOString()
+  };
+
+  const dummyBulkJson = [
+    {
+      title: "Understanding Lead Generation in 2026",
+      slug: "lead-generation-guide-2026",
+      description: "A comprehensive guide to modern lead generation techniques.",
+      content: "## Introduction\nLead generation has evolved...",
+      author: "LeadSpotter Team",
+      category: "Guides",
+      read_time: "8 min read",
+      image_url: "https://leadspotter.in/og-image.png",
+      is_published: true
+    },
+    {
+      title: "Best CRM Practices for 2026",
+      slug: "crm-best-practices-2026",
+      description: "Master customer relationship management with these tips.",
+      content: "## Why CRM Matters\nCustomer relationships are...",
+      author: "LeadSpotter Team",
+      category: "Tips",
+      read_time: "5 min read",
+      image_url: "https://leadspotter.in/og-image.png",
+      is_published: true
+    }
+  ];
+
+  const bulkImportMutation = useMutation({
+    mutationFn: bulkImportBlogPostsAction,
+    onSuccess: (res) => {
+      if (res.success) {
+        toast.success(`Successfully imported ${(res as any).count} blog posts`);
+        queryClient.invalidateQueries({ queryKey: ['admin-blog-posts'] });
+        setIsBulkImportOpen(false);
+        setJsonInput("");
+      } else {
+        toast.error((res as any).error || "Failed to import posts");
+      }
+    }
+  });
+
+  const handleBulkJsonSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const data = JSON.parse(jsonInput);
+      if (!Array.isArray(data)) {
+        toast.error("JSON must be an array of blog posts");
+        return;
+      }
+      const validPosts = data.filter((post: any) => post.title && post.slug && post.content);
+      if (validPosts.length === 0) {
+        toast.error("At least one valid post with title, slug, and content is required");
+        return;
+      }
+      bulkImportMutation.mutate(validPosts);
+    } catch (err) {
+      toast.error("Invalid JSON format");
+    }
   };
 
   const handleJsonSubmit = (e: React.FormEvent) => {
@@ -246,6 +306,10 @@ export default function AdminBlogPage() {
           </Breadcrumb>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => { setJsonInput(JSON.stringify(dummyBulkJson, null, 2)); setIsBulkImportOpen(true); }}>
+            <Code size={16} />
+            Bulk Import
+          </Button>
           <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsJsonDialogOpen(true)}>
             <Code size={16} />
             Direct JSON
@@ -592,6 +656,52 @@ export default function AdminBlogPage() {
             >
               {createMutation.isPending && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
               Create Article
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isBulkImportOpen} onOpenChange={setIsBulkImportOpen}>
+        <DialogContent className="sm:max-w-[700px] border-none shadow-2xl bg-white">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Code size={20} className="text-indigo-600" />
+              Bulk Blog Import
+            </DialogTitle>
+            <DialogDescription>
+              Paste an array of blog posts in JSON format. Click the button below to see the required structure.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">JSON Array Payload</span>
+              <Button 
+                type="button"
+                variant="outline" 
+                size="sm" 
+                className="h-7 text-[10px] uppercase font-bold text-indigo-600 border-indigo-100 hover:bg-indigo-50"
+                onClick={() => setJsonInput(JSON.stringify(dummyBulkJson, null, 2))}
+              >
+                Load Dummy Array
+              </Button>
+            </div>
+            <div className="rounded-xl overflow-hidden border border-indigo-100 shadow-inner">
+              <Textarea 
+                className="min-h-[400px] font-mono text-[11px] bg-slate-50/50 border-none focus-visible:ring-0 leading-relaxed p-4" 
+                placeholder='[{ "title": "Post 1", "slug": "post-1", "content": "..." }, { "title": "Post 2", ... }]'
+                value={jsonInput}
+                onChange={(e) => setJsonInput(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="bg-slate-50 p-6 rounded-b-lg border-t border-slate-100">
+            <Button variant="ghost" className="text-xs font-bold uppercase tracking-widest hover:bg-slate-200" onClick={() => setIsBulkImportOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={handleBulkJsonSubmit} 
+              className="bg-indigo-600 hover:bg-indigo-700 font-bold text-xs uppercase tracking-widest px-8 shadow-lg shadow-indigo-100"
+              disabled={bulkImportMutation.isPending}
+            >
+              {bulkImportMutation.isPending && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+              Import All
             </Button>
           </DialogFooter>
         </DialogContent>

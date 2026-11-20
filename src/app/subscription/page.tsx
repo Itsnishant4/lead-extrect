@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { useAutomation } from '@/context/AutomationContext';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { getPlansAction, createCheckoutSessionAction, checkOrderStatusAction } from '@/app/actions';
@@ -8,15 +9,14 @@ import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import {
   Loader2, Check, CheckCircle, Zap, ShieldCheck, X, MessageCircle,
-  User, Award, Diamond,
+  User, Award, Diamond, Receipt,
 } from 'lucide-react';
+import { PTMCheckout } from '@/lib/sdk/PTMCheckout';
 
 export default function SubscriptionPage() {
   const { user, isLoadingUser: isLoading, refreshUser } = useAutomation();
-  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
-  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState<number | null>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [showMore, setShowMore] = useState(false);
 
   const { data: plans = [], isLoading: isLoadingPlans } = useQuery({
     queryKey: ['public-plans'],
@@ -27,56 +27,6 @@ export default function SubscriptionPage() {
     },
   });
 
-  const handleMessage = useCallback((event: MessageEvent) => {
-    if (event.data?.type === 'PAYMENT_SUCCESS') {
-      setPaymentUrl(null);
-      setCurrentOrderId(null);
-      setIsCheckingOut(null);
-      toast.success('Payment successful! Your plan has been activated.');
-      refreshUser();
-    }
-  }, [refreshUser]);
-
-  useEffect(() => {
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [handleMessage]);
-
-  useEffect(() => {
-    if (!paymentUrl || !currentOrderId) return;
-    
-    const interval = setInterval(async () => {
-      // 1. First, still try checking the iframe location fallback
-      try {
-        const iframe = iframeRef.current;
-        if (iframe?.contentWindow?.location?.href?.includes('/success')) {
-          setPaymentUrl(null);
-          setCurrentOrderId(null);
-          setIsCheckingOut(null);
-          toast.success('Payment successful! Your plan has been activated.');
-          refreshUser();
-          return;
-        }
-      } catch {
-        // Cross-origin restriction - expected
-      }
-
-      // 2. Safely poll the backend for order status
-      try {
-        const statusRes = await checkOrderStatusAction(currentOrderId);
-        if (statusRes.success && 'status' in statusRes && statusRes.status === 'paid') {
-          setPaymentUrl(null);
-          setCurrentOrderId(null);
-          setIsCheckingOut(null);
-          toast.success('Payment successful! Your plan has been activated.');
-          refreshUser();
-        }
-      } catch (err) {
-        console.error('Failed to check order status', err);
-      }
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [paymentUrl, currentOrderId, refreshUser]);
 
   const handleCheckout = async (plan: any) => {
     // Custom plan -> redirect to WhatsApp
@@ -97,8 +47,32 @@ export default function SubscriptionPage() {
     try {
       const res = await createCheckoutSessionAction(plan.id);
       if (res.success && (res as any).data?.paymentUrl) {
-        setPaymentUrl((res as any).data.paymentUrl);
-        setCurrentOrderId((res as any).data.orderId);
+        const origin = window.location.origin;
+        const paymentUrlWithOrigin = (res as any).data.paymentUrl + `&origin=${encodeURIComponent(origin)}`;
+
+        const gateway = new PTMCheckout({
+          payment_url: paymentUrlWithOrigin,
+          order_id: (res as any).data.orderId,
+          gateway_origin: 'https://ptm-phi.vercel.app',
+          checkStatus: async (orderId) => {
+            const statusRes = await checkOrderStatusAction(orderId);
+            return statusRes.success ? (statusRes as any).status : 'pending';
+          },
+          onSuccess: () => {
+            toast.success('Payment successful! Your plan has been activated.');
+            refreshUser();
+            setIsCheckingOut(null);
+          },
+          onFailure: (err) => {
+            toast.error(err?.message || 'Payment failed');
+            setIsCheckingOut(null);
+          },
+          onClose: () => {
+            setIsCheckingOut(null);
+          }
+        });
+
+        gateway.open();
       } else {
         const errorMsg = (res as any).error;
         if (errorMsg === 'Unauthorized') {
@@ -129,7 +103,7 @@ export default function SubscriptionPage() {
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-indigo-100 dark:selection:bg-indigo-900 bg-gradient-to-br from-indigo-50 via-indigo-100 to-violet-50 dark:from-background dark:via-background dark:to-background text-foreground">
-      <DashboardHeader activePage="search" />
+      <DashboardHeader activePage="leads" />
 
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 md:px-8 pt-28 pb-16">
         {pageLoading ? (
@@ -159,8 +133,9 @@ export default function SubscriptionPage() {
                     Plan: <span className="font-bold capitalize text-indigo-600 dark:text-indigo-400">{user.planType}</span>
                   </p>
                 </div>
-                <div className="flex-1 max-w-md w-full">
-                  <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className="flex-1 relative max-w-md w-full">
+                  
+                  <div className="h-2.5 mt-4 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-500"
                       style={{
@@ -172,10 +147,20 @@ export default function SubscriptionPage() {
                       }}
                     />
                   </div>
+                  
                   <div className="flex justify-between mt-2 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
                     <span>{Math.round(usagePercent)}% used</span>
                     <span>{limit === Infinity ? 'No limit' : `${remaining.toLocaleString()} available`}</span>
                   </div>
+
+                  <Link
+                    href="/payment/history"
+                    className="inline-flex w-full mt-3 justify-end items-center gap-1.5  text-xs font-semibold  hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+                  >
+                    <Receipt size={14} className='text-indigo-600 dark:text-indigo-400'/>
+                    Payment History
+                  </Link>
+                  
                 </div>
               </div>
             )}
@@ -294,13 +279,28 @@ export default function SubscriptionPage() {
 
                       {/* Included Features (checkmark) */}
                       <ul className="space-y-3 flex-1 mb-4">
-                        {(plan.features || []).map((feature: string, i: number) => (
-                          <li key={`f-${i}`} className="flex items-start gap-3 text-sm">
+                        
+
+                          {(plan.features || []).map((feature: string, i: number) => (
+                            i < 5 && (
+                            <li key={`f-${i}`} className="flex items-start gap-3 text-sm">
                             <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-50/80 dark:bg-emerald-950/60 flex items-center justify-center shrink-0">
                               <Check size={14} className="text-emerald-500" />
                             </div>
                             <span className="text-slate-600 dark:text-slate-300">{feature}</span>
                           </li>
+                          )
+                        ))}
+
+                        {showMore && (plan.features || []).map((feature: string, i: number) => (
+                          i > 5 && (
+                            <li key={`f-${i}`} className="flex items-start gap-3 text-sm">
+                            <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-50/80 dark:bg-emerald-950/60 flex items-center justify-center shrink-0">
+                              <Check size={14} className="text-emerald-500" />
+                            </div>
+                            <span className="text-slate-600 dark:text-slate-300">{feature}</span>
+                          </li>
+                          )
                         ))}
 
                         {/* Unavailable Features (X mark) */}
@@ -312,6 +312,13 @@ export default function SubscriptionPage() {
                             <span className="text-slate-400 dark:text-slate-500 line-through">{feature}</span>
                           </li>
                         ))}
+
+                        { plan.features && plan.features.length + plan.unavailableFeatures.length > 5 && (
+                          <li className="flex relative flex-col items-start gap-3 text-sm w-full mx-auto">
+                            <span onClick={() => setShowMore(!showMore)} className="text-slate-800 cursor-pointer dark:text-slate-300 text-center mx-auto font-semibold">{showMore ? 'Read Less' : 'Read More'}</span>
+                          </li>
+                          
+                        )}
                       </ul>
 
                       {/* Button */}
@@ -408,17 +415,6 @@ export default function SubscriptionPage() {
         )}
       </main>
 
-      {paymentUrl && (
-        <div className="fixed inset-0 z-[100] bg-white/10 backdrop-blur-md animate-in fade-in duration-200 flex items-center justify-center p-4 md:p-8">         
-            <iframe
-              ref={iframeRef}
-              src={paymentUrl}
-              className="w-full h-full border-none"
-              allow="payment"
-              style={{ backgroundColor: 'transparent' }}
-            />
-        </div>
-      )}
 
       <footer className="w-full py-8 border-t border-white/20 dark:border-slate-800 flex flex-col items-center justify-center bg-white/5 dark:bg-white/[0.02] backdrop-blur-sm mt-auto">
         <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold tracking-[0.2em] uppercase"></p>

@@ -11,11 +11,14 @@ export default function QueryProvider({ children }: { children: React.ReactNode 
       new QueryClient({
         defaultOptions: {
           queries: {
-            // With SSR, we usually want to set some default staleTime
-            // above 0 to avoid refetching immediately on the client
-            staleTime: 60 * 15 * 1000, // 15 minutes
-            gcTime: 60 * 60 * 1000, // Garbage fail time (1 hour)
+            // Realtime-optimized defaults: short stale for polling keys,
+            // per-query overrides set exact cadence. Global 30s avoids
+            // 15-minute stale snapshots while keeping static pages cheap.
+            staleTime: 30 * 1000,
+            gcTime: 5 * 60 * 1000,
             refetchOnWindowFocus: false,
+            refetchIntervalInBackground: false,
+            retry: 2,
           },
         },
       })
@@ -36,10 +39,38 @@ export default function QueryProvider({ children }: { children: React.ReactNode 
     return null;
   }
 
+  // Never persist high-churn realtime keys — they rehydrate stale snapshots
+  // and fight 2s polling. Persist static keys (plans, settings) only.
+  const REALTIME_KEYS = [
+    'tasks',
+    'tasks-progress',
+    'admin-tasks',
+    'admin-tasks-detailed',
+    'admin-stats',
+    'admin-charts',
+    'admin-insights',
+    'admin-logs',
+    'admin-payments',
+    'admin-subscribers',
+    'admin-user-locations',
+    'notifications',
+    'notification-unread-count',
+  ];
+
   return (
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ persister, maxAge: 60 * 60 * 1000 }} // Persist for 1 hour
+      persistOptions={{
+        persister,
+        maxAge: 60 * 60 * 1000,
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) => {
+            const key = String(query.queryKey?.[0] ?? '');
+            if (REALTIME_KEYS.includes(key)) return false;
+            return query.state.status === 'success';
+          },
+        },
+      }}
     >
       {children}
     </PersistQueryClientProvider>
